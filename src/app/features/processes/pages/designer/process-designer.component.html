@@ -79,7 +79,9 @@
         *ngIf="isProcessListOpen"
         [procesos]="procesosGuardados"
         [loading]="isLoadingProcessList"
+        [publishingId]="publishingId"
         (processSelected)="loadProceso($event)"
+        (publishProcess)="publishProceso($event)"
       />
 
       <aside class="overlay-panel" *ngIf="isImportPanelOpen">

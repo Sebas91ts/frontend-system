@@ -10,15 +10,45 @@
   </div>
 
   <div class="process-list" *ngIf="!loading && procesos.length">
-    <button
-      type="button"
+    <div
       class="process-list__item"
       *ngFor="let proceso of procesos"
       (click)="processSelected.emit(proceso)"
     >
-      <strong>{{ proceso.nombre }}</strong>
+      <div class="process-list__header">
+        <strong>{{ proceso.nombre }}</strong>
+        <span
+          class="pill"
+          [class.pill--active]="proceso.estado === 'PUBLICADO'"
+          [class.pill--inactive]="proceso.estado !== 'PUBLICADO'"
+        >
+          {{ proceso.estado || 'BORRADOR' }}
+        </span>
+      </div>
+
       <span>ID: {{ proceso.id }}</span>
       <span>Version {{ proceso.version }}</span>
-    </button>
+      <span>Actualizado: {{ proceso.updatedAt || proceso.createdAt }}</span>
+
+      <div class="process-list__actions">
+        <button
+          type="button"
+          class="process-list__open"
+          (click)="$event.stopPropagation(); processSelected.emit(proceso)"
+        >
+          Abrir
+        </button>
+
+        <button
+          type="button"
+          class="process-list__publish"
+          *ngIf="proceso.estado !== 'PUBLICADO'"
+          [disabled]="publishingId === proceso.id"
+          (click)="$event.stopPropagation(); publishProcess.emit(proceso)"
+        >
+          {{ publishingId === proceso.id ? 'Publicando...' : 'Publicar' }}
+        </button>
+      </div>
+    </div>
   </div>
 </aside>

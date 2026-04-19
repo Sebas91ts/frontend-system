@@ -90,4 +90,22 @@ export class ProcessService {
       }),
     );
   }
+
+  publicarProceso(id: string): Observable<ApiResponse<Proceso>> {
+    console.info('[ProcessService] PUT /api/procesos/{id}/publicar -> start', {
+      id,
+      apiUrl: this.apiUrl,
+    });
+
+    return this.http.put<ApiResponse<Proceso>>(`${this.apiUrl}/procesos/${id}/publicar`, {}).pipe(
+      tap({
+        next: (response) => {
+          console.info('[ProcessService] PUT /api/procesos/{id}/publicar -> success', response);
+        },
+        error: (error) => {
+          console.error('[ProcessService] PUT /api/procesos/{id}/publicar -> error', error);
+        },
+      }),
+    );
+  }
 }

@@ -40,6 +40,7 @@ export class ProcessDesignerComponent implements OnDestroy {
   protected isSaving = false;
   protected isLoadingProcess = false;
   protected isLoadingProcessList = false;
+  protected publishingId: string | null = null;
   protected isSaveDialogOpen = false;
   protected isImportConfirmOpen = false;
   protected saveDialogName = '';
@@ -141,6 +142,44 @@ export class ProcessDesignerComponent implements OnDestroy {
       });
   }
 
+  protected publishProceso(proceso: Proceso): void {
+    if (this.publishingId || proceso.estado === 'PUBLICADO') {
+      return;
+    }
+
+    this.publishingId = proceso.id;
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    this.processService
+      .publicarProceso(proceso.id)
+      .pipe(
+        finalize(() => {
+          this.publishingId = null;
+          this.cdr.detectChanges();
+        }),
+      )
+      .subscribe({
+        next: (response) => {
+          const actualizado = response.data;
+          if (actualizado) {
+            this.procesosGuardados = this.procesosGuardados.map((item) =>
+              item.id === actualizado.id ? actualizado : item,
+            );
+          }
+
+          this.showFeedback(response.message || 'Proceso publicado correctamente.', 'success');
+          this.cdr.detectChanges();
+        },
+        error: (error: any) => {
+          this.showFeedback(
+            error?.error?.message || 'No se pudo publicar el proceso.',
+            'error',
+          );
+        },
+      });
+  }
+
   protected openSaveAsNew(): void {
     this.currentProcessId = null;
     this.onSaveProcess();
@@ -184,7 +223,10 @@ export class ProcessDesignerComponent implements OnDestroy {
 
           try {
             await editor.importFromXml(procesoCargado.xml);
-            this.showFeedback(`Proceso "${procesoCargado.nombre}" cargado correctamente.`, 'success');
+            this.showFeedback(
+              `Proceso "${procesoCargado.nombre}" cargado correctamente.`,
+              'success',
+            );
           } catch (error) {
             console.error('Error al importar proceso guardado', error);
             this.showFeedback('No se pudo cargar el XML BPMN del proceso seleccionado.', 'error');
@@ -193,7 +235,10 @@ export class ProcessDesignerComponent implements OnDestroy {
           this.cdr.detectChanges();
         },
         error: (error: any) => {
-          this.showFeedback(error?.error?.message || 'No se pudo abrir el proceso seleccionado.', 'error');
+          this.showFeedback(
+            error?.error?.message || 'No se pudo abrir el proceso seleccionado.',
+            'error',
+          );
         },
       });
   }
@@ -390,7 +435,10 @@ export class ProcessDesignerComponent implements OnDestroy {
         return;
       }
 
-      this.showFeedback('XML importado en un nuevo proceso. Puedes guardarlo cuando este listo.', 'success');
+      this.showFeedback(
+        'XML importado en un nuevo proceso. Puedes guardarlo cuando este listo.',
+        'success',
+      );
     } catch (error) {
       console.error('Error al importar XML BPMN', error);
       this.showFeedback(

@@ -43,6 +43,7 @@
   gap: 0.25rem;
   cursor: pointer;
   transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  pointer-events: auto;
 }
 
 .process-list__item:hover {
@@ -58,6 +59,74 @@
 .process-list__item span {
   color: #64748b;
   font-size: 0.82rem;
+}
+
+.process-list__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.process-list__actions {
+  margin-top: 0.55rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.pill {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.pill--active {
+  background: rgba(34, 197, 94, 0.14);
+  color: #86efac;
+}
+
+.pill--inactive {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+}
+
+.process-list__open,
+.process-list__publish {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 12px;
+  padding: 0.6rem 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.process-list__open {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.process-list__publish {
+  background: linear-gradient(135deg, #22c55e, #4ade80);
+  color: #06210f;
+}
+
+.process-list__open:hover,
+.process-list__publish:hover {
+  transform: translateY(-1px);
+}
+
+.process-list__publish:hover {
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+}
+
+.process-list__publish:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .process-list-state {

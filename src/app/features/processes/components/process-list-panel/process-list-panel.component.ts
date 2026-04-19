@@ -12,6 +12,8 @@ import { Proceso } from '../../../../core/models/process.models';
 export class ProcessListPanelComponent {
   @Input() procesos: Proceso[] = [];
   @Input() loading = false;
+  @Input() publishingId: string | null = null;
 
   @Output() processSelected = new EventEmitter<Proceso>();
+  @Output() publishProcess = new EventEmitter<Proceso>();
 }
