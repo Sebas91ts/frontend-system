@@ -1,0 +1,89 @@
+<section class="editor-shell">
+  <header class="header">Process Designer</header>
+
+  <div class="workspace">
+    <aside class="sidebar">
+      <button
+        type="button"
+        class="toolbar-button accent"
+        title="Crear nuevo diagrama"
+        (click)="createNewDiagram()"
+        [disabled]="isBusy"
+      >
+        Nuevo
+      </button>
+      <button
+        type="button"
+        class="toolbar-button"
+        title="Importar BPMN"
+        (click)="toggleImportPanel()"
+      >
+        {{ isImportPanelOpen ? 'Ocultar' : 'Importar' }}
+      </button>
+      <button
+        type="button"
+        class="toolbar-button"
+        title="Exportar BPMN"
+        (click)="onExportXml()"
+        [disabled]="isBusy"
+      >
+        Exportar
+      </button>
+      <button type="button" class="toolbar-icon" title="Alejar" (click)="zoomOut()">-</button>
+      <button type="button" class="toolbar-icon" title="Ajustar vista" (click)="resetView()">Fit</button>
+      <button type="button" class="toolbar-icon" title="Acercar" (click)="zoomIn()">+</button>
+    </aside>
+
+    <div class="canvas-wrapper">
+      <div #canvasHost class="bpmn-canvas" aria-label="Canvas del modelador BPMN"></div>
+
+      <aside class="overlay-panel" *ngIf="isImportPanelOpen">
+        <div class="panel-header">
+          <h3>Importar XML BPMN</h3>
+          <p>Pega el XML del proceso y cargalo en el modelador.</p>
+        </div>
+
+        <textarea
+          [(ngModel)]="importXmlValue"
+          class="xml-input"
+          rows="16"
+          spellcheck="false"
+          placeholder="Pega aqui el XML BPMN"
+        ></textarea>
+
+        <div class="panel-actions">
+          <button type="button" class="toolbar-button accent" (click)="onImportXml()" [disabled]="isBusy">
+            Cargar XML
+          </button>
+        </div>
+      </aside>
+
+      <section class="overlay-panel export-overlay" *ngIf="isExportPanelOpen">
+        <div class="panel-header">
+          <h3>XML exportado</h3>
+          <p>Este contenido ya puede enviarse al backend para persistirse.</p>
+        </div>
+
+        <textarea
+          [ngModel]="exportedXml"
+          class="xml-output"
+          rows="10"
+          readonly
+          spellcheck="false"
+        ></textarea>
+      </section>
+    </div>
+
+    <aside class="properties-sidebar">
+      <div class="properties-header">
+        <p class="properties-eyebrow">Propiedades</p>
+        <h3>Elemento seleccionado</h3>
+        <p>Usa este panel para editar nombres, ids, areas y responsabilidades.</p>
+      </div>
+      <div #propertiesHost class="properties-panel-host" aria-label="Panel de propiedades BPMN"></div>
+    </aside>
+  </div>
+
+  <div *ngIf="errorMessage" class="status-banner error">{{ errorMessage }}</div>
+  <div *ngIf="successMessage" class="status-banner success">{{ successMessage }}</div>
+</section>

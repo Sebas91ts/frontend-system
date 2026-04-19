@@ -41,6 +41,15 @@ export const routes: Routes = [
     data: { roles: ['ROLE_USER', 'ROLE_ADMIN'] }
   },
 
+  // Diseñador de procesos BPMN
+  {
+    path: 'processes/designer',
+    loadComponent: () => import('./features/processes/pages/designer/process-designer.component')
+      .then(m => m.ProcessDesignerComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_USER', 'ROLE_ADMIN'] }
+  },
+
   // Ruta comodín - redirigir al dashboard correspondiente
   { path: '**', redirectTo: 'auth/login' }
 ];

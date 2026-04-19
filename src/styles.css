@@ -1,3 +1,130 @@
 /* You can add global styles to this file, and also import other style files */
 
 @import 'tailwindcss';
+
+.djs-palette {
+  background: #ffffff !important;
+  border-right: 1px solid #e5e7eb !important;
+  left: 100px !important;
+}
+
+.djs-palette .entry {
+  color: #1f2937 !important;
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+.djs-palette .entry:hover {
+  background: #f3f4f6 !important;
+}
+
+.djs-context-pad {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  opacity: 1 !important;
+  z-index: 999 !important;
+}
+
+.djs-context-pad .entry {
+  color: #111827 !important;
+  opacity: 1 !important;
+  border-radius: 6px;
+}
+
+.djs-context-pad .entry:hover {
+  background: #f3f4f6 !important;
+}
+
+.djs-context-pad .entry:before {
+  color: #111827 !important;
+  opacity: 1 !important;
+}
+
+.djs-container,
+.djs-container * {
+  font-family: Arial, sans-serif !important;
+}
+
+.djs-container input {
+  color: #111827 !important;
+}
+
+.djs-element .djs-label {
+  fill: #111827 !important;
+  font-weight: 500;
+}
+
+.djs-label {
+  fill: #111827 !important;
+  font-size: 12px;
+}
+
+.djs-direct-editing-parent {
+  color: #111827 !important;
+  background: transparent !important;
+}
+
+.djs-direct-editing-parent input {
+  color: #111827 !important;
+  background: #ffffff !important;
+  caret-color: #111827 !important;
+  font-weight: 500;
+  outline: none !important;
+  border: 1px solid #cbd5f5 !important;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.djs-direct-editing-content {
+  color: #111827 !important;
+}
+
+input.djs-direct-editing-content {
+  color: #111827 !important;
+}
+
+.djs-container {
+  background: white !important;
+  border-radius: 8px;
+}
+
+@media (max-width: 640px) {
+  .djs-palette {
+    left: 16px !important;
+    top: 110px !important;
+  }
+}
+/* POPUP (Change Element / Replace) */
+.djs-popup {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2) !important;
+  padding: 6px !important;
+  z-index: 9999 !important;
+}
+
+/* Items del popup */
+.djs-popup .entry {
+  color: #111827 !important;
+  background: transparent !important;
+  border-radius: 6px !important;
+  padding: 6px 8px !important;
+}
+
+.djs-popup .entry:hover {
+  background: #f3f4f6 !important;
+}
+
+/* ICONOS dentro del popup */
+.djs-popup .entry:before {
+  color: #111827 !important;
+}
+
+/* Contenedor interno */
+.djs-popup-body {
+  background: #ffffff !important;
+}
