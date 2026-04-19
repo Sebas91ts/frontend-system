@@ -1,23 +1,13 @@
-﻿import { HttpInterceptorFn } from '@angular/common/http';
-import { inject } from '@angular/core';
-import { AuthService } from '../services/auth.service';
+import { HttpInterceptorFn } from '@angular/common/http';
 
 /**
- * Interceptor que agrega el token JWT a todas las peticiones HTTP
+ * Interceptor que asegura el envío de cookies de sesión al backend.
+ * El JWT vive en una cookie HttpOnly, así que no se adjunta manualmente.
  */
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
-  const authService = inject(AuthService);
-  const token = authService.getToken();
+  const authReq = req.clone({
+    withCredentials: true
+  });
 
-  // Si hay token, lo agregamos al header
-  if (token) {
-    const authReq = req.clone({
-      setHeaders: {
-        Authorization: token
-      }
-    });
-    return next(authReq);
-  }
-
-  return next(req);
+  return next(authReq);
 };

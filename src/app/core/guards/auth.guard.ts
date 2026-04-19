@@ -1,22 +1,25 @@
-﻿import { inject, Injectable } from '@angular/core';
+import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
+import { map } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 
 /**
- * Guard que protege rutas que requieren autenticación
- * Si no está autenticado, redirige al login
+ * Guard que protege rutas que requieren autenticación.
+ * Si no hay sesión cargada, intenta restaurarla antes de decidir.
  */
 export const authGuard: CanActivateFn = (route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  if (authService.isAuthenticated()) {
-    return true;
-  }
+  return authService.ensureSession().pipe(
+    map(isAuthenticated => {
+      if (isAuthenticated) {
+        return true;
+      }
 
-  // Redirigir al login guardando la URL intentada
-  router.navigate(['/auth/login'], {
-    queryParams: { returnUrl: state.url }
-  });
-  return false;
+      return router.createUrlTree(['/auth/login'], {
+        queryParams: { returnUrl: state.url }
+      });
+    })
+  );
 };
