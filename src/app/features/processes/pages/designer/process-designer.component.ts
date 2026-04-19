@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize, Observable, timeout } from 'rxjs';
 import { ApiResponse } from '../../../../core/models/auth.models';
@@ -22,9 +22,11 @@ import { ProcessListPanelComponent } from '../../components/process-list-panel/p
   templateUrl: './process-designer.component.html',
   styleUrl: './process-designer.component.css',
 })
-export class ProcessDesignerComponent {
+export class ProcessDesignerComponent implements OnDestroy {
   @ViewChild(BpmnEditorComponent)
   private readonly editorComponent?: BpmnEditorComponent;
+
+  private feedbackTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected importXmlValue = '';
   protected exportedXml = '';
@@ -52,8 +54,38 @@ export class ProcessDesignerComponent {
     private readonly cdr: ChangeDetectorRef,
   ) {}
 
+  ngOnDestroy(): void {
+    this.clearFeedbackTimer();
+  }
+
+  private showFeedback(message: string, type: 'success' | 'error'): void {
+    this.clearFeedbackTimer();
+
+    if (type === 'success') {
+      this.successMessage = message;
+      this.errorMessage = '';
+    } else {
+      this.errorMessage = message;
+      this.successMessage = '';
+    }
+
+    this.feedbackTimer = setTimeout(() => {
+      this.successMessage = '';
+      this.errorMessage = '';
+      this.cdr.detectChanges();
+    }, 3500);
+  }
+
+  private clearFeedbackTimer(): void {
+    if (this.feedbackTimer) {
+      clearTimeout(this.feedbackTimer);
+      this.feedbackTimer = null;
+    }
+  }
+
   protected async createNewDiagram(): Promise<void> {
-    if (!this.editorComponent) {
+    const editor = this.editorComponent;
+    if (!editor) {
       return;
     }
 
@@ -65,11 +97,11 @@ export class ProcessDesignerComponent {
     this.isBusy = true;
 
     try {
-      await this.editorComponent.createNewDiagram();
-      this.successMessage = 'Nuevo diagrama listo para modelar.';
+      await editor.createNewDiagram();
+      this.showFeedback('Nuevo diagrama listo para modelar.', 'success');
     } catch (error) {
       console.error('Error al crear nuevo diagrama BPMN', error);
-      this.errorMessage = 'No se pudo crear un nuevo diagrama BPMN.';
+      this.showFeedback('No se pudo crear un nuevo diagrama BPMN.', 'error');
     } finally {
       this.isBusy = false;
     }
@@ -101,8 +133,10 @@ export class ProcessDesignerComponent {
           );
         },
         error: (error: any) => {
-          this.errorMessage =
-            error?.error?.message || 'No se pudo cargar la lista de procesos guardados.';
+          this.showFeedback(
+            error?.error?.message || 'No se pudo cargar la lista de procesos guardados.',
+            'error',
+          );
         },
       });
   }
@@ -138,7 +172,7 @@ export class ProcessDesignerComponent {
         next: async (response) => {
           const procesoCargado = response.data;
           if (!procesoCargado) {
-            this.errorMessage = 'No se pudo obtener el proceso seleccionado.';
+            this.showFeedback('No se pudo obtener el proceso seleccionado.', 'error');
             return;
           }
 
@@ -150,18 +184,16 @@ export class ProcessDesignerComponent {
 
           try {
             await editor.importFromXml(procesoCargado.xml);
-            this.successMessage = `Proceso "${procesoCargado.nombre}" cargado correctamente.`;
+            this.showFeedback(`Proceso "${procesoCargado.nombre}" cargado correctamente.`, 'success');
           } catch (error) {
             console.error('Error al importar proceso guardado', error);
-            this.errorMessage =
-              'No se pudo cargar el XML BPMN del proceso seleccionado.';
+            this.showFeedback('No se pudo cargar el XML BPMN del proceso seleccionado.', 'error');
           }
 
           this.cdr.detectChanges();
         },
         error: (error: any) => {
-          this.errorMessage =
-            error?.error?.message || 'No se pudo abrir el proceso seleccionado.';
+          this.showFeedback(error?.error?.message || 'No se pudo abrir el proceso seleccionado.', 'error');
         },
       });
   }
@@ -191,8 +223,7 @@ export class ProcessDesignerComponent {
 
     const nombre = this.saveDialogName.trim();
     if (!nombre) {
-      this.errorMessage = 'Debes ingresar un nombre para el proceso.';
-      this.successMessage = '';
+      this.showFeedback('Debes ingresar un nombre para el proceso.', 'error');
       return;
     }
 
@@ -235,9 +266,12 @@ export class ProcessDesignerComponent {
               this.saveDialogMessage = isUpdatingExisting
                 ? 'Proceso BPMN actualizado correctamente.'
                 : 'Proceso BPMN guardado correctamente.';
-              this.successMessage = isUpdatingExisting
-                ? 'Proceso BPMN actualizado correctamente en MongoDB.'
-                : 'Proceso BPMN guardado correctamente en MongoDB.';
+              this.showFeedback(
+                isUpdatingExisting
+                  ? 'Proceso BPMN actualizado correctamente en MongoDB.'
+                  : 'Proceso BPMN guardado correctamente en MongoDB.',
+                'success',
+              );
 
               this.loadProcessList();
               this.cdr.detectChanges();
@@ -250,7 +284,7 @@ export class ProcessDesignerComponent {
 
             this.saveDialogStatus = 'error';
             this.saveDialogMessage = response.message || 'No se pudo guardar el proceso.';
-            this.errorMessage = response.message || 'No se pudo guardar el proceso.';
+            this.showFeedback(response.message || 'No se pudo guardar el proceso.', 'error');
           },
           error: (error: any) => {
             this.saveDialogStatus = 'error';
@@ -263,7 +297,7 @@ export class ProcessDesignerComponent {
                 ? 'El backend no respondio a tiempo. Intenta nuevamente.'
                 : 'No se pudo guardar el proceso en el backend.');
 
-            this.errorMessage = this.saveDialogMessage;
+            this.showFeedback(this.saveDialogMessage, 'error');
             this.cdr.detectChanges();
           },
         });
@@ -272,7 +306,7 @@ export class ProcessDesignerComponent {
       this.saveDialogStatus = 'error';
       this.saveDialogMessage =
         error?.error?.message || 'No se pudo exportar el XML del diagrama actual.';
-      this.errorMessage = this.saveDialogMessage;
+      this.showFeedback(this.saveDialogMessage, 'error');
       this.isSaving = false;
     }
   }
@@ -290,10 +324,10 @@ export class ProcessDesignerComponent {
     try {
       this.exportedXml = await editor.exportToXml();
       this.isExportPanelOpen = true;
-      this.successMessage = 'XML exportado correctamente.';
+      this.showFeedback('XML exportado correctamente.', 'success');
     } catch (error) {
       console.error('Error al exportar XML BPMN', error);
-      this.errorMessage = 'No se pudo exportar el XML del diagrama actual.';
+      this.showFeedback('No se pudo exportar el XML del diagrama actual.', 'error');
     } finally {
       this.isBusy = false;
     }
@@ -349,15 +383,20 @@ export class ProcessDesignerComponent {
     try {
       await editor.importFromXml(this.importXmlValue);
       if (this.currentProcessId) {
-        this.successMessage = `XML importado sobre el proceso "${this.processName}". Puedes seguir editandolo y actualizarlo.`;
+        this.showFeedback(
+          `XML importado sobre el proceso "${this.processName}". Puedes seguir editandolo y actualizarlo.`,
+          'success',
+        );
         return;
       }
 
-      this.successMessage = 'XML importado en un nuevo proceso. Puedes guardarlo cuando este listo.';
+      this.showFeedback('XML importado en un nuevo proceso. Puedes guardarlo cuando este listo.', 'success');
     } catch (error) {
       console.error('Error al importar XML BPMN', error);
-      this.errorMessage =
-        'No se pudo importar el XML BPMN. Verifica la estructura del archivo e intenta nuevamente.';
+      this.showFeedback(
+        'No se pudo importar el XML BPMN. Verifica la estructura del archivo e intenta nuevamente.',
+        'error',
+      );
     } finally {
       this.isBusy = false;
     }

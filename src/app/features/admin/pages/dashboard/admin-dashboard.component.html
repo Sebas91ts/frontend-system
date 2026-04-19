@@ -1,0 +1,48 @@
+<main class="admin-shell">
+  <section class="hero">
+    <div class="hero__copy">
+      <p class="eyebrow">Control central</p>
+      <h1>Panel de Administracion</h1>
+      <p class="hero__text">
+        Gestiona usuarios, procesos BPM y accesos desde un solo lugar. Todo con una vista clara,
+        rapida y pensada para operar sin perder contexto.
+      </p>
+
+      <div class="hero__actions">
+        <button type="button" class="action-button accent" (click)="goToUsers()">Gestionar usuarios</button>
+        <button type="button" class="action-button" (click)="goToProcesses()">Abrir procesos</button>
+      </div>
+    </div>
+
+    <aside class="hero__profile">
+      <span class="profile-badge">Administrador</span>
+      <strong>{{ authService.currentUser()?.nombre }} {{ authService.currentUser()?.apellido }}</strong>
+      <p>{{ authService.currentUser()?.email }}</p>
+      <small>{{ authService.currentUser()?.roles?.join(' · ') }}</small>
+      <button type="button" class="logout-link" (click)="logout()">Cerrar sesion</button>
+    </aside>
+  </section>
+
+  <section class="cards-grid">
+    <article class="feature-card">
+      <p class="feature-card__tag">Usuarios</p>
+      <h2>CRUD de usuarios</h2>
+      <p>Listar, editar y eliminar usuarios del sistema con flujo claro y simple de operar.</p>
+      <button type="button" class="action-button accent" (click)="goToUsers()">Ir al CRUD</button>
+    </article>
+
+    <article class="feature-card">
+      <p class="feature-card__tag">Procesos BPM</p>
+      <h2>Diseño y versionado</h2>
+      <p>Entrar al modelador BPM para crear, editar y versionar procesos empresariales.</p>
+      <button type="button" class="action-button accent" (click)="goToProcesses()">Abrir diseñador</button>
+    </article>
+
+    <article class="feature-card">
+      <p class="feature-card__tag">Seguridad</p>
+      <h2>Acceso restringido</h2>
+      <p>Solo administradores pueden acceder a estas herramientas y a los endpoints protegidos.</p>
+      <span class="feature-card__status">ROLE_ADMIN activo</span>
+    </article>
+  </section>
+</main>

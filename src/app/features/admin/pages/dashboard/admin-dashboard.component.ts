@@ -1,64 +1,28 @@
-﻿import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AuthService } from '../../../../core/services/auth.service';
+import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { AuthService } from '../../../../core/services/auth.service';
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
   imports: [CommonModule],
-  template: `
-    <div class="min-h-screen bg-gray-100">
-      <!-- Header -->
-      <header class="bg-blue-600 text-white p-4 shadow-md">
-        <div class="container mx-auto flex justify-between items-center">
-          <h1 class="text-2xl font-bold">Dashboard de Administrador</h1>
-          <div class="flex items-center gap-4">
-            <span class="text-sm"
-              >Hola, {{ authService.currentUser()?.nombre }}
-              {{ authService.currentUser()?.apellido }}</span
-            >
-            <button
-              (click)="logout()"
-              class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg text-sm transition duration-200"
-            >
-              Cerrar Sesión
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <!-- Content -->
-      <main class="container mx-auto p-6">
-        <div class="bg-white rounded-lg shadow-md p-6">
-          <h2 class="text-xl font-bold mb-4 text-gray-800">
-            Bienvenido al Panel de Administración
-          </h2>
-          <p class="text-gray-600 mb-4">
-            Este es un dashboard protegido solo para administradores.
-          </p>
-
-          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 class="font-bold text-blue-800 mb-2">Información del Usuario:</h3>
-            <ul class="text-blue-700">
-              <li>
-                <strong>Nombre:</strong> {{ authService.currentUser()?.nombre }}
-                {{ authService.currentUser()?.apellido }}
-              </li>
-              <li><strong>Email:</strong> {{ authService.currentUser()?.email }}</li>
-              <li><strong>Roles:</strong> {{ authService.currentUser()?.roles?.join(', ') }}</li>
-            </ul>
-          </div>
-        </div>
-      </main>
-    </div>
-  `,
+  templateUrl: './admin-dashboard.component.html',
+  styleUrl: './admin-dashboard.component.css',
 })
 export class AdminDashboardComponent {
   authService = inject(AuthService);
-  private router = inject(Router);
+  private readonly router = inject(Router);
 
   logout(): void {
     this.authService.logout();
+  }
+
+  goToUsers(): void {
+    void this.router.navigate(['/admin/users']);
+  }
+
+  goToProcesses(): void {
+    void this.router.navigate(['/processes/designer']);
   }
 }

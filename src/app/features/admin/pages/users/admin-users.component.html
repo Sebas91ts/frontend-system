@@ -1,0 +1,156 @@
+<main class="users-shell">
+  <header class="users-hero">
+    <div>
+      <p class="eyebrow">Administracion</p>
+      <h1>Gestion de usuarios</h1>
+      <p class="users-hero__text">
+        Crea, edita y elimina usuarios del sistema con una vista clara y un flujo simple de operar.
+      </p>
+    </div>
+
+    <div class="users-hero__actions">
+      <a routerLink="/admin" class="action-link">Volver al panel</a>
+      <button type="button" class="action-button accent" (click)="openCreate()">
+        Nuevo usuario
+      </button>
+    </div>
+  </header>
+
+  <section class="status-row">
+    <div *ngIf="errorMessage" class="status-banner error">{{ errorMessage }}</div>
+    <div *ngIf="successMessage" class="status-banner success">{{ successMessage }}</div>
+  </section>
+
+  <section class="users-table-card">
+    <div class="table-header">
+      <div>
+        <h2>Usuarios registrados</h2>
+        <p>Lista central para mantener el acceso y los datos del personal.</p>
+      </div>
+      <button type="button" class="action-button" (click)="loadUsers()" [disabled]="isLoading">
+        {{ isLoading ? 'Cargando...' : 'Refrescar' }}
+      </button>
+    </div>
+
+    <div class="table-empty" *ngIf="!isLoading && !usuarios.length">
+      Todavia no hay usuarios para mostrar.
+    </div>
+
+    <div class="table-wrap" *ngIf="usuarios.length">
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Roles</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let usuario of usuarios">
+            <td>{{ usuario.nombre }} {{ usuario.apellido }}</td>
+            <td>{{ usuario.email }}</td>
+            <td>{{ usuario.roles ? usuario.roles.join(', ') : '' }}</td>
+            <td>
+              <span
+                class="pill"
+                [class.pill--active]="usuario.activo"
+                [class.pill--inactive]="!usuario.activo"
+              >
+                {{ usuario.activo ? 'Activo' : 'Inactivo' }}
+              </span>
+            </td>
+            <td class="row-actions">
+              <button type="button" class="mini-button" (click)="openEdit(usuario)">Editar</button>
+              <button
+                type="button"
+                class="mini-button danger"
+                (click)="openDeleteModal(usuario)"
+                [disabled]="isDeletingId === usuario.id"
+              >
+                {{ isDeletingId === usuario.id ? 'Eliminando...' : 'Desactivar' }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="modal-backdrop" *ngIf="isFormOpen" (click)="closeForm()"></div>
+
+  <section
+    class="save-modal"
+    *ngIf="isFormOpen"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="user-form-title"
+  >
+    <div class="save-modal__header">
+      <h3 id="user-form-title">{{ editingUserId ? 'Editar usuario' : 'Crear usuario' }}</h3>
+      <p>Completa los datos para registrar o actualizar la cuenta dentro del sistema.</p>
+    </div>
+
+    <label class="save-modal__field">
+      <span>Nombre</span>
+      <input [(ngModel)]="form.nombre" type="text" />
+    </label>
+
+    <label class="save-modal__field">
+      <span>Apellido</span>
+      <input [(ngModel)]="form.apellido" type="text" />
+    </label>
+
+    <label class="save-modal__field">
+      <span>Email</span>
+      <input [(ngModel)]="form.email" type="email" />
+    </label>
+
+    <label class="save-modal__field">
+      <span>Contraseña</span>
+      <input [(ngModel)]="form.password" type="password" placeholder="Minimo 6 caracteres" />
+    </label>
+
+    <div class="save-modal__actions">
+      <button type="button" class="action-button" (click)="closeForm()" [disabled]="isSaving">
+        Cancelar
+      </button>
+      <button type="button" class="action-button accent" (click)="saveUser()" [disabled]="isSaving">
+        {{ isSaving ? 'Guardando...' : editingUserId ? 'Actualizar usuario' : 'Crear usuario' }}
+      </button>
+    </div>
+  </section>
+
+  <div class="modal-backdrop" *ngIf="isDeleteModalOpen" (click)="closeDeleteModal()"></div>
+
+  <section
+    class="save-modal confirm-delete-modal"
+    *ngIf="isDeleteModalOpen"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="delete-user-title"
+  >
+    <div class="save-modal__header">
+      <h3 id="delete-user-title">Confirmar eliminacion</h3>
+      <p>
+        Vas a desactivar a
+        <strong>{{ userToDelete?.nombre }} {{ userToDelete?.apellido }}</strong>.
+        Esta accion puede revertirse solo desde el panel de administracion.
+      </p>
+    </div>
+
+    <div *ngIf="errorMessage" class="save-modal__status error">
+      {{ errorMessage }}
+    </div>
+
+    <div class="save-modal__actions">
+      <button type="button" class="action-button" (click)="closeDeleteModal()" [disabled]="isDeletingId">
+        Cancelar
+      </button>
+      <button type="button" class="action-button accent" (click)="confirmDelete()" [disabled]="isDeletingId">
+        {{ isDeletingId ? 'Eliminando...' : 'Eliminar' }}
+      </button>
+    </div>
+  </section>
+</main>
