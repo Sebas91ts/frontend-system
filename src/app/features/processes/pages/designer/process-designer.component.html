@@ -1,0 +1,142 @@
+<section class="designer-shell">
+  <header class="header">Process Designer</header>
+
+  <div class="workspace">
+    <aside class="sidebar">
+      <button
+        type="button"
+        class="toolbar-button accent"
+        [title]="currentProcessId ? 'Actualizar proceso en el backend' : 'Guardar proceso en el backend'"
+        (click)="openSaveCurrent()"
+        [disabled]="isBusy || isSaving"
+      >
+        {{ isSaving ? 'Guardando...' : (currentProcessId ? 'Actualizar' : 'Guardar') }}
+      </button>
+
+      <button
+        type="button"
+        class="toolbar-button"
+        title="Abrir proceso guardado"
+        (click)="toggleProcessList()"
+        [disabled]="isLoadingProcess"
+      >
+        {{ isProcessListOpen ? 'Cerrar lista' : 'Abrir proceso' }}
+      </button>
+
+      <button
+        type="button"
+        class="toolbar-button"
+        title="Guardar como nuevo proceso"
+        (click)="openSaveAsNew()"
+        [disabled]="isBusy || isSaving"
+      >
+        Guardar como
+      </button>
+
+      <button
+        type="button"
+        class="toolbar-button"
+        title="Crear nuevo diagrama"
+        (click)="createNewDiagram()"
+        [disabled]="isBusy"
+      >
+        Nuevo
+      </button>
+
+      <button
+        type="button"
+        class="toolbar-button"
+        title="Importar BPMN"
+        (click)="toggleImportPanel()"
+      >
+        {{ isImportPanelOpen ? 'Ocultar' : 'Importar' }}
+      </button>
+
+      <button
+        type="button"
+        class="toolbar-button"
+        title="Exportar BPMN"
+        (click)="onExportXml()"
+        [disabled]="isBusy"
+      >
+        Exportar
+      </button>
+
+      <button type="button" class="toolbar-icon" title="Alejar" (click)="zoomOut()">-</button>
+      <button type="button" class="toolbar-icon" title="Ajustar vista" (click)="resetView()">Fit</button>
+      <button type="button" class="toolbar-icon" title="Acercar" (click)="zoomIn()">+</button>
+    </aside>
+
+    <div class="designer-stage">
+      <section class="process-chip" *ngIf="processName">
+        <span class="process-chip__label">{{ currentProcessId ? 'Editando' : 'Nuevo proceso' }}</span>
+        <strong>{{ editorProcessName }}</strong>
+      </section>
+
+      <app-bpmn-editor />
+
+      <app-process-list-panel
+        *ngIf="isProcessListOpen"
+        [procesos]="procesosGuardados"
+        [loading]="isLoadingProcessList"
+        (processSelected)="loadProceso($event)"
+      />
+
+      <aside class="overlay-panel" *ngIf="isImportPanelOpen">
+        <div class="panel-header">
+          <h3>Importar XML BPMN</h3>
+          <p>Pega el XML del proceso y cargalo en el modelador.</p>
+        </div>
+
+        <textarea
+          [(ngModel)]="importXmlValue"
+          class="xml-input"
+          rows="16"
+          spellcheck="false"
+          placeholder="Pega aqui el XML BPMN"
+        ></textarea>
+
+        <div class="panel-actions">
+          <button type="button" class="toolbar-button accent" (click)="onImportXml()" [disabled]="isBusy">
+            Cargar XML
+          </button>
+        </div>
+      </aside>
+
+      <section class="overlay-panel export-overlay" *ngIf="isExportPanelOpen">
+        <div class="panel-header">
+          <h3>XML exportado</h3>
+          <p>Este contenido ya puede enviarse al backend para persistirse.</p>
+        </div>
+
+        <textarea
+          [ngModel]="exportedXml"
+          class="xml-output"
+          rows="10"
+          readonly
+          spellcheck="false"
+        ></textarea>
+      </section>
+    </div>
+  </div>
+
+  <app-process-dialogs
+    [saveDialogOpen]="isSaveDialogOpen"
+    [importConfirmOpen]="isImportConfirmOpen"
+    [saving]="isSaving"
+    [importXml]="importXmlValue"
+    [processName]="processName"
+    [currentProcessId]="currentProcessId"
+    [saveDialogName]="saveDialogName"
+    [saveDialogStatus]="saveDialogStatus"
+    [saveDialogMessage]="saveDialogMessage"
+    [errorMessage]="errorMessage"
+    [successMessage]="successMessage"
+    (saveDialogNameChange)="saveDialogName = $event"
+    (importXmlChange)="importXmlValue = $event"
+    (cancelSave)="closeSaveDialog()"
+    (confirmSave)="confirmSaveProcess()"
+    (cancelImport)="closeImportConfirm()"
+    (confirmImport)="confirmImportOverwrite()"
+  />
+</section>

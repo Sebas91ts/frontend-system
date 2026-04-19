@@ -10,3 +10,8 @@ export interface ProcesoCreateRequest {
   nombre: string;
   xml: string;
 }
+
+export interface ProcesoUpdateRequest {
+  nombre: string;
+  xml: string;
+}

@@ -47,7 +47,7 @@ export const routes: Routes = [
     loadComponent: () => import('./features/processes/pages/designer/process-designer.component')
       .then(m => m.ProcessDesignerComponent),
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['ROLE_USER', 'ROLE_ADMIN'] }
+    data: { roles: ['ROLE_ADMIN'] }
   },
 
   // Ruta comodín - redirigir al dashboard correspondiente

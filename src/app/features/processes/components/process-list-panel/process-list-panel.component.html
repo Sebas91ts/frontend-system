@@ -1,0 +1,24 @@
+<aside class="overlay-panel process-list-panel">
+  <div class="panel-header">
+    <h3>Procesos guardados</h3>
+    <p>Abre un proceso existente para seguir modelando y luego actualizarlo.</p>
+  </div>
+
+  <div class="process-list-state" *ngIf="loading">Cargando procesos...</div>
+  <div class="process-list-state" *ngIf="!loading && !procesos.length">
+    Todavia no hay procesos guardados.
+  </div>
+
+  <div class="process-list" *ngIf="!loading && procesos.length">
+    <button
+      type="button"
+      class="process-list__item"
+      *ngFor="let proceso of procesos"
+      (click)="processSelected.emit(proceso)"
+    >
+      <strong>{{ proceso.nombre }}</strong>
+      <span>ID: {{ proceso.id }}</span>
+      <span>Version {{ proceso.version }}</span>
+    </button>
+  </div>
+</aside>

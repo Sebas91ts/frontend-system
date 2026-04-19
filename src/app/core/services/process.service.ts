@@ -2,7 +2,7 @@ import { Injectable, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { ApiResponse } from '../models/auth.models';
-import { Proceso, ProcesoCreateRequest } from '../models/process.models';
+import { Proceso, ProcesoCreateRequest, ProcesoUpdateRequest } from '../models/process.models';
 import { API_BASE_URL } from '../config/api.config';
 
 @Injectable({
@@ -33,6 +33,61 @@ export class ProcessService {
           console.info('[ProcessService] POST /api/procesos -> complete');
         },
       })
+    );
+  }
+
+  listarProcesos(): Observable<ApiResponse<Proceso[]>> {
+    console.info('[ProcessService] GET /api/procesos -> start', {
+      apiUrl: this.apiUrl,
+    });
+
+    return this.http.get<ApiResponse<Proceso[]>>(`${this.apiUrl}/procesos`).pipe(
+      tap({
+        next: (response) => {
+          console.info('[ProcessService] GET /api/procesos -> success', response);
+        },
+        error: (error) => {
+          console.error('[ProcessService] GET /api/procesos -> error', error);
+        },
+      }),
+    );
+  }
+
+  obtenerProceso(id: string): Observable<ApiResponse<Proceso>> {
+    console.info('[ProcessService] GET /api/procesos/{id} -> start', {
+      id,
+      apiUrl: this.apiUrl,
+    });
+
+    return this.http.get<ApiResponse<Proceso>>(`${this.apiUrl}/procesos/${id}`).pipe(
+      tap({
+        next: (response) => {
+          console.info('[ProcessService] GET /api/procesos/{id} -> success', response);
+        },
+        error: (error) => {
+          console.error('[ProcessService] GET /api/procesos/{id} -> error', error);
+        },
+      }),
+    );
+  }
+
+  actualizarProceso(id: string, request: ProcesoUpdateRequest): Observable<ApiResponse<Proceso>> {
+    console.info('[ProcessService] PUT /api/procesos/{id} -> start', {
+      id,
+      nombre: request.nombre,
+      xmlLength: request.xml?.length ?? 0,
+      apiUrl: this.apiUrl,
+    });
+
+    return this.http.put<ApiResponse<Proceso>>(`${this.apiUrl}/procesos/${id}`, request).pipe(
+      tap({
+        next: (response) => {
+          console.info('[ProcessService] PUT /api/procesos/{id} -> success', response);
+        },
+        error: (error) => {
+          console.error('[ProcessService] PUT /api/procesos/{id} -> error', error);
+        },
+      }),
     );
   }
 }
