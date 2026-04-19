@@ -5,7 +5,7 @@
 .djs-palette {
   background: #ffffff !important;
   border-right: 1px solid #e5e7eb !important;
-  left: 100px !important;
+  border-radius: 8px;
 }
 
 .djs-palette .entry {

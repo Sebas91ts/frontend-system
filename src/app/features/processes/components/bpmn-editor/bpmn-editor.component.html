@@ -6,6 +6,16 @@
       <button
         type="button"
         class="toolbar-button accent"
+        title="Guardar proceso en el backend"
+        (click)="onSaveProcess()"
+        [disabled]="isBusy || isSaving"
+      >
+        {{ isSaving ? 'Guardando...' : 'Guardar' }}
+      </button>
+
+      <button
+        type="button"
+        class="toolbar-button"
         title="Crear nuevo diagrama"
         (click)="createNewDiagram()"
         [disabled]="isBusy"
@@ -83,6 +93,49 @@
       <div #propertiesHost class="properties-panel-host" aria-label="Panel de propiedades BPMN"></div>
     </aside>
   </div>
+
+  <div class="modal-backdrop" *ngIf="isSaveDialogOpen" (click)="closeSaveDialog()"></div>
+
+  <section class="save-modal" *ngIf="isSaveDialogOpen" role="dialog" aria-modal="true" aria-labelledby="save-title">
+    <div class="save-modal__header">
+      <h3 id="save-title">Guardar proceso BPMN</h3>
+      <p>Confirma el nombre antes de guardar el XML en MongoDB. El guardado se confirma o se rechaza dentro de este mismo modal.</p>
+    </div>
+
+    <label class="save-modal__field">
+      <span>Nombre del proceso</span>
+      <input
+        type="text"
+        [(ngModel)]="saveDialogName"
+        placeholder="Ej. Proceso de ventas"
+        title="Nombre del proceso"
+        autofocus
+        [disabled]="isSaving"
+      />
+    </label>
+
+    <div
+      *ngIf="saveDialogMessage"
+      class="save-modal__status"
+      [class.saving]="saveDialogStatus === 'saving'"
+      [class.success]="saveDialogStatus === 'success'"
+      [class.error]="saveDialogStatus === 'error'"
+    >
+      {{ saveDialogMessage }}
+    </div>
+
+    <div class="save-modal__actions">
+      <button type="button" class="toolbar-button" (click)="closeSaveDialog()" [disabled]="isSaving">Cancelar</button>
+      <button
+        type="button"
+        class="toolbar-button accent"
+        (click)="confirmSaveProcess()"
+        [disabled]="!saveDialogName.trim() || isSaving"
+      >
+        {{ isSaving ? 'Guardando...' : 'Confirmar guardado' }}
+      </button>
+    </div>
+  </section>
 
   <div *ngIf="errorMessage" class="status-banner error">{{ errorMessage }}</div>
   <div *ngIf="successMessage" class="status-banner success">{{ successMessage }}</div>

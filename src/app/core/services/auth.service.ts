@@ -1,15 +1,14 @@
-import { Injectable, signal, computed, Signal } from '@angular/core';
+import { Injectable, signal, computed, Signal, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap, catchError, throwError, map, of } from 'rxjs';
 import { Usuario, AuthResponse, LoginRequest, RegisterRequest, ApiResponse } from '../models/auth.models';
+import { API_BASE_URL } from '../config/api.config';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly API_URL = 'http://localhost:8080/api';
-
   // Estado solo en memoria: evita persistir tokens/usuario en localStorage.
   private currentUserSignal = signal<Usuario | null>(null);
   private sessionCheckedSignal = signal(false);
@@ -19,12 +18,13 @@ export class AuthService {
 
   constructor(
     private http: HttpClient,
-    private router: Router
+    private router: Router,
+    @Inject(API_BASE_URL) private readonly apiUrl: string
   ) {}
 
   login(loginRequest: LoginRequest): Observable<ApiResponse<AuthResponse>> {
     return this.http.post<ApiResponse<AuthResponse>>(
-      `${this.API_URL}/auth/login`,
+      `${this.apiUrl}/auth/login`,
       loginRequest,
       { withCredentials: true }
     ).pipe(
@@ -42,7 +42,7 @@ export class AuthService {
 
   register(registerRequest: RegisterRequest): Observable<ApiResponse<Usuario>> {
     return this.http.post<ApiResponse<Usuario>>(
-      `${this.API_URL}/auth/register`,
+      `${this.apiUrl}/auth/register`,
       registerRequest,
       { withCredentials: true }
     ).pipe(
@@ -54,7 +54,7 @@ export class AuthService {
   }
 
   restoreSession(): Observable<boolean> {
-    return this.http.get<ApiResponse<Usuario>>(`${this.API_URL}/auth/me`, {
+    return this.http.get<ApiResponse<Usuario>>(`${this.apiUrl}/auth/me`, {
       withCredentials: true
     }).pipe(
       map(response => {
@@ -85,7 +85,7 @@ export class AuthService {
   }
 
   logout(): void {
-    this.http.delete<ApiResponse<void>>(`${this.API_URL}/auth/logout`, {
+    this.http.delete<ApiResponse<void>>(`${this.apiUrl}/auth/logout`, {
       withCredentials: true
     }).pipe(
       catchError(() => of(null))
