@@ -1,0 +1,147 @@
+<main class="areas-shell">
+  <header class="areas-hero">
+    <div>
+      <p class="eyebrow">Administracion</p>
+      <h1>Gestion de areas</h1>
+      <p class="areas-hero__text">
+        Crea y administra las areas del sistema para luego vincularlas con lanes en BPMN.
+      </p>
+    </div>
+
+    <div class="areas-hero__actions">
+      <a routerLink="/admin" class="action-link">Volver al panel</a>
+      <button type="button" class="action-button accent" (click)="openCreate()">
+        Nueva area
+      </button>
+    </div>
+  </header>
+
+  <section class="status-row">
+    <div *ngIf="errorMessage" class="status-banner error">{{ errorMessage }}</div>
+    <div *ngIf="successMessage" class="status-banner success">{{ successMessage }}</div>
+  </section>
+
+  <section class="areas-table-card">
+    <div class="table-header">
+      <div>
+        <h2>Areas registradas</h2>
+        <p>Catalogo central para asignar responsabilidad organizacional al modelado BPM.</p>
+      </div>
+      <button type="button" class="action-button" (click)="loadAreas()" [disabled]="isLoading">
+        {{ isLoading ? 'Cargando...' : 'Refrescar' }}
+      </button>
+    </div>
+
+    <div class="table-empty" *ngIf="!isLoading && !areas.length">
+      Todavia no hay areas para mostrar.
+    </div>
+
+    <div class="table-wrap" *ngIf="areas.length">
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Descripcion</th>
+            <th>Estado</th>
+            <th>Actualizacion</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let area of areas">
+            <td>{{ area.nombre }}</td>
+            <td>{{ area.descripcion || 'Sin descripcion' }}</td>
+            <td>
+              <span
+                class="pill"
+                [class.pill--active]="area.activa"
+                [class.pill--inactive]="!area.activa"
+              >
+                {{ area.activa ? 'Activa' : 'Inactiva' }}
+              </span>
+            </td>
+            <td>{{ area.updatedAt || area.createdAt }}</td>
+            <td class="row-actions">
+              <button type="button" class="mini-button" (click)="openEdit(area)">Editar</button>
+              <button
+                type="button"
+                class="mini-button danger"
+                (click)="openDeactivateModal(area)"
+                [disabled]="!area.activa || isDesactivatingId === area.id"
+              >
+                {{ isDesactivatingId === area.id ? 'Desactivando...' : 'Desactivar' }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="modal-backdrop" *ngIf="isFormOpen" (click)="closeForm()"></div>
+
+  <section
+    class="save-modal"
+    *ngIf="isFormOpen"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="area-form-title"
+  >
+    <div class="save-modal__header">
+      <h3 id="area-form-title">{{ editingAreaId ? 'Editar area' : 'Crear area' }}</h3>
+      <p>
+        Completa los datos basicos para registrar o actualizar una area dentro del catalogo.
+      </p>
+    </div>
+
+    <label class="save-modal__field">
+      <span>Nombre</span>
+      <input [(ngModel)]="form.nombre" type="text" placeholder="Ej. Ventas" />
+    </label>
+
+    <label class="save-modal__field">
+      <span>Descripcion</span>
+      <textarea [(ngModel)]="form.descripcion" rows="4" placeholder="Descripcion opcional"></textarea>
+    </label>
+
+    <div class="save-modal__actions">
+      <button type="button" class="action-button" (click)="closeForm()" [disabled]="isSaving">
+        Cancelar
+      </button>
+      <button type="button" class="action-button accent" (click)="saveArea()" [disabled]="isSaving">
+        {{ isSaving ? 'Guardando...' : editingAreaId ? 'Actualizar area' : 'Crear area' }}
+      </button>
+    </div>
+  </section>
+
+  <div class="modal-backdrop" *ngIf="isDeactivateModalOpen" (click)="closeDeactivateModal()"></div>
+
+  <section
+    class="save-modal confirm-delete-modal"
+    *ngIf="isDeactivateModalOpen"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="deactivate-area-title"
+  >
+    <div class="save-modal__header">
+      <h3 id="deactivate-area-title">Confirmar desactivacion</h3>
+      <p>
+        Vas a desactivar a <strong>{{ areaToDeactivate?.nombre }}</strong>.
+        El area quedara disponible solo para consulta historica.
+      </p>
+    </div>
+
+    <div *ngIf="errorMessage" class="save-modal__status error">
+      {{ errorMessage }}
+    </div>
+
+    <div class="save-modal__actions">
+      <button type="button" class="action-button" (click)="closeDeactivateModal()" [disabled]="isDesactivatingId">
+        Cancelar
+      </button>
+      <button type="button" class="action-button accent" (click)="confirmDeactivate()" [disabled]="isDesactivatingId">
+        {{ isDesactivatingId ? 'Desactivando...' : 'Desactivar' }}
+      </button>
+    </div>
+  </section>
+</main>

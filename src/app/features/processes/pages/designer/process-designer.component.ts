@@ -32,7 +32,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
       return '';
     }
 
-    return `${this.currentProcessKey} · v${this.currentProcessVersion || 1} · ${this.currentProcessState}`;
+    return `${this.currentProcessKey} | v${this.currentProcessVersion || 1} | ${this.currentProcessState}`;
   }
   protected errorMessage = '';
   protected successMessage = '';

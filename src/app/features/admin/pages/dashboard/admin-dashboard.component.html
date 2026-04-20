@@ -10,6 +10,7 @@
 
       <div class="hero__actions">
         <button type="button" class="action-button accent" (click)="goToUsers()">Gestionar usuarios</button>
+        <button type="button" class="action-button" (click)="goToAreas()">Gestionar areas</button>
         <button type="button" class="action-button" (click)="goToProcesses()">Abrir procesos</button>
       </div>
     </div>
@@ -36,6 +37,13 @@
       <h2>Diseño y versionado</h2>
       <p>Entrar al modelador BPM para crear, editar y versionar procesos empresariales.</p>
       <button type="button" class="action-button accent" (click)="goToProcesses()">Abrir diseñador</button>
+    </article>
+
+    <article class="feature-card">
+      <p class="feature-card__tag">Areas</p>
+      <h2>Catalogo organizacional</h2>
+      <p>Gestiona areas reales para luego vincularlas con lanes y responsabilidades BPM.</p>
+      <button type="button" class="action-button accent" (click)="goToAreas()">Ir a areas</button>
     </article>
 
     <article class="feature-card">

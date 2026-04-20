@@ -25,4 +25,8 @@ export class AdminDashboardComponent {
   goToProcesses(): void {
     void this.router.navigate(['/processes']);
   }
+
+  goToAreas(): void {
+    void this.router.navigate(['/admin/areas']);
+  }
 }

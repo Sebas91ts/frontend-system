@@ -39,6 +39,13 @@ export const routes: Routes = [
     canActivate: [authGuard, roleGuard],
     data: { roles: ['ROLE_ADMIN'] }
   },
+  {
+    path: 'admin/areas',
+    loadComponent: () => import('./features/admin/pages/areas/admin-areas.component')
+      .then(m => m.AdminAreasComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_ADMIN'] }
+  },
 
   // Rutas de Usuario (ROLE_USER o ROLE_ADMIN)
   {
