@@ -108,4 +108,22 @@ export class ProcessService {
       }),
     );
   }
+
+  crearNuevaVersion(id: string): Observable<ApiResponse<Proceso>> {
+    console.info('[ProcessService] POST /api/procesos/{id}/versionar -> start', {
+      id,
+      apiUrl: this.apiUrl,
+    });
+
+    return this.http.post<ApiResponse<Proceso>>(`${this.apiUrl}/procesos/${id}/versionar`, {}).pipe(
+      tap({
+        next: (response) => {
+          console.info('[ProcessService] POST /api/procesos/{id}/versionar -> success', response);
+        },
+        error: (error) => {
+          console.error('[ProcessService] POST /api/procesos/{id}/versionar -> error', error);
+        },
+      }),
+    );
+  }
 }

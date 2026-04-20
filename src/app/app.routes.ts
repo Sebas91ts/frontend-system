@@ -51,7 +51,19 @@ export const routes: Routes = [
 
   // Diseñador de procesos BPMN
   {
+    path: 'processes',
+    loadComponent: () => import('./features/processes/pages/list/processes-list.component')
+      .then(m => m.ProcessesListComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_ADMIN'] }
+  },
+  {
     path: 'processes/designer',
+    redirectTo: 'processes',
+    pathMatch: 'full'
+  },
+  {
+    path: 'processes/designer/:id',
     loadComponent: () => import('./features/processes/pages/designer/process-designer.component')
       .then(m => m.ProcessDesignerComponent),
     canActivate: [authGuard, roleGuard],

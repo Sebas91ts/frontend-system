@@ -1,7 +1,7 @@
-<aside class="overlay-panel process-list-panel">
+﻿<aside class="process-list-panel">
   <div class="panel-header">
-    <h3>Procesos guardados</h3>
-    <p>Abre un proceso existente para seguir modelando y luego actualizarlo.</p>
+    <h3>Familias de procesos</h3>
+    <p>Cada familia agrupa sus versiones. Elige una version para abrirla o crear una nueva version.</p>
   </div>
 
   <div class="process-list-state" *ngIf="loading">Cargando procesos...</div>
@@ -9,46 +9,69 @@
     Todavia no hay procesos guardados.
   </div>
 
-  <div class="process-list" *ngIf="!loading && procesos.length">
-    <div
-      class="process-list__item"
-      *ngFor="let proceso of procesos"
-      (click)="processSelected.emit(proceso)"
-    >
-      <div class="process-list__header">
-        <strong>{{ proceso.nombre }}</strong>
-        <span
-          class="pill"
-          [class.pill--active]="proceso.estado === 'PUBLICADO'"
-          [class.pill--inactive]="proceso.estado !== 'PUBLICADO'"
+  <div class="process-groups" *ngIf="!loading && procesos.length">
+    <section class="process-group" *ngFor="let group of groupedProcesses">
+      <button type="button" class="process-group__header" (click)="toggleGroup(group.processKey)">
+        <div class="process-group__title">
+          <strong>{{ group.procesos[0]?.nombre || group.processKey }}</strong>
+          <span>{{ group.procesos.length }} version{{ group.procesos.length === 1 ? '' : 'es' }}</span>
+        </div>
+        <span class="process-group__chevron" [class.open]="isGroupExpanded(group.processKey)">›</span>
+      </button>
+
+      <div class="process-list" *ngIf="isGroupExpanded(group.processKey)">
+        <div
+          class="process-list__item"
+          *ngFor="let proceso of group.procesos"
+          (click)="processSelected.emit(proceso)"
         >
-          {{ proceso.estado || 'BORRADOR' }}
-        </span>
+          <div class="process-list__header">
+            <strong>{{ proceso.nombre }}</strong>
+            <span
+              class="pill"
+              [class.pill--published]="proceso.estado === 'PUBLICADO'"
+              [class.pill--draft]="proceso.estado === 'BORRADOR'"
+              [class.pill--historic]="proceso.estado === 'HISTORICO'"
+            >
+              v{{ proceso.version }} · {{ proceso.estado || 'BORRADOR' }}
+            </span>
+          </div>
+
+          <span>Actualizado: {{ proceso.updatedAt || proceso.createdAt }}</span>
+
+          <div class="process-list__actions">
+            <button
+              type="button"
+              class="process-list__open"
+              (click)="$event.stopPropagation(); processSelected.emit(proceso)"
+            >
+              {{ proceso.estado === 'BORRADOR' ? 'Editar' : 'Ver detalle' }}
+            </button>
+
+            <button
+              type="button"
+              class="process-list__publish"
+              *ngIf="proceso.estado === 'BORRADOR'"
+              [disabled]="publishingId === proceso.id"
+              (click)="$event.stopPropagation(); publishProcess.emit(proceso)"
+            >
+              {{ publishingId === proceso.id ? 'Publicando...' : 'Publicar' }}
+            </button>
+
+            <button
+              type="button"
+              class="process-list__version"
+              [disabled]="versioningId === proceso.id"
+              (click)="$event.stopPropagation(); versionProcess.emit(proceso)"
+            >
+              {{ versioningId === proceso.id ? 'Creando version...' : 'Crear version desde esta' }}
+            </button>
+          </div>
+        </div>
       </div>
-
-      <span>ID: {{ proceso.id }}</span>
-      <span>Version {{ proceso.version }}</span>
-      <span>Actualizado: {{ proceso.updatedAt || proceso.createdAt }}</span>
-
-      <div class="process-list__actions">
-        <button
-          type="button"
-          class="process-list__open"
-          (click)="$event.stopPropagation(); processSelected.emit(proceso)"
-        >
-          Abrir
-        </button>
-
-        <button
-          type="button"
-          class="process-list__publish"
-          *ngIf="proceso.estado !== 'PUBLICADO'"
-          [disabled]="publishingId === proceso.id"
-          (click)="$event.stopPropagation(); publishProcess.emit(proceso)"
-        >
-          {{ publishingId === proceso.id ? 'Publicando...' : 'Publicar' }}
-        </button>
-      </div>
-    </div>
+    </section>
   </div>
 </aside>
+
+
+

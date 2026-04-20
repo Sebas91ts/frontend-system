@@ -1,14 +1,23 @@
-<section class="designer-shell">
+﻿<section class="designer-shell">
   <header class="header">Process Designer</header>
 
   <div class="workspace">
     <aside class="sidebar">
       <button
         type="button"
+        class="toolbar-button"
+        title="Volver a la lista de procesos"
+        (click)="goBackToProcesses()"
+      >
+        Volver
+      </button>
+
+      <button
+        type="button"
         class="toolbar-button accent"
         [title]="currentProcessId ? 'Actualizar proceso en el backend' : 'Guardar proceso en el backend'"
         (click)="openSaveCurrent()"
-        [disabled]="isBusy || isSaving"
+        [disabled]="isBusy || isSaving || isLoadingProcess || isReadonlyProcess || !currentProcessId"
       >
         {{ isSaving ? 'Guardando...' : (currentProcessId ? 'Actualizar' : 'Guardar') }}
       </button>
@@ -16,38 +25,9 @@
       <button
         type="button"
         class="toolbar-button"
-        title="Abrir proceso guardado"
-        (click)="toggleProcessList()"
-        [disabled]="isLoadingProcess"
-      >
-        {{ isProcessListOpen ? 'Cerrar lista' : 'Abrir proceso' }}
-      </button>
-
-      <button
-        type="button"
-        class="toolbar-button"
-        title="Guardar como nuevo proceso"
-        (click)="openSaveAsNew()"
-        [disabled]="isBusy || isSaving"
-      >
-        Guardar como
-      </button>
-
-      <button
-        type="button"
-        class="toolbar-button"
-        title="Crear nuevo diagrama"
-        (click)="createNewDiagram()"
-        [disabled]="isBusy"
-      >
-        Nuevo
-      </button>
-
-      <button
-        type="button"
-        class="toolbar-button"
         title="Importar BPMN"
         (click)="toggleImportPanel()"
+        [disabled]="isBusy || isLoadingProcess || isReadonlyProcess || !currentProcessId"
       >
         {{ isImportPanelOpen ? 'Ocultar' : 'Importar' }}
       </button>
@@ -57,7 +37,7 @@
         class="toolbar-button"
         title="Exportar BPMN"
         (click)="onExportXml()"
-        [disabled]="isBusy"
+        [disabled]="isBusy || isLoadingProcess || !currentProcessId"
       >
         Exportar
       </button>
@@ -68,21 +48,24 @@
     </aside>
 
     <div class="designer-stage">
-      <section class="process-chip" *ngIf="processName">
-        <span class="process-chip__label">{{ currentProcessId ? 'Editando' : 'Nuevo proceso' }}</span>
-        <strong>{{ editorProcessName }}</strong>
-      </section>
-
-      <app-bpmn-editor />
-
-      <app-process-list-panel
-        *ngIf="isProcessListOpen"
-        [procesos]="procesosGuardados"
-        [loading]="isLoadingProcessList"
-        [publishingId]="publishingId"
-        (processSelected)="loadProceso($event)"
-        (publishProcess)="publishProceso($event)"
+      <app-bpmn-editor
+        [processName]="editorProcessName"
+        [processKey]="currentProcessKey"
+        [processVersion]="currentProcessVersion"
+        [processState]="currentProcessState"
+        [readonlyMode]="isReadonlyProcess"
+        [autoCreateDiagram]="false"
       />
+
+      <section class="process-chip" *ngIf="currentProcessKey || processName">
+        <span class="process-chip__label">
+          {{ currentProcessState === 'BORRADOR' ? 'Editando borrador' : 'Solo lectura' }}
+        </span>
+        <strong>{{ editorProcessName }}</strong>
+        <span class="process-chip__meta" *ngIf="currentProcessKey">
+          {{ currentProcessKey }} · v{{ currentProcessVersion || 1 }} · {{ currentProcessState }}
+        </span>
+      </section>
 
       <aside class="overlay-panel" *ngIf="isImportPanelOpen">
         <div class="panel-header">
@@ -134,6 +117,7 @@
     [saveDialogMessage]="saveDialogMessage"
     [errorMessage]="errorMessage"
     [successMessage]="successMessage"
+    [processContext]="processContext"
     (saveDialogNameChange)="saveDialogName = $event"
     (importXmlChange)="importXmlValue = $event"
     (cancelSave)="closeSaveDialog()"
@@ -142,3 +126,10 @@
     (confirmImport)="confirmImportOverwrite()"
   />
 </section>
+
+
+
+
+
+
+

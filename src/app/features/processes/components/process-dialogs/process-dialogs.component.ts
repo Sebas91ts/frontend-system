@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
@@ -12,20 +12,27 @@ import { FormsModule } from '@angular/forms';
 export class ProcessDialogsComponent {
   @Input() saveDialogOpen = false;
   @Input() importConfirmOpen = false;
+  @Input() newProcessDialogOpen = false;
   @Input() saving = false;
   @Input() importXml = '';
   @Input() processName = '';
   @Input() currentProcessId: string | null = null;
   @Input() saveDialogName = '';
+  @Input() newProcessName = '';
   @Input() saveDialogStatus: 'idle' | 'saving' | 'success' | 'error' = 'idle';
   @Input() saveDialogMessage = '';
   @Input() errorMessage = '';
   @Input() successMessage = '';
+  @Input() processContext = '';
 
   @Output() saveDialogNameChange = new EventEmitter<string>();
+  @Output() newProcessNameChange = new EventEmitter<string>();
   @Output() importXmlChange = new EventEmitter<string>();
   @Output() cancelSave = new EventEmitter<void>();
   @Output() confirmSave = new EventEmitter<void>();
   @Output() cancelImport = new EventEmitter<void>();
   @Output() confirmImport = new EventEmitter<void>();
+  @Output() cancelNewProcess = new EventEmitter<void>();
+  @Output() confirmNewProcess = new EventEmitter<void>();
 }
+

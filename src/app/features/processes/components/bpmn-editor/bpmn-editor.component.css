@@ -10,6 +10,15 @@
   min-height: 0;
 }
 
+.editor-surface.readonly-mode .canvas-wrapper,
+.editor-surface.readonly-mode .properties-sidebar {
+  pointer-events: none;
+}
+
+.editor-surface.readonly-mode .canvas-wrapper {
+  cursor: not-allowed;
+}
+
 .canvas-wrapper {
   flex: 1;
   min-width: 0;

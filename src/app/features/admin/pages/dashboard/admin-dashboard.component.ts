@@ -23,6 +23,6 @@ export class AdminDashboardComponent {
   }
 
   goToProcesses(): void {
-    void this.router.navigate(['/processes/designer']);
+    void this.router.navigate(['/processes']);
   }
 }

@@ -3,7 +3,8 @@ export interface Proceso {
   nombre: string;
   xml: string;
   version: number;
-  estado: 'BORRADOR' | 'PUBLICADO' | string;
+  estado: 'BORRADOR' | 'PUBLICADO' | 'HISTORICO' | string;
+  processKey: string;
   createdBy?: string;
   createdAt: string;
   updatedAt?: string;

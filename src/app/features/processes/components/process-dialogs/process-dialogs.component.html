@@ -9,6 +9,7 @@
           ? 'Estas editando un proceso existente. Si confirmas, se actualizara el XML guardado en MongoDB.'
           : 'Confirma el nombre antes de guardar el XML en MongoDB. El guardado se confirma o se rechaza dentro de este mismo modal.' }}
       </p>
+      <div *ngIf="processContext" class="save-modal__context">{{ processContext }}</div>
     </div>
 
     <label class="save-modal__field">
@@ -58,6 +59,7 @@
         Estas editando el proceso <strong>{{ processName }}</strong>. Si importas este XML,
         reemplazaras el diagrama actual dentro de este mismo proceso.
       </p>
+      <div *ngIf="processContext" class="save-modal__context">{{ processContext }}</div>
     </div>
 
     <div class="save-modal__status saving">
@@ -68,6 +70,50 @@
       <button type="button" class="toolbar-button" (click)="cancelImport.emit()">Cancelar</button>
       <button type="button" class="toolbar-button accent" (click)="confirmImport.emit()">
         Si, reemplazar XML
+      </button>
+    </div>
+  </section>
+</ng-container>
+
+<ng-container *ngIf="newProcessDialogOpen">
+  <div class="modal-backdrop" (click)="cancelNewProcess.emit()"></div>
+
+  <section class="save-modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="new-process-title">
+    <div class="save-modal__header">
+      <h3 id="new-process-title">Crear nuevo proceso</h3>
+      <p>
+        Define el nombre del proceso. El backend generara automaticamente su <strong>processKey</strong>
+        y creara la primera version en estado borrador.
+      </p>
+      <div *ngIf="processContext" class="save-modal__context">{{ processContext }}</div>
+    </div>
+
+    <label class="save-modal__field">
+      <span>Nombre del proceso</span>
+      <input
+        type="text"
+        [ngModel]="newProcessName"
+        (ngModelChange)="newProcessNameChange.emit($event)"
+        placeholder="Ej. Proceso de ventas"
+        title="Nombre del proceso"
+        autofocus
+        [disabled]="saving"
+      />
+    </label>
+
+    <div *ngIf="saveDialogMessage" class="save-modal__status" [class.saving]="saveDialogStatus === 'saving'" [class.success]="saveDialogStatus === 'success'" [class.error]="saveDialogStatus === 'error'">
+      {{ saveDialogMessage }}
+    </div>
+
+    <div class="save-modal__actions">
+      <button type="button" class="toolbar-button" (click)="cancelNewProcess.emit()" [disabled]="saving">Cancelar</button>
+      <button
+        type="button"
+        class="toolbar-button accent"
+        (click)="confirmNewProcess.emit()"
+        [disabled]="!newProcessName.trim() || saving"
+      >
+        {{ saving ? 'Creando...' : 'Crear proceso' }}
       </button>
     </div>
   </section>

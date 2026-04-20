@@ -1,0 +1,54 @@
+<section class="processes-shell">
+  <header class="header">
+    <div>
+      <p class="eyebrow">Administracion BPM</p>
+      <h1>Procesos</h1>
+      <p class="subtitle">
+        Selecciona una familia de proceso, crea nuevas versiones o publica un borrador.
+      </p>
+    </div>
+
+    <div class="header-actions">
+      <button type="button" class="toolbar-button accent" (click)="openNewProcessDialog()">
+        Nuevo proceso
+      </button>
+      <button type="button" class="toolbar-button" (click)="loadProcessList()" [disabled]="isLoadingProcessList">
+        Refrescar
+      </button>
+    </div>
+  </header>
+
+  <div class="content">
+    <section class="list-card">
+      <app-process-list-panel
+        [procesos]="procesosGuardados"
+        [loading]="isLoadingProcessList"
+        [publishingId]="publishingId"
+        [versioningId]="versioningId"
+        (processSelected)="openProcess($event)"
+        (publishProcess)="publishProceso($event)"
+        (versionProcess)="versionProceso($event)"
+      />
+    </section>
+  </div>
+
+  <app-process-dialogs
+    [saveDialogOpen]="false"
+    [importConfirmOpen]="false"
+    [newProcessDialogOpen]="isNewProcessDialogOpen"
+    [saving]="isCreatingProcess"
+    [importXml]="''"
+    [processName]="''"
+    [currentProcessId]="null"
+    [saveDialogName]="''"
+    [newProcessName]="newProcessName"
+    [saveDialogStatus]="saveDialogStatus"
+    [saveDialogMessage]="saveDialogMessage"
+    [errorMessage]="errorMessage"
+    [successMessage]="successMessage"
+    [processContext]="''"
+    (newProcessNameChange)="newProcessName = $event"
+    (cancelNewProcess)="closeNewProcessDialog()"
+    (confirmNewProcess)="confirmNewProcess()"
+  />
+</section>
