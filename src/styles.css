@@ -128,3 +128,37 @@ input.djs-direct-editing-content {
 .djs-popup-body {
   background: #ffffff !important;
 }
+
+.lane-area-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.9);
+  color: #f8fafc;
+  font-size: 0.72rem;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.25);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.lane-area-badge--unassigned {
+  background: rgba(148, 163, 184, 0.92);
+  color: #f8fafc;
+}
+
+.lane-area-badge::before {
+  content: 'Area';
+  color: #86efac;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.lane-area-badge--unassigned::before {
+  content: 'Sin';
+  color: #e2e8f0;
+}

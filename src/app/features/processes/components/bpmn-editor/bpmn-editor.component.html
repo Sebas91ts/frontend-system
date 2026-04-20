@@ -9,6 +9,53 @@
       <h3>Elemento seleccionado</h3>
       <p>Usa este panel para editar nombres, ids, areas y responsabilidades.</p>
     </div>
+
+    <section class="lane-assignment">
+      <div class="lane-assignment__header">
+        <p class="lane-assignment__eyebrow">Lane seleccionada</p>
+        <strong>
+          {{ selectedLaneElement?.businessObject?.name || selectedLaneElement?.id || 'Ninguna lane seleccionada' }}
+        </strong>
+        <span class="lane-assignment__meta">
+          {{
+            selectedLaneElement
+              ? selectedLaneAreaLabel
+              : 'Selecciona una lane para asignar un area'
+          }}
+        </span>
+      </div>
+
+      <label class="lane-assignment__field">
+        <span>Area vinculada</span>
+        <select
+          [ngModel]="selectedLaneAreaId"
+          (ngModelChange)="onLaneAreaChange($event)"
+          [disabled]="readonlyMode || isAreasLoading || !selectedLaneElement"
+        >
+          <option value="">Sin area asignada</option>
+          <option *ngFor="let area of activeAreas" [value]="area.id">
+            {{ area.nombre }}
+          </option>
+        </select>
+      </label>
+
+      <div class="lane-assignment__note" *ngIf="!selectedLaneElement">
+        Aún no hay una lane seleccionada. Haz click sobre una lane del diagrama para vincularle un área.
+      </div>
+
+      <div class="lane-assignment__note" *ngIf="laneBindingMessage">
+        {{ laneBindingMessage }}
+      </div>
+
+      <div class="lane-assignment__note error" *ngIf="areasError">
+        {{ areasError }}
+      </div>
+
+      <div class="lane-assignment__note" *ngIf="isAreasLoading">
+        Cargando areas activas...
+      </div>
+    </section>
+
     <div #propertiesHost class="properties-panel-host" aria-label="Panel de propiedades BPMN"></div>
   </aside>
 </section>

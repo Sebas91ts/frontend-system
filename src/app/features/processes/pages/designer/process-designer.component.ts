@@ -128,6 +128,14 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
       return;
     }
 
+    if (this.editorComponent) {
+      const laneValidation = this.editorComponent.validateLaneAssignments();
+      if (!laneValidation.valid) {
+        this.showFeedback(laneValidation.message, 'error');
+        return;
+      }
+    }
+
     this.saveDialogName = this.processName.trim();
     this.saveDialogStatus = 'idle';
     this.saveDialogMessage = '';
@@ -147,6 +155,14 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
   protected async confirmSaveProcess(): Promise<void> {
     const editor = this.editorComponent;
     if (!editor || !this.currentProcessId || this.isReadonlyProcess) {
+      return;
+    }
+
+    const laneValidation = editor.validateLaneAssignments();
+    if (!laneValidation.valid) {
+      this.saveDialogStatus = 'error';
+      this.saveDialogMessage = laneValidation.message;
+      this.showFeedback(laneValidation.message, 'error');
       return;
     }
 
