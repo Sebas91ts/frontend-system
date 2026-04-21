@@ -15,50 +15,27 @@ export class TaskInstanceService {
   ) {}
 
   listarTodas(): Observable<ApiResponse<TareaInstancia[]>> {
-    console.info('[TaskInstanceService] GET /api/tarea-instancias -> start', { apiUrl: this.apiUrl });
-    return this.http.get<ApiResponse<TareaInstancia[]>>(`${this.apiUrl}/tarea-instancias`).pipe(
+    console.info('[TaskInstanceService] GET /api/camunda/tasks -> start', { apiUrl: this.apiUrl });
+    return this.http.get<ApiResponse<TareaInstancia[]>>(`${this.apiUrl}/camunda/tasks`).pipe(
       tap({
-        next: (response) => console.info('[TaskInstanceService] GET /api/tarea-instancias -> success', response),
-        error: (error) => console.error('[TaskInstanceService] GET /api/tarea-instancias -> error', error),
+        next: (response) => console.info('[TaskInstanceService] GET /api/camunda/tasks -> success', response),
+        error: (error) => console.error('[TaskInstanceService] GET /api/camunda/tasks -> error', error),
       }),
     );
   }
 
   listarPendientes(): Observable<ApiResponse<TareaInstancia[]>> {
-    console.info('[TaskInstanceService] GET /api/tarea-instancias/pendientes -> start', { apiUrl: this.apiUrl });
-    return this.http.get<ApiResponse<TareaInstancia[]>>(`${this.apiUrl}/tarea-instancias/pendientes`).pipe(
-      tap({
-        next: (response) =>
-          console.info('[TaskInstanceService] GET /api/tarea-instancias/pendientes -> success', response),
-        error: (error) =>
-          console.error('[TaskInstanceService] GET /api/tarea-instancias/pendientes -> error', error),
-      }),
-    );
+    return this.listarTodas();
   }
 
   obtenerPorId(id: string): Observable<ApiResponse<TareaInstancia>> {
-    return this.http.get<ApiResponse<TareaInstancia>>(`${this.apiUrl}/tarea-instancias/${id}`);
+    return this.http.get<ApiResponse<TareaInstancia>>(`${this.apiUrl}/camunda/tasks/${id}`);
   }
 
-  listarPorInstancia(processInstanceId: string): Observable<ApiResponse<TareaInstancia[]>> {
-    return this.http.get<ApiResponse<TareaInstancia[]>>(
-      `${this.apiUrl}/tarea-instancias/instancia/${processInstanceId}`,
-    );
-  }
-
-  listarPorArea(areaId: string): Observable<ApiResponse<TareaInstancia[]>> {
-    return this.http.get<ApiResponse<TareaInstancia[]>>(`${this.apiUrl}/tarea-instancias/area/${areaId}`);
-  }
-
-  listarPorUsuario(assignedTo: string): Observable<ApiResponse<TareaInstancia[]>> {
-    return this.http.get<ApiResponse<TareaInstancia[]>>(
-      `${this.apiUrl}/tarea-instancias/usuario/${assignedTo}`,
-    );
-  }
-
-  listarPorProceso(nombreProceso: string): Observable<ApiResponse<TareaInstancia[]>> {
-    return this.http.get<ApiResponse<TareaInstancia[]>>(
-      `${this.apiUrl}/tarea-instancias/proceso/${encodeURIComponent(nombreProceso)}`,
+  completarTarea(taskId: string): Observable<ApiResponse<Record<string, unknown>>> {
+    return this.http.post<ApiResponse<Record<string, unknown>>>(
+      `${this.apiUrl}/camunda/tasks/${taskId}/complete`,
+      {},
     );
   }
 }

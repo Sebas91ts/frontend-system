@@ -117,6 +117,26 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
     }
   }
 
+  private normalizeProcessName(value: string): string {
+    const cleaned = value?.trim();
+    return cleaned ? cleaned : 'Proceso sin nombre';
+  }
+
+  private normalizeProcessKey(source: string): string {
+    const cleaned = (source ?? '').trim().toLowerCase();
+    if (!cleaned) {
+      return 'proceso_sin_nombre';
+    }
+
+    return (
+      cleaned
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '') || 'proceso_sin_nombre'
+    );
+  }
+
   protected openSaveCurrent(): void {
     if (this.isReadonlyProcess) {
       this.showFeedback('Este proceso está en modo solo lectura. Vuelve a la lista para crear una nueva versión.', 'error');
@@ -136,7 +156,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
       }
     }
 
-    this.saveDialogName = this.processName.trim();
+    this.saveDialogName = this.normalizeProcessName(this.processName);
     this.saveDialogStatus = 'idle';
     this.saveDialogMessage = '';
     this.errorMessage = '';
@@ -166,7 +186,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
       return;
     }
 
-    const nombre = this.saveDialogName.trim();
+    const nombre = this.normalizeProcessName(this.saveDialogName);
     if (!nombre) {
       this.showFeedback('Debes ingresar un nombre para el proceso.', 'error');
       return;
@@ -179,6 +199,9 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
     this.successMessage = '';
     this.processName = nombre;
     this.editorProcessName = nombre;
+    if (!this.currentProcessKey) {
+      this.currentProcessKey = this.normalizeProcessKey(nombre);
+    }
 
     try {
       const xml = await editor.exportToXml();
@@ -202,8 +225,12 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
             }
 
             if (response.data?.nombre) {
-              this.processName = response.data.nombre;
-              this.editorProcessName = response.data.nombre;
+              this.processName = this.normalizeProcessName(response.data.nombre);
+              this.editorProcessName = this.processName;
+            }
+
+            if (response.data?.processKey) {
+              this.currentProcessKey = this.normalizeProcessKey(response.data.processKey);
             }
 
             this.saveDialogStatus = 'success';
@@ -332,13 +359,15 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
           }
 
           this.currentProcessId = procesoCargado.id;
-          this.currentProcessKey = procesoCargado.processKey ?? '';
+          this.currentProcessKey = this.normalizeProcessKey(
+            procesoCargado.processKey || procesoCargado.nombre || id,
+          );
           this.currentProcessVersion = procesoCargado.version ?? null;
           this.currentProcessState = procesoCargado.estado ?? 'BORRADOR';
           this.isReadonlyProcess = this.currentProcessState !== 'BORRADOR';
-          this.processName = procesoCargado.nombre;
-          this.editorProcessName = procesoCargado.nombre;
-          this.saveDialogName = procesoCargado.nombre;
+          this.processName = this.normalizeProcessName(procesoCargado.nombre);
+          this.editorProcessName = this.processName;
+          this.saveDialogName = this.processName;
           this.isImportPanelOpen = false;
           this.isExportPanelOpen = false;
           this.isSaveDialogOpen = false;
@@ -385,7 +414,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
     try {
       await editor.importFromXml(this.importXmlValue);
       this.showFeedback(
-        `XML importado sobre el proceso "${this.processName}". Puedes seguir editandolo y actualizarlo.`,
+        `XML importado sobre el proceso "${this.processName}". Puedes seguir editándolo y actualizarlo.`,
         'success',
       );
     } catch (error) {

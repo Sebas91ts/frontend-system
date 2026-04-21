@@ -1,14 +1,18 @@
 export interface TareaInstancia {
   id: string;
-  processInstanceId: string;
-  processDefinitionId: string;
+  name?: string | null;
+  assignee?: string | null;
+  created?: string | null;
+  processDefinitionId?: string | null;
+  processInstanceId?: string | null;
+  taskDefinitionKey?: string | null;
+  // Compatibilidad con la vista previa anterior
   nombreProceso?: string | null;
-  taskDefinitionKey: string;
-  nombreTarea: string;
+  nombreTarea?: string | null;
   areaId?: string | null;
   areaNombre?: string | null;
-  estado: 'PENDIENTE' | 'COMPLETADA' | 'CANCELADA' | string;
+  estado?: string;
   assignedTo?: string | null;
-  createdAt: string;
+  createdAt?: string | null;
   completedAt?: string | null;
 }

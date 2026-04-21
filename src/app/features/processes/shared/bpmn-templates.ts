@@ -7,9 +7,9 @@ export const EMPTY_BPMN_XML = `<?xml version="1.0" encoding="UTF-8"?>
   id="Definitions_1"
   targetNamespace="http://bpmn.io/schema/bpmn">
   <bpmn:collaboration id="Collaboration_1">
-    <bpmn:participant id="Participant_1" name="Proceso principal" processRef="Process_1" />
+    <bpmn:participant id="Participant_1" name="Proceso sin nombre" processRef="proceso_sin_nombre" />
   </bpmn:collaboration>
-  <bpmn:process id="Process_1" isExecutable="false">
+  <bpmn:process id="proceso_sin_nombre" name="Proceso sin nombre" isExecutable="true">
     <bpmn:laneSet id="LaneSet_1">
       <bpmn:lane id="Lane_1" name="Area 1">
         <bpmn:flowNodeRef>StartEvent_1</bpmn:flowNodeRef>

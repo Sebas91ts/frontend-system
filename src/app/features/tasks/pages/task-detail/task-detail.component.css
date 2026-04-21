@@ -88,6 +88,14 @@
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
 }
 
+.task-detail-technical {
+  display: grid;
+  gap: 0.85rem;
+  padding-top: 0.25rem;
+  margin-top: 0.25rem;
+  border-top: 1px dashed #cbd5e1;
+}
+
 .task-detail-row {
   display: flex;
   justify-content: space-between;
@@ -109,6 +117,11 @@
   color: #0f172a;
   text-align: right;
   word-break: break-word;
+}
+
+.task-detail-row strong.muted {
+  color: #64748b;
+  font-weight: 600;
 }
 
 @media (max-width: 768px) {

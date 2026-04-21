@@ -113,7 +113,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     }
 
     const result = (await this.modeler.saveXML({ format: true })) as SaveXmlResult;
-    return result.xml ?? '';
+    return this.normalizeExportedXml(result.xml ?? '');
   }
 
   zoomIn(): void {
@@ -588,5 +588,56 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     }
 
     modeling.updateProperties(laneElement, updatedProperties);
+  }
+
+  private normalizeExportedXml(xml: string): string {
+    if (!xml.trim()) {
+      return xml;
+    }
+
+    const parser = new DOMParser();
+    const document = parser.parseFromString(xml, 'application/xml');
+    const parseError = document.getElementsByTagName('parsererror')[0];
+    if (parseError) {
+      return xml;
+    }
+
+    const processElement = document.getElementsByTagNameNS('http://www.omg.org/spec/BPMN/20100524/MODEL', 'process')[0];
+    if (!processElement) {
+      return xml;
+    }
+
+    const processKey = this.normalizeProcessKey(this.processKey || this.processName);
+    const processName = this.processName?.trim() || 'Proceso sin nombre';
+
+    processElement.setAttribute('id', processKey);
+    processElement.setAttribute('name', processName);
+    processElement.setAttribute('isExecutable', 'true');
+
+    const participant = document
+      .getElementsByTagNameNS('http://www.omg.org/spec/BPMN/20100524/MODEL', 'participant')[0];
+    if (participant) {
+      participant.setAttribute('processRef', processKey);
+      if (!participant.getAttribute('name')) {
+        participant.setAttribute('name', processName);
+      }
+    }
+
+    const serializer = new XMLSerializer();
+    return serializer.serializeToString(document);
+  }
+
+  private normalizeProcessKey(source: string): string {
+    const cleaned = (source ?? '').trim().toLowerCase();
+    if (!cleaned) {
+      return 'proceso_sin_nombre';
+    }
+
+    return cleaned
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      || 'proceso_sin_nombre';
   }
 }

@@ -2,51 +2,65 @@
   <header class="task-detail-hero">
     <div>
       <p class="task-detail-eyebrow">Detalle de tarea</p>
-      <h1>{{ task?.nombreTarea || 'Tarea' }}</h1>
+      <h1>{{ task?.name || 'Tarea sin nombre' }}</h1>
       <p class="task-detail-copy">
-        Vista preliminar para preparar la siguiente fase del flujo BPM.
+        Vista de detalle para una tarea real de Camunda.
       </p>
     </div>
 
     <div class="task-detail-actions">
       <button type="button" class="toolbar-button" (click)="goBack()">Volver</button>
-      <button type="button" class="toolbar-button accent" (click)="openPlaceholderAction()" [disabled]="!task">
-        Acción pendiente
+      <button type="button" class="toolbar-button accent" (click)="openPlaceholderAction()" [disabled]="!task || isCompleting">
+        {{ isCompleting ? 'Completando...' : 'Completar tarea' }}
+      </button>
+      <button type="button" class="toolbar-button" (click)="toggleTechnicalDetails()" [disabled]="!task">
+        {{ showTechnicalDetails ? 'Ocultar detalle técnico' : 'Ver más' }}
       </button>
     </div>
   </header>
 
+  <div class="task-detail-banner success" *ngIf="successMessage">{{ successMessage }}</div>
   <div class="task-detail-banner error" *ngIf="errorMessage">{{ errorMessage }}</div>
   <div class="task-detail-banner success" *ngIf="isLoading">Cargando detalle...</div>
 
   <section class="task-detail-card" *ngIf="task">
     <div class="task-detail-row">
       <span>Nombre tarea</span>
-      <strong>{{ task.nombreTarea }}</strong>
+      <strong>{{ task.name || 'Tarea sin nombre' }}</strong>
     </div>
     <div class="task-detail-row">
       <span>Proceso</span>
-      <strong>{{ task.nombreProceso || 'Proceso BPM' }}</strong>
+      <strong>{{ getProcessLabel() }}</strong>
     </div>
     <div class="task-detail-row">
-      <span>Área</span>
-      <strong>{{ task.areaNombre || 'Sin área' }}</strong>
+      <span>Asignada a</span>
+      <strong>{{ task.assignee || 'Sin asignar' }}</strong>
     </div>
     <div class="task-detail-row">
       <span>Estado</span>
-      <strong>{{ task.estado }}</strong>
+      <strong>ACTIVA</strong>
     </div>
     <div class="task-detail-row">
       <span>Creada</span>
-      <strong>{{ formatDate(task.createdAt) }}</strong>
+      <strong>{{ formatDate(task.created) }}</strong>
     </div>
     <div class="task-detail-row">
       <span>Instancia</span>
-      <strong>Instancia #{{ task.id.slice(-6) }}</strong>
+      <strong>{{ getInstanceShortLabel() }}</strong>
     </div>
-    <div class="task-detail-row">
-      <span>Task Key</span>
-      <strong>{{ task.taskDefinitionKey }}</strong>
+    <div class="task-detail-technical" *ngIf="showTechnicalDetails">
+      <div class="task-detail-row">
+        <span>Proceso técnico</span>
+        <strong>{{ task.processDefinitionId || 'Sin proceso' }}</strong>
+      </div>
+      <div class="task-detail-row">
+        <span>Instancia técnica</span>
+        <strong>{{ task.processInstanceId || 'Sin instancia' }}</strong>
+      </div>
+      <div class="task-detail-row">
+        <span>Task Key</span>
+        <strong>{{ task.taskDefinitionKey || 'Sin key' }}</strong>
+      </div>
     </div>
   </section>
 
