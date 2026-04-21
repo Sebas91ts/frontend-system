@@ -109,6 +109,29 @@ export class ProcessService {
     );
   }
 
+  iniciarProceso(processKey: string, businessKey?: string): Observable<ApiResponse<Record<string, unknown>>> {
+    const path = businessKey
+      ? `${this.apiUrl}/camunda/start/${encodeURIComponent(processKey)}/business/${encodeURIComponent(businessKey)}`
+      : `${this.apiUrl}/camunda/start/${encodeURIComponent(processKey)}`;
+
+    console.info('[ProcessService] POST /api/camunda/start -> start', {
+      processKey,
+      businessKey,
+      apiUrl: this.apiUrl,
+    });
+
+    return this.http.post<ApiResponse<Record<string, unknown>>>(path, {}).pipe(
+      tap({
+        next: (response) => {
+          console.info('[ProcessService] POST /api/camunda/start -> success', response);
+        },
+        error: (error) => {
+          console.error('[ProcessService] POST /api/camunda/start -> error', error);
+        },
+      }),
+    );
+  }
+
   crearNuevaVersion(id: string): Observable<ApiResponse<Proceso>> {
     console.info('[ProcessService] POST /api/procesos/{id}/versionar -> start', {
       id,

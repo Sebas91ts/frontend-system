@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, Input, OnDestroy, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, Input, NgZone, OnDestroy, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import Modeler from 'bpmn-js/lib/Modeler';
 import { BpmnPropertiesPanelModule, BpmnPropertiesProviderModule } from 'bpmn-js-properties-panel';
@@ -51,6 +51,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
   private selectionChangedHandler?: (event: any) => void;
   private commandStackChangedHandler?: () => void;
   private laneOverlayIds = new Map<string, string>();
+  private overlayRefreshFrameId: number | null = null;
 
   protected activeAreas: Area[] = [];
   protected selectedLaneAreaId = '';
@@ -61,13 +62,19 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
 
   readonly sampleXml = EMPTY_BPMN_XML;
 
-  constructor(private readonly areaService: AreaService) {}
+  constructor(
+    private readonly areaService: AreaService,
+    private readonly zone: NgZone,
+    private readonly cdr: ChangeDetectorRef,
+  ) {}
 
   async ngAfterViewInit(): Promise<void> {
     this.initializeModeler();
     this.setupResizeHandling();
     this.setupSelectionHandling();
-    void this.loadActiveAreas();
+    setTimeout(() => {
+      void this.loadActiveAreas();
+    }, 0);
     if (this.autoCreateDiagram) {
       setTimeout(() => {
         void this.createNewDiagram();
@@ -81,6 +88,10 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     this.laneOverlayIds.clear();
     this.selectionChangedHandler = undefined;
     this.commandStackChangedHandler = undefined;
+    if (this.overlayRefreshFrameId !== null) {
+      cancelAnimationFrame(this.overlayRefreshFrameId);
+      this.overlayRefreshFrameId = null;
+    }
     this.modeler?.destroy();
     this.modeler = null;
     this.selectedLaneElement = null;
@@ -223,11 +234,8 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     };
 
     eventBus.on('selection.changed', this.selectionChangedHandler);
-    eventBus.on('element.click', (event: any) => {
-      this.handleSelectedElement(event?.element ?? null);
-    });
     this.commandStackChangedHandler = () => {
-      this.refreshLaneContext();
+      this.scheduleOverlayRefresh();
     };
     eventBus.on('commandStack.changed', this.commandStackChangedHandler);
   }
@@ -267,24 +275,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     this.laneBindingMessage = binding.areaId
       ? `Lane vinculada a ${binding.areaName}.`
       : 'Esta lane aun no tiene un area asignada.';
-  }
-
-  private refreshLaneContext(): void {
-    if (!this.modeler) {
-      return;
-    }
-
-    if (this.selectedLaneElement) {
-      const laneElement = this.resolveLaneElement(this.selectedLaneElement);
-      if (!laneElement) {
-        this.clearLaneSelection();
-      } else {
-        this.selectedLaneElement = laneElement;
-        this.syncSelectedLaneState();
-      }
-    }
-
-    this.refreshLaneAreaOverlays();
+    this.cdr.markForCheck();
   }
 
   private refreshLaneAreaOverlays(): void {
@@ -334,6 +325,31 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
 
       this.laneOverlayIds.set(laneElement.id, overlayId);
     }
+  }
+
+  private scheduleOverlayRefresh(): void {
+    if (!this.modeler || this.overlayRefreshFrameId !== null) {
+      return;
+    }
+
+    this.overlayRefreshFrameId = requestAnimationFrame(() => {
+      this.overlayRefreshFrameId = null;
+      if (!this.modeler) {
+        return;
+      }
+
+      if (this.selectedLaneElement) {
+        const laneElement = this.resolveLaneElement(this.selectedLaneElement);
+        if (!laneElement) {
+          this.clearLaneSelection();
+        } else {
+          this.selectedLaneElement = laneElement;
+          this.syncSelectedLaneState();
+        }
+      }
+
+      this.refreshLaneAreaOverlays();
+    });
   }
 
   private updateLaneAreaReference(areaId: string): void {

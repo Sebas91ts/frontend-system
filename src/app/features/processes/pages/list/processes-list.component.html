@@ -25,9 +25,11 @@
         [loading]="isLoadingProcessList"
         [publishingId]="publishingId"
         [versioningId]="versioningId"
+        [startingId]="startingId"
         (processSelected)="openProcess($event)"
         (publishProcess)="publishProceso($event)"
         (versionProcess)="versionProceso($event)"
+        (startProcess)="startProceso($event)"
       />
     </section>
   </div>

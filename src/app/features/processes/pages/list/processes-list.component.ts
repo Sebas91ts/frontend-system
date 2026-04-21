@@ -22,6 +22,7 @@ export class ProcessesListComponent implements OnInit, OnDestroy {
   protected isLoadingProcessList = false;
   protected publishingId: string | null = null;
   protected versioningId: string | null = null;
+  protected startingId: string | null = null;
   protected isNewProcessDialogOpen = false;
   protected newProcessName = '';
   protected isCreatingProcess = false;
@@ -59,7 +60,10 @@ export class ProcessesListComponent implements OnInit, OnDestroy {
     this.feedbackTimer = setTimeout(() => {
       this.successMessage = '';
       this.errorMessage = '';
+      this.cdr.detectChanges();
     }, 3500);
+
+    this.cdr.detectChanges();
   }
 
   private clearFeedbackTimer(): void {
@@ -192,7 +196,7 @@ export class ProcessesListComponent implements OnInit, OnDestroy {
             );
           }
 
-          this.showFeedback(response.message || 'Proceso publicado correctamente.', 'success');
+          this.showFeedback(response.message || 'Proceso publicado y desplegado correctamente.', 'success');
           this.loadProcessList();
         },
         error: (error: any) => {
@@ -200,6 +204,47 @@ export class ProcessesListComponent implements OnInit, OnDestroy {
             error?.error?.message || 'No se pudo publicar el proceso.',
             'error',
           );
+        },
+      });
+  }
+
+  protected startProceso(proceso: Proceso): void {
+    if (this.startingId || proceso.estado !== 'PUBLICADO') {
+      return;
+    }
+
+    this.startingId = proceso.id;
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    this.processService
+      .iniciarProceso(proceso.processKey || proceso.nombre)
+      .pipe(
+        finalize(() => {
+          this.startingId = null;
+        }),
+      )
+      .subscribe({
+        next: (response) => {
+          const instanceId =
+            (response.data as any)?.processInstanceId ||
+            (response.data as any)?.id ||
+            (response.data as any)?.instanceId;
+
+          this.showFeedback(
+            instanceId
+              ? `Instancia iniciada correctamente. ID: ${instanceId}`
+              : response.message || 'Instancia iniciada correctamente.',
+            'success',
+          );
+          this.cdr.detectChanges();
+        },
+        error: (error: any) => {
+          this.showFeedback(
+            error?.error?.message || 'No se pudo iniciar la instancia del proceso.',
+            'error',
+          );
+          this.cdr.detectChanges();
         },
       });
   }

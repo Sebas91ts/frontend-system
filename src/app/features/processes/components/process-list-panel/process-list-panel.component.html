@@ -66,6 +66,21 @@
             >
               {{ versioningId === proceso.id ? 'Creando version...' : 'Crear version desde esta' }}
             </button>
+
+            <button
+              type="button"
+              class="process-list__start"
+              *ngIf="proceso.estado === 'PUBLICADO'"
+              [disabled]="startingId === proceso.id"
+              (click)="$event.stopPropagation(); startProcess.emit(proceso)"
+            >
+              <span class="process-list__start-label">
+                {{ startingId === proceso.id ? 'Iniciando...' : 'Iniciar proceso' }}
+              </span>
+              <span class="process-list__start-hint" *ngIf="startingId !== proceso.id">
+                Ejecutar esta version en Camunda
+              </span>
+            </button>
           </div>
         </div>
       </div>

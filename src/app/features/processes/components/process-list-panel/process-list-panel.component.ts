@@ -31,10 +31,12 @@ export class ProcessListPanelComponent {
   @Input() loading = false;
   @Input() publishingId: string | null = null;
   @Input() versioningId: string | null = null;
+  @Input() startingId: string | null = null;
 
   @Output() processSelected = new EventEmitter<Proceso>();
   @Output() publishProcess = new EventEmitter<Proceso>();
   @Output() versionProcess = new EventEmitter<Proceso>();
+  @Output() startProcess = new EventEmitter<Proceso>();
 
   private expandedKeys = new Set<string>();
 

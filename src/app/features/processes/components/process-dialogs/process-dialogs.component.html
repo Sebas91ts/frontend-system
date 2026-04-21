@@ -16,6 +16,9 @@
       <span>Nombre del proceso</span>
       <input
         type="text"
+        id="process-save-name"
+        name="process-save-name"
+        autocomplete="off"
         [ngModel]="saveDialogName"
         (ngModelChange)="saveDialogNameChange.emit($event)"
         placeholder="Ej. Proceso de ventas"
@@ -92,6 +95,9 @@
       <span>Nombre del proceso</span>
       <input
         type="text"
+        id="process-new-name"
+        name="process-new-name"
+        autocomplete="off"
         [ngModel]="newProcessName"
         (ngModelChange)="newProcessNameChange.emit($event)"
         placeholder="Ej. Proceso de ventas"
