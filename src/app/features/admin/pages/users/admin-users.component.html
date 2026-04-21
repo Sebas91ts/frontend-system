@@ -41,6 +41,7 @@
         <thead>
           <tr>
             <th>Nombre</th>
+            <th>Area</th>
             <th>Email</th>
             <th>Roles</th>
             <th>Estado</th>
@@ -50,6 +51,7 @@
         <tbody>
           <tr *ngFor="let usuario of usuarios">
             <td>{{ usuario.nombre }} {{ usuario.apellido }}</td>
+            <td>{{ getAreaName(usuario.areaId) }}</td>
             <td>{{ usuario.email }}</td>
             <td>{{ usuario.roles ? usuario.roles.join(', ') : '' }}</td>
             <td>
@@ -105,6 +107,16 @@
     <label class="save-modal__field">
       <span>Email</span>
       <input [(ngModel)]="form.email" type="email" />
+    </label>
+
+    <label class="save-modal__field">
+      <span>Area</span>
+      <select [(ngModel)]="form.areaId">
+        <option value="">Sin area</option>
+        <option *ngFor="let area of areas" [value]="area.id">
+          {{ area.nombre }}
+        </option>
+      </select>
     </label>
 
     <label class="save-modal__field">

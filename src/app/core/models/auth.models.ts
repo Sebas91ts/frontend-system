@@ -5,6 +5,8 @@
   email: string;
   roles: string[];
   activo: boolean;
+  areaId?: string | null;
+  areaNombre?: string | null;
   fechaCreacion?: string;
   fechaActualizacion?: string;
 }
@@ -26,6 +28,7 @@ export interface RegisterRequest {
   apellido: string;
   email: string;
   password: string;
+  areaId?: string;
 }
 
 export interface ApiResponse<T> {

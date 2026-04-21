@@ -6,6 +6,8 @@ import { finalize } from 'rxjs';
 import { Usuario, RegisterRequest } from '../../../../core/models/auth.models';
 import { UserService } from '../../../../core/services/user.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { Area } from '../../../../core/models/area.models';
+import { AreaService } from '../../../../core/services/area.service';
 
 @Component({
   selector: 'app-admin-users',
@@ -18,10 +20,12 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
   private feedbackTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly userService = inject(UserService);
   protected readonly authService = inject(AuthService);
+  private readonly areaService = inject(AreaService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
 
   protected usuarios: Usuario[] = [];
+  protected areas: Area[] = [];
   protected isLoading = false;
   protected isSaving = false;
   protected isDeletingId: string | null = null;
@@ -37,10 +41,12 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
     apellido: '',
     email: '',
     password: '',
+    areaId: '',
   };
 
   ngOnInit(): void {
     this.loadUsers();
+    this.loadAreas();
   }
 
   ngOnDestroy(): void {
@@ -110,7 +116,7 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
 
   openCreate(): void {
     this.editingUserId = null;
-    this.form = { nombre: '', apellido: '', email: '', password: '' };
+    this.form = { nombre: '', apellido: '', email: '', password: '', areaId: '' };
     this.isFormOpen = true;
   }
 
@@ -121,6 +127,7 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
       apellido: usuario.apellido,
       email: usuario.email,
       password: '',
+      areaId: usuario.areaId || '',
     };
     this.isFormOpen = true;
   }
@@ -141,6 +148,9 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
     const payload: any = { ...this.form };
     if (!payload.password) {
       delete payload.password;
+    }
+    if (!payload.areaId) {
+      delete payload.areaId;
     }
     this.isSaving = true;
     this.errorMessage = '';
@@ -218,5 +228,25 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
           );
         },
       });
+  }
+
+  protected getAreaName(areaId?: string | null): string {
+    if (!areaId) {
+      return 'Sin area';
+    }
+
+    return this.areas.find((area) => area.id === areaId)?.nombre || 'Area no identificada';
+  }
+
+  private loadAreas(): void {
+    this.areaService.listarAreasActivas().subscribe({
+      next: (response) => {
+        this.areas = response.data ?? [];
+        this.cdr.detectChanges();
+      },
+      error: (error: any) => {
+        this.showFeedback(error?.error?.message || 'No se pudieron cargar las areas activas.', 'error');
+      },
+    });
   }
 }
