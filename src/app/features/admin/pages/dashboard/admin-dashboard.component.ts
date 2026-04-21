@@ -29,4 +29,8 @@ export class AdminDashboardComponent {
   goToAreas(): void {
     void this.router.navigate(['/admin/areas']);
   }
+
+  goToTasks(): void {
+    void this.router.navigate(['/tasks']);
+  }
 }

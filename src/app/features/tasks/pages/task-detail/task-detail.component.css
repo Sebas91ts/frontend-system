@@ -1,0 +1,126 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+}
+
+.task-detail-shell {
+  padding: 1.5rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.task-detail-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: 20px;
+  background: #0f172a;
+  color: #f8fafc;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.2);
+}
+
+.task-detail-eyebrow {
+  margin: 0 0 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #86efac;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.task-detail-hero h1 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.task-detail-copy {
+  margin: 0.45rem 0 0;
+  color: #cbd5e1;
+  line-height: 1.6;
+}
+
+.task-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.toolbar-button {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: #1e293b;
+  color: #e2e8f0;
+  border-radius: 12px;
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+}
+
+.toolbar-button.accent {
+  background: #22c55e;
+  color: #052e16;
+  font-weight: 700;
+}
+
+.task-detail-banner {
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  color: #fff;
+  font-weight: 600;
+}
+
+.task-detail-banner.error {
+  background: rgba(239, 68, 68, 0.95);
+}
+
+.task-detail-banner.success {
+  background: rgba(16, 185, 129, 0.95);
+}
+
+.task-detail-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.25rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+}
+
+.task-detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.task-detail-row span {
+  color: #64748b;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+}
+
+.task-detail-row strong {
+  color: #0f172a;
+  text-align: right;
+  word-break: break-word;
+}
+
+@media (max-width: 768px) {
+  .task-detail-hero {
+    flex-direction: column;
+  }
+
+  .task-detail-row {
+    flex-direction: column;
+  }
+
+  .task-detail-row strong {
+    text-align: left;
+  }
+}

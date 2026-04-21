@@ -49,6 +49,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
   private resizeObserver: ResizeObserver | null = null;
   protected selectedLaneElement: any | null = null;
   private selectionChangedHandler?: (event: any) => void;
+  private commandStackChangedHandler?: () => void;
   private laneOverlayIds = new Map<string, string>();
 
   protected activeAreas: Area[] = [];
@@ -78,6 +79,8 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
     this.laneOverlayIds.clear();
+    this.selectionChangedHandler = undefined;
+    this.commandStackChangedHandler = undefined;
     this.modeler?.destroy();
     this.modeler = null;
     this.selectedLaneElement = null;
@@ -223,15 +226,20 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     eventBus.on('element.click', (event: any) => {
       this.handleSelectedElement(event?.element ?? null);
     });
+    this.commandStackChangedHandler = () => {
+      this.refreshLaneContext();
+    };
+    eventBus.on('commandStack.changed', this.commandStackChangedHandler);
   }
 
   private handleSelectedElement(element: any | null): void {
-    if (!element || element?.businessObject?.$type !== 'bpmn:Lane') {
+    const laneElement = this.resolveLaneElement(element);
+    if (!laneElement) {
       this.clearLaneSelection();
       return;
     }
 
-    this.selectedLaneElement = element;
+    this.selectedLaneElement = laneElement;
     this.syncSelectedLaneState();
   }
 
@@ -259,6 +267,24 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     this.laneBindingMessage = binding.areaId
       ? `Lane vinculada a ${binding.areaName}.`
       : 'Esta lane aun no tiene un area asignada.';
+  }
+
+  private refreshLaneContext(): void {
+    if (!this.modeler) {
+      return;
+    }
+
+    if (this.selectedLaneElement) {
+      const laneElement = this.resolveLaneElement(this.selectedLaneElement);
+      if (!laneElement) {
+        this.clearLaneSelection();
+      } else {
+        this.selectedLaneElement = laneElement;
+        this.syncSelectedLaneState();
+      }
+    }
+
+    this.refreshLaneAreaOverlays();
   }
 
   private refreshLaneAreaOverlays(): void {
@@ -426,6 +452,31 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     };
 
     return elementRegistry.filter((element) => element?.businessObject?.$type === 'bpmn:Lane');
+  }
+
+  private resolveLaneElement(element: any | null): any | null {
+    if (!element) {
+      return null;
+    }
+
+    if (element?.businessObject?.$type === 'bpmn:Lane' || element?.type === 'bpmn:Lane') {
+      return element;
+    }
+
+    if (!this.modeler || !element?.id) {
+      return null;
+    }
+
+    const elementRegistry = this.modeler.get('elementRegistry') as {
+      get: (id: string) => any;
+    };
+    const registryElement = elementRegistry.get(element.id);
+
+    if (registryElement?.businessObject?.$type === 'bpmn:Lane' || registryElement?.type === 'bpmn:Lane') {
+      return registryElement;
+    }
+
+    return null;
   }
 
   private restoreLaneAreaBindings(): void {

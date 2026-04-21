@@ -45,6 +45,15 @@ import { Router } from '@angular/router';
               <li><strong>Roles:</strong> {{ authService.currentUser()?.roles?.join(', ') }}</li>
             </ul>
           </div>
+
+          <div class="mt-6 flex gap-3">
+            <button
+              (click)="goToTasks()"
+              class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition duration-200"
+            >
+              Abrir bandeja de tareas
+            </button>
+          </div>
         </div>
       </main>
     </div>
@@ -56,5 +65,9 @@ export class UserDashboardComponent {
 
   logout(): void {
     this.authService.logout();
+  }
+
+  goToTasks(): void {
+    void this.router.navigate(['/tasks']);
   }
 }

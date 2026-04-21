@@ -1,0 +1,99 @@
+<section class="task-inbox-shell">
+  <header class="task-inbox-hero">
+    <div>
+      <p class="task-inbox-eyebrow">Bandeja de tareas</p>
+      <h1>{{ filterSummary }}</h1>
+      <p class="task-inbox-copy">
+        Consulta tareas pendientes, filtra por proceso, área o instancia y mantén el seguimiento de la ejecución.
+      </p>
+    </div>
+
+    <div class="task-inbox-actions">
+      <button type="button" class="toolbar-button" (click)="goBack()" [disabled]="isLoading">Volver</button>
+      <button type="button" class="toolbar-button accent" (click)="refreshTasks()" [disabled]="isLoading">
+        {{ isLoading ? 'Cargando...' : 'Refrescar' }}
+      </button>
+      <button type="button" class="toolbar-button" (click)="showPending()" [disabled]="isLoading">Pendientes</button>
+      <button type="button" class="toolbar-button" (click)="showAll()" [disabled]="isLoading">Todas</button>
+    </div>
+  </header>
+
+  <section class="task-filters">
+    <div class="task-filter">
+      <label>Proceso</label>
+      <select [(ngModel)]="selectedProcessName" (ngModelChange)="applyFriendlyFilters()" [disabled]="isLoading">
+        <option value="">Todos los procesos</option>
+        <option *ngFor="let processName of processOptions" [value]="processName">
+          {{ processName }}
+        </option>
+      </select>
+    </div>
+
+    <div class="task-filter">
+      <label>Área</label>
+      <select [(ngModel)]="selectedAreaId" (ngModelChange)="applyFriendlyFilters()" [disabled]="isLoading">
+        <option value="">Todas las áreas</option>
+        <option *ngFor="let area of areas" [value]="area.id">{{ area.nombre }}</option>
+      </select>
+    </div>
+
+    <div class="task-filter">
+      <label>Instancia</label>
+      <select [(ngModel)]="selectedInstanceId" (ngModelChange)="applyFriendlyFilters()" [disabled]="isLoading">
+        <option value="">Todas las instancias</option>
+        <option *ngFor="let task of instanceOptions; trackBy: trackByInstance" [value]="task.processInstanceId">
+          {{ getInstanceLabel(task) }}
+        </option>
+      </select>
+    </div>
+
+    <div class="task-filter task-filter--actions">
+      <label>&nbsp;</label>
+      <button type="button" class="toolbar-button" (click)="clearFilters()" [disabled]="isLoading">
+        Limpiar filtros
+      </button>
+    </div>
+  </section>
+
+  <div class="task-inbox-banner success" *ngIf="successMessage">{{ successMessage }}</div>
+  <div class="task-inbox-banner error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+  <section class="task-inbox-grid">
+    <article class="task-card" *ngFor="let task of tasks">
+      <div class="task-card__header">
+        <div>
+          <p class="task-card__tag">{{ task.estado }}</p>
+          <h2>{{ task.nombreTarea }}</h2>
+          <p class="task-card__instance">{{ getInstanceLabel(task) }}</p>
+        </div>
+        <span class="task-pill">{{ task.areaNombre || 'Sin área' }}</span>
+      </div>
+
+      <dl class="task-card__meta">
+        <div>
+          <dt>Proceso</dt>
+          <dd>{{ task.nombreProceso || 'Proceso BPM' }}</dd>
+        </div>
+        <div>
+          <dt>Área</dt>
+          <dd>{{ task.areaNombre || 'Sin área' }}</dd>
+        </div>
+        <div>
+          <dt>Creada</dt>
+          <dd>{{ formatDate(task.createdAt) }}</dd>
+        </div>
+      </dl>
+
+      <div class="task-card__footer">
+        <span class="task-state" [class.pending]="task.estado === 'PENDIENTE'">{{ task.estado }}</span>
+        <button type="button" class="toolbar-button accent task-action" (click)="openTask(task)">
+          Ver detalle
+        </button>
+      </div>
+    </article>
+
+    <div class="task-empty" *ngIf="!isLoading && tasks.length === 0">
+      No hay tareas para mostrar con este filtro.
+    </div>
+  </section>
+</section>

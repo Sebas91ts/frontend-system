@@ -77,6 +77,21 @@ export const routes: Routes = [
     data: { roles: ['ROLE_ADMIN'] }
   },
 
+  {
+    path: 'tasks',
+    loadComponent: () => import('./features/tasks/pages/task-inbox/task-inbox.component')
+      .then(m => m.TaskInboxComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_USER', 'ROLE_ADMIN'] }
+  },
+  {
+    path: 'tasks/:id',
+    loadComponent: () => import('./features/tasks/pages/task-detail/task-detail.component')
+      .then(m => m.TaskDetailComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_USER', 'ROLE_ADMIN'] }
+  },
+
   // Ruta comodín - redirigir al dashboard correspondiente
   { path: '**', redirectTo: 'auth/login' }
 ];

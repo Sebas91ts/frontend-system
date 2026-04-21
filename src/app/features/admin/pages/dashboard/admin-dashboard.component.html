@@ -12,6 +12,7 @@
         <button type="button" class="action-button accent" (click)="goToUsers()">Gestionar usuarios</button>
         <button type="button" class="action-button" (click)="goToAreas()">Gestionar areas</button>
         <button type="button" class="action-button" (click)="goToProcesses()">Abrir procesos</button>
+        <button type="button" class="action-button" (click)="goToTasks()">Bandeja de tareas</button>
       </div>
     </div>
 
@@ -51,6 +52,13 @@
       <h2>Acceso restringido</h2>
       <p>Solo administradores pueden acceder a estas herramientas y a los endpoints protegidos.</p>
       <span class="feature-card__status">ROLE_ADMIN activo</span>
+    </article>
+
+    <article class="feature-card">
+      <p class="feature-card__tag">Tareas</p>
+      <h2>Bandeja de ejecución</h2>
+      <p>Consulta tareas pendientes por instancia, área o usuario sin perder el contexto del proceso.</p>
+      <button type="button" class="action-button accent" (click)="goToTasks()">Abrir bandeja</button>
     </article>
   </section>
 </main>

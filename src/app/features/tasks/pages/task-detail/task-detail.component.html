@@ -1,0 +1,59 @@
+<section class="task-detail-shell">
+  <header class="task-detail-hero">
+    <div>
+      <p class="task-detail-eyebrow">Detalle de tarea</p>
+      <h1>{{ task?.nombreTarea || 'Tarea' }}</h1>
+      <p class="task-detail-copy">
+        Vista preliminar para preparar la siguiente fase del flujo BPM.
+      </p>
+    </div>
+
+    <div class="task-detail-actions">
+      <button type="button" class="toolbar-button" (click)="goBack()">Volver</button>
+      <button type="button" class="toolbar-button accent" (click)="openPlaceholderAction()" [disabled]="!task">
+        Acción pendiente
+      </button>
+    </div>
+  </header>
+
+  <div class="task-detail-banner error" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="task-detail-banner success" *ngIf="isLoading">Cargando detalle...</div>
+
+  <section class="task-detail-card" *ngIf="task">
+    <div class="task-detail-row">
+      <span>Nombre tarea</span>
+      <strong>{{ task.nombreTarea }}</strong>
+    </div>
+    <div class="task-detail-row">
+      <span>Proceso</span>
+      <strong>{{ task.nombreProceso || 'Proceso BPM' }}</strong>
+    </div>
+    <div class="task-detail-row">
+      <span>Área</span>
+      <strong>{{ task.areaNombre || 'Sin área' }}</strong>
+    </div>
+    <div class="task-detail-row">
+      <span>Estado</span>
+      <strong>{{ task.estado }}</strong>
+    </div>
+    <div class="task-detail-row">
+      <span>Creada</span>
+      <strong>{{ formatDate(task.createdAt) }}</strong>
+    </div>
+    <div class="task-detail-row">
+      <span>Instancia</span>
+      <strong>Instancia #{{ task.id.slice(-6) }}</strong>
+    </div>
+    <div class="task-detail-row">
+      <span>Task Key</span>
+      <strong>{{ task.taskDefinitionKey }}</strong>
+    </div>
+  </section>
+
+  <section class="task-detail-card" *ngIf="!task && !isLoading && !errorMessage">
+    <div class="task-detail-row">
+      <span>Estado</span>
+      <strong>No se pudo mostrar el detalle</strong>
+    </div>
+  </section>
+</section>
