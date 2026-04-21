@@ -55,6 +55,11 @@ export class TaskDetailComponent implements OnInit {
   }
 
   protected getProcessLabel(): string {
+    const processName = this.task?.nombreProceso?.trim();
+    if (processName) {
+      return processName;
+    }
+
     const processId = this.task?.processDefinitionId?.trim();
     if (!processId) {
       return 'Proceso no identificado';
@@ -71,6 +76,10 @@ export class TaskDetailComponent implements OnInit {
     }
 
     return `Instancia #${instanceId.slice(-6)}`;
+  }
+
+  protected getAreaLabel(): string {
+    return this.task?.areaNombre?.trim() || 'Área no identificada';
   }
 
   protected openPlaceholderAction(): void {

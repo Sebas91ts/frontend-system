@@ -68,6 +68,11 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
   }
 
   protected getProcessLabel(task: TareaInstancia): string {
+    const processName = task.nombreProceso?.trim();
+    if (processName) {
+      return processName;
+    }
+
     const processId = task.processDefinitionId?.trim();
     if (!processId) {
       return 'Proceso no identificado';
@@ -92,6 +97,10 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
 
   protected getAssigneeLabel(task: TareaInstancia): string {
     return task.assignee?.trim() || 'Sin asignar';
+  }
+
+  protected getAreaLabel(task: TareaInstancia): string {
+    return task.areaNombre?.trim() || 'Área no identificada';
   }
 
   protected get filterSummary(): string {
