@@ -1,12 +1,26 @@
 export interface FormFieldDefinition {
   name: string;
   label: string;
-  type: 'text' | 'textarea' | 'number' | 'date' | 'select';
+  type: 'text' | 'textarea' | 'number' | 'date' | 'select' | 'file';
   required: boolean;
   placeholder?: string | null;
   helpText?: string | null;
   order: number;
   options?: string[] | null;
+}
+
+export interface UploadedFileMetadata {
+  publicId: string;
+  fileName: string;
+  secureUrl: string;
+  mimeType?: string | null;
+  size?: number | null;
+  resourceType?: string | null;
+}
+
+export interface FormFieldValue {
+  value?: string | number | boolean | UploadedFileMetadata | null;
+  file?: UploadedFileMetadata | null;
 }
 
 export interface FormDefinition {

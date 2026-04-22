@@ -2,10 +2,12 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { finalize } from 'rxjs';
-import { FormDefinition, FormFieldDefinition } from '../../../../core/models/form.models';
+import { finalize, firstValueFrom } from 'rxjs';
+import { FormDefinition, FormFieldDefinition, UploadedFileMetadata } from '../../../../core/models/form.models';
+import { FileUploadService } from '../../../../core/services/file-upload.service';
 import { TaskInstanceService } from '../../../../core/services/task-instance.service';
 import { FormService } from '../../../../core/services/form.service';
+import { AuthService } from '../../../../core/services/auth.service';
 import { TareaInstancia } from '../../../../core/models/task-instance.models';
 import { ApiResponse } from '../../../../core/models/auth.models';
 
@@ -17,10 +19,14 @@ import { ApiResponse } from '../../../../core/models/auth.models';
   styleUrl: './task-detail.component.css',
 })
 export class TaskDetailComponent implements OnInit {
+  private static readonly MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly taskService = inject(TaskInstanceService);
   private readonly formService = inject(FormService);
+  private readonly fileUploadService = inject(FileUploadService);
+  private readonly authService = inject(AuthService);
   private readonly cdr = inject(ChangeDetectorRef);
 
   protected task: TareaInstancia | null = null;
@@ -29,6 +35,7 @@ export class TaskDetailComponent implements OnInit {
   protected showTechnicalDetails = false;
   protected formDefinition: FormDefinition | null = null;
   protected formValues: Record<string, unknown> = {};
+  protected fileUploadState: Record<string, { error: string }> = {};
   protected formMessage = '';
   protected formLoading = false;
   protected errorMessage = '';
@@ -119,6 +126,30 @@ export class TaskDetailComponent implements OnInit {
     return !!this.formDefinition;
   }
 
+  protected get canCompleteTask(): boolean {
+    return this.isTaskTakenByCurrentUser();
+  }
+
+  protected get taskActionHint(): string {
+    if (!this.task) {
+      return '';
+    }
+
+    if (!this.task.assignee) {
+      return 'Primero debes tomar la tarea para poder completar el formulario.';
+    }
+
+    if (!this.isTaskTakenByCurrentUser()) {
+      return `La tarea fue tomada por ${this.task.assignee}.`;
+    }
+
+    if (this.hasForm && !this.isFormValid) {
+      return 'Completa los campos obligatorios antes de finalizar la tarea.';
+    }
+
+    return 'Puedes enviar el formulario y completar la tarea.';
+  }
+
   protected get isFormValid(): boolean {
     if (!this.formDefinition) {
       return true;
@@ -127,6 +158,12 @@ export class TaskDetailComponent implements OnInit {
     return (this.formDefinition.fields ?? []).every((field) => {
       if (!field.required) {
         return true;
+      }
+
+      if (field.type === 'file') {
+        const fileMeta = this.getSelectedFileMetadata(field.name);
+        const fileValue = this.getSelectedFile(field.name);
+        return !!fileMeta?.secureUrl || !!fileMeta?.publicId || !!fileValue;
       }
 
       const value = this.formValues[field.name];
@@ -142,9 +179,19 @@ export class TaskDetailComponent implements OnInit {
     });
   }
 
+  protected get isAnyFileUploading(): boolean {
+    return false;
+  }
+
   protected isFieldMissing(field: FormFieldDefinition): boolean {
     if (!field.required) {
       return false;
+    }
+
+    if (field.type === 'file') {
+      const fileMeta = this.getSelectedFileMetadata(field.name);
+      const fileValue = this.getSelectedFile(field.name);
+      return !fileMeta?.secureUrl && !fileMeta?.publicId && !fileValue;
     }
 
     const value = this.formValues[field.name];
@@ -166,6 +213,73 @@ export class TaskDetailComponent implements OnInit {
 
   protected setFieldValue(fieldName: string, value: unknown): void {
     this.formValues[fieldName] = value as never;
+  }
+
+  protected getSelectedFile(fieldName: string): File | null {
+    const value = this.formValues[fieldName];
+    return value instanceof File ? value : null;
+  }
+
+  protected getFieldFile(field: FormFieldDefinition): UploadedFileMetadata | null {
+    const value = this.formValues[field.name];
+    if (!value || typeof value !== 'object' || value instanceof File) {
+      return null;
+    }
+
+    return value as UploadedFileMetadata;
+  }
+
+  protected getSelectedFileName(fieldName: string): string {
+    const file = this.getSelectedFile(fieldName);
+    if (file) {
+      return file.name;
+    }
+
+    const metadata = this.getSelectedFileMetadata(fieldName);
+    return metadata?.fileName || '';
+  }
+
+  protected getSelectedFileMetadata(fieldName: string): UploadedFileMetadata | null {
+    const value = this.formValues[fieldName];
+    if (!value || typeof value !== 'object' || value instanceof File) {
+      return null;
+    }
+
+    return value as UploadedFileMetadata;
+  }
+
+  protected isTaskTakenByCurrentUser(): boolean {
+    const user = this.authService.currentUser();
+    if (!user?.email || !this.task?.assignee) {
+      return false;
+    }
+
+    return user.email.trim().toLowerCase() === this.task.assignee.trim().toLowerCase();
+  }
+
+  protected fileUploadError(field: FormFieldDefinition): string {
+    return this.fileUploadState[field.name]?.error || '';
+  }
+
+  protected onFileSelected(field: FormFieldDefinition, event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0] ?? null;
+    if (!file) {
+      return;
+    }
+
+    if (file.size > TaskDetailComponent.MAX_UPLOAD_BYTES) {
+      this.fileUploadState[field.name] = { error: 'El archivo supera el limite de 10 MB.' };
+      this.cdr.detectChanges();
+      if (input) {
+        input.value = '';
+      }
+      return;
+    }
+
+    this.formValues[field.name] = file;
+    this.fileUploadState[field.name] = { error: '' };
+    this.cdr.detectChanges();
   }
 
   private loadTask(id: string): void {
@@ -206,8 +320,16 @@ export class TaskDetailComponent implements OnInit {
       });
   }
 
-  private completeTask(): void {
+  private async completeTask(): Promise<void> {
     if (!this.task?.id || this.isCompleting) {
+      return;
+    }
+
+    if (!this.isTaskTakenByCurrentUser()) {
+      this.errorMessage = this.task?.assignee
+        ? `La tarea fue tomada por ${this.task.assignee}.`
+        : 'Primero debes tomar la tarea para poder completar el formulario.';
+      this.cdr.detectChanges();
       return;
     }
 
@@ -222,29 +344,24 @@ export class TaskDetailComponent implements OnInit {
     this.successMessage = '';
     this.cdr.detectChanges();
 
-    const variables = this.formDefinition
-      ? this.buildVariablesPayload()
-      : {};
-
-    this.taskService
-      .completarTareaConVariables(this.task.id, variables)
-      .pipe(
-        finalize(() => {
-          this.isCompleting = false;
-          this.cdr.detectChanges();
-        }),
-      )
-      .subscribe({
-        next: () => {
-          this.successMessage = 'La tarea se completó correctamente.';
-          this.cdr.detectChanges();
-          setTimeout(() => void this.router.navigate(['/tasks']), 900);
-        },
-        error: (error: any) => {
-          this.errorMessage = error?.error?.message || 'No se pudo completar la tarea.';
-          this.cdr.detectChanges();
-        },
+    try {
+      const variables = this.formDefinition ? await this.buildVariablesPayload() : {};
+      console.info('[TaskDetail] Completing task with variables', {
+        taskId: this.task.id,
+        variables,
       });
+
+      await firstValueFrom(this.taskService.completarTareaConVariables(this.task.id, variables));
+      this.successMessage = 'La tarea se completó correctamente.';
+      this.cdr.detectChanges();
+      setTimeout(() => void this.router.navigate(['/tasks']), 900);
+    } catch (error: any) {
+      this.errorMessage = error?.error?.message || 'No se pudo completar la tarea.';
+      this.cdr.detectChanges();
+    } finally {
+      this.isCompleting = false;
+      this.cdr.detectChanges();
+    }
   }
 
   private loadFormForTask(task: TareaInstancia): void {
@@ -272,6 +389,7 @@ export class TaskDetailComponent implements OnInit {
         next: (response: ApiResponse<FormDefinition>) => {
           this.formDefinition = response.data ?? null;
           this.formValues = {};
+          this.fileUploadState = {};
           if (!this.formDefinition) {
             this.formMessage = 'Esta tarea no tiene formulario configurado.';
           }
@@ -279,6 +397,7 @@ export class TaskDetailComponent implements OnInit {
         },
         error: () => {
           this.formDefinition = null;
+          this.fileUploadState = {};
           this.formMessage = 'Esta tarea no tiene formulario configurado.';
           this.cdr.detectChanges();
         },
@@ -295,7 +414,7 @@ export class TaskDetailComponent implements OnInit {
     return key?.trim() || '';
   }
 
-  private buildVariablesPayload(): Record<string, unknown> {
+  private async buildVariablesPayload(): Promise<Record<string, unknown>> {
     const variables: Record<string, unknown> = {};
     if (!this.formDefinition) {
       return variables;
@@ -307,10 +426,35 @@ export class TaskDetailComponent implements OnInit {
         continue;
       }
 
+      if (field.type === 'file') {
+        variables[field.name] = await this.uploadFileValue(value as File | UploadedFileMetadata | null);
+        continue;
+      }
+
       variables[field.name] = this.normalizeVariableValue(field, value);
     }
 
     return variables;
+  }
+
+  private async uploadFileValue(value: File | UploadedFileMetadata | null): Promise<UploadedFileMetadata | null> {
+    if (!value) {
+      return null;
+    }
+
+    if (!(value instanceof File)) {
+      return value;
+    }
+
+    const response = await firstValueFrom(this.fileUploadService.upload(value));
+    return response.data ?? {
+      fileName: value.name,
+      secureUrl: '',
+      publicId: '',
+      mimeType: value.type,
+      size: value.size,
+      resourceType: 'auto',
+    };
   }
 
   private normalizeVariableValue(field: FormFieldDefinition, value: unknown): unknown {

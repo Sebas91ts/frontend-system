@@ -277,6 +277,142 @@
   color: #0f172a;
 }
 
+.quick-work {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: 1fr minmax(360px, 560px);
+}
+
+.quick-work__backdrop {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.quick-work__panel {
+  background: #ffffff;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  padding: 1.25rem;
+  box-shadow: -24px 0 40px rgba(15, 23, 42, 0.18);
+  overflow: auto;
+}
+
+.quick-work__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.quick-work__header h2 {
+  margin: 0.25rem 0;
+  font-size: 1.5rem;
+  color: #0f172a;
+}
+
+.quick-work__header p {
+  margin: 0;
+  color: #64748b;
+}
+
+.quick-work__body {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+
+.quick-work__meta {
+  margin-bottom: 0.25rem;
+}
+
+.quick-work__form {
+  display: grid;
+  gap: 1rem;
+}
+
+.quick-work__form h3 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.quick-work__field {
+  display: grid;
+}
+
+.quick-work__field label {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.quick-work__field span {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.quick-work__field input,
+.quick-work__field textarea,
+.quick-work__field select {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 0.8rem 0.95rem;
+  background: #ffffff;
+  font: inherit;
+}
+
+.quick-work__field textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.quick-work__file {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.quick-work__file-state {
+  font-size: 0.92rem;
+  color: #334155;
+}
+
+.quick-work__file-state.success {
+  color: #166534;
+}
+
+.quick-work__file-state.error {
+  color: #dc2626;
+}
+
+.quick-work__empty {
+  padding: 1rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #334155;
+}
+
+.quick-work__footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+@media (max-width: 900px) {
+  .quick-work {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-work__panel {
+    border-radius: 20px 20px 0 0;
+    max-height: 92vh;
+    align-self: end;
+  }
+}
+
 @media (max-width: 768px) {
   .task-inbox-hero {
     flex-direction: column;

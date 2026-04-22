@@ -83,20 +83,22 @@
 
       <div class="task-card__footer">
         <span class="task-state pending">ACTIVA</span>
-        <button type="button" class="toolbar-button accent task-action" (click)="openTask(task)">
-          Ver detalle
+        <button
+          type="button"
+          class="toolbar-button accent task-action"
+          *ngIf="canWorkNow(task)"
+          (click)="openQuickWork(task)"
+        >
+          Trabajar ahora
         </button>
-        <ng-container *ngIf="viewMode === 'mine'">
-          <button type="button" class="toolbar-button task-action" (click)="completeTask(task)" [disabled]="isLoading">
-            Completar
-          </button>
-        </ng-container>
+        <span class="task-card__hint" *ngIf="!canWorkNow(task)">
+          Primero debes tomar la tarea para poder trabajarla.
+        </span>
 
-        <ng-container *ngIf="viewMode === 'area'">
+        <ng-container *ngIf="viewMode === 'area' && !task.assignee">
           <button
             type="button"
             class="toolbar-button task-action"
-            *ngIf="!task.assignee"
             [disabled]="isLoading || !canClaimTask(task)"
             (click)="takeTask(task)"
           >
@@ -105,7 +107,7 @@
           <span class="task-card__hint" *ngIf="!task.assignee">{{ getClaimHint(task) }}</span>
         </ng-container>
 
-        <ng-container *ngIf="viewMode === 'all'">
+        <ng-container *ngIf="viewMode === 'all' && task.assignee">
           <span class="task-card__hint">{{ getClaimHint(task) }}</span>
         </ng-container>
       </div>
@@ -118,4 +120,119 @@
       <div *ngIf="viewMode === 'all'">No hay tareas activas en Camunda.</div>
     </div>
   </section>
+</section>
+
+<section class="quick-work" *ngIf="quickWorkTask">
+  <div class="quick-work__backdrop" (click)="closeQuickWork()"></div>
+  <div class="quick-work__panel">
+    <header class="quick-work__header">
+      <div>
+        <p class="task-inbox-eyebrow">Trabajo rápido</p>
+        <h2>{{ getTaskName(quickWorkTask) }}</h2>
+        <p>{{ quickWorkProcessLabel }} · {{ quickWorkAreaLabel }}</p>
+      </div>
+      <button type="button" class="toolbar-button" (click)="closeQuickWork()" [disabled]="quickWorkSaving">Cerrar</button>
+    </header>
+
+    <div class="task-inbox-banner success" *ngIf="quickWorkSuccess">{{ quickWorkSuccess }}</div>
+    <div class="task-inbox-banner error" *ngIf="quickWorkError">{{ quickWorkError }}</div>
+    <div class="task-inbox-banner success" *ngIf="quickWorkLoading">Cargando tarea...</div>
+
+    <section class="quick-work__body" *ngIf="!quickWorkLoading">
+      <div class="task-card__meta quick-work__meta">
+        <div>
+          <dt>Asignada a</dt>
+          <dd>{{ getAssigneeLabel(quickWorkTask) }}</dd>
+        </div>
+        <div>
+          <dt>Instancia</dt>
+          <dd>{{ getInstanceShortLabel(quickWorkTask) }}</dd>
+        </div>
+        <div>
+          <dt>Area</dt>
+          <dd>{{ getAreaLabel(quickWorkTask) }}</dd>
+        </div>
+      </div>
+
+      <div class="quick-work__form" *ngIf="quickWorkHasForm; else noFormMessage">
+        <h3>{{ quickWorkForm?.title || 'Formulario de tarea' }}</h3>
+        <div class="quick-work__field" *ngFor="let field of quickWorkForm?.fields || []">
+          <label>
+            <span>
+              {{ field.label || field.name || 'Campo sin nombre' }}
+              <strong *ngIf="field.required">*</strong>
+            </span>
+
+            <ng-container [ngSwitch]="field.type">
+              <input
+                *ngSwitchCase="'text'"
+                type="text"
+                [ngModel]="getQuickWorkFieldValue(field)"
+                (ngModelChange)="setQuickWorkFieldValue(field.name, $event)"
+                [ngModelOptions]="{ standalone: true }"
+              />
+              <textarea
+                *ngSwitchCase="'textarea'"
+                [ngModel]="getQuickWorkFieldValue(field)"
+                (ngModelChange)="setQuickWorkFieldValue(field.name, $event)"
+                [ngModelOptions]="{ standalone: true }"
+              ></textarea>
+              <input
+                *ngSwitchCase="'number'"
+                type="number"
+                [ngModel]="getQuickWorkFieldValue(field)"
+                (ngModelChange)="setQuickWorkFieldValue(field.name, $event)"
+                [ngModelOptions]="{ standalone: true }"
+              />
+              <input
+                *ngSwitchCase="'date'"
+                type="date"
+                [ngModel]="getQuickWorkFieldValue(field)"
+                (ngModelChange)="setQuickWorkFieldValue(field.name, $event)"
+                [ngModelOptions]="{ standalone: true }"
+              />
+              <select
+                *ngSwitchCase="'select'"
+                [ngModel]="getQuickWorkFieldValue(field)"
+                (ngModelChange)="setQuickWorkFieldValue(field.name, $event)"
+                [ngModelOptions]="{ standalone: true }"
+              >
+                <option value="">Selecciona una opcion</option>
+                <option *ngFor="let option of field.options || []" [value]="option">{{ option }}</option>
+              </select>
+              <div *ngSwitchCase="'file'" class="quick-work__file">
+                <input type="file" (change)="onQuickWorkFileSelected(field, $event)" />
+                <div class="quick-work__file-state" *ngIf="getQuickWorkSelectedFile(field.name)">
+                  Archivo seleccionado: {{ getQuickWorkFileLabel(field.name) }}
+                </div>
+                <div class="quick-work__file-state" *ngIf="!getQuickWorkSelectedFile(field.name)">
+                  El archivo se validará al seleccionarlo y se enviará con el formulario.
+                </div>
+                <div class="quick-work__file-state error" *ngIf="getQuickWorkFileError(field.name)">
+                  {{ getQuickWorkFileError(field.name) }}
+                </div>
+              </div>
+            </ng-container>
+
+            <small *ngIf="field.helpText">{{ field.helpText }}</small>
+            <small class="task-detail-form__error" *ngIf="field.required && !getQuickWorkFieldValue(field) && field.type !== 'file'">
+              Este campo es obligatorio.
+            </small>
+          </label>
+        </div>
+      </div>
+
+      <ng-template #noFormMessage>
+        <div class="quick-work__empty">
+          Esta tarea no tiene formulario configurado. Puedes completar directamente cuando corresponda.
+        </div>
+      </ng-template>
+    </section>
+
+    <footer class="quick-work__footer">
+      <button type="button" class="toolbar-button accent" (click)="completeQuickWork()" [disabled]="quickWorkSaving || quickWorkLoading || (quickWorkHasForm && !quickWorkIsFormValid)">
+        {{ quickWorkSaving ? 'Enviando...' : 'Enviar formulario y completar' }}
+      </button>
+    </footer>
+  </div>
 </section>
