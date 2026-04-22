@@ -56,6 +56,114 @@
       </div>
     </section>
 
+    <section class="task-form-assignment" *ngIf="selectedUserTask">
+      <div class="task-form-assignment__header">
+        <p class="lane-assignment__eyebrow">User task</p>
+        <strong>{{ selectedUserTaskLabel }}</strong>
+        <span class="lane-assignment__meta">{{ taskFormContext }}</span>
+      </div>
+
+      <div class="lane-assignment__note">
+        Puedes asociar un formulario a esta tarea sin tocar el XML BPMN. El formulario se guarda por contexto del proceso.
+      </div>
+
+      <button
+        type="button"
+        class="task-form-assignment__button"
+        (click)="openTaskFormPanel(selectedUserTask)"
+        [disabled]="readonlyMode"
+      >
+        {{ hasTaskForm ? 'Editar formulario' : 'Configurar formulario' }}
+      </button>
+    </section>
+
     <div #propertiesHost class="properties-panel-host" aria-label="Panel de propiedades BPMN"></div>
   </aside>
+</section>
+
+<section class="task-form-modal" *ngIf="taskFormPanelOpen">
+  <div class="task-form-modal__backdrop" (click)="closeTaskFormPanel()"></div>
+  <div class="task-form-modal__card">
+    <header class="task-form-modal__header">
+      <div>
+        <p class="lane-assignment__eyebrow">Configuracion de formulario</p>
+        <h3>{{ formDraft.title || 'Formulario de tarea' }}</h3>
+        <p>{{ taskFormContext }}</p>
+      </div>
+      <button type="button" class="task-form-modal__close" (click)="closeTaskFormPanel()">Cerrar</button>
+    </header>
+
+    <div class="task-form-modal__status" *ngIf="formLoading">Cargando formulario...</div>
+    <div class="task-form-modal__status success" *ngIf="formSuccess">{{ formSuccess }}</div>
+    <div class="task-form-modal__status error" *ngIf="formError">{{ formError }}</div>
+
+    <label class="task-form-modal__field">
+      <span>Titulo</span>
+      <input [(ngModel)]="formDraft.title" type="text" />
+    </label>
+
+    <div class="task-form-modal__toolbar">
+      <button type="button" class="toolbar-button" (click)="addFormField()">Agregar campo</button>
+      <button type="button" class="toolbar-button accent" (click)="saveTaskForm()" [disabled]="formSaving">
+        {{ formSaving ? 'Guardando...' : 'Guardar formulario' }}
+      </button>
+    </div>
+
+    <div class="task-form-list" *ngIf="formDraft.fields.length">
+      <article class="task-form-field" *ngFor="let field of formDraft.fields; let i = index">
+        <div class="task-form-field__row">
+          <label>
+            <span>Nombre</span>
+            <input [(ngModel)]="field.name" type="text" />
+          </label>
+          <label>
+            <span>Etiqueta</span>
+            <input [(ngModel)]="field.label" type="text" />
+          </label>
+          <label>
+            <span>Tipo</span>
+            <select [(ngModel)]="field.type">
+              <option value="text">text</option>
+              <option value="textarea">textarea</option>
+              <option value="number">number</option>
+              <option value="date">date</option>
+              <option value="select">select</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="task-form-field__row">
+          <label>
+            <span>Placeholder</span>
+            <input [(ngModel)]="field.placeholder" type="text" />
+          </label>
+          <label>
+            <span>Ayuda</span>
+            <input [(ngModel)]="field.helpText" type="text" />
+          </label>
+          <label>
+            <span>Opciones separadas por coma</span>
+            <input
+              [ngModel]="(field.options || []).join(', ')"
+              (ngModelChange)="updateFieldOptions(field, $event)"
+              type="text"
+            />
+          </label>
+        </div>
+
+        <div class="task-form-field__row task-form-field__row--compact">
+          <label><input [(ngModel)]="field.required" type="checkbox" /> Requerido</label>
+          <div class="task-form-field__actions">
+            <button type="button" class="toolbar-button" (click)="moveField(i, -1)">Arriba</button>
+            <button type="button" class="toolbar-button" (click)="moveField(i, 1)">Abajo</button>
+            <button type="button" class="toolbar-button danger" (click)="removeFormField(i)">Eliminar</button>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <div class="task-form-modal__empty" *ngIf="!formDraft.fields.length && !formLoading">
+      Todavia no hay campos definidos para este formulario.
+    </div>
+  </div>
 </section>

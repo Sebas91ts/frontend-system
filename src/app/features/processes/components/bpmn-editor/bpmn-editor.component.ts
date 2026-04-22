@@ -3,8 +3,12 @@ import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, Input, NgZone,
 import { FormsModule } from '@angular/forms';
 import Modeler from 'bpmn-js/lib/Modeler';
 import { BpmnPropertiesPanelModule, BpmnPropertiesProviderModule } from 'bpmn-js-properties-panel';
+import { finalize } from 'rxjs';
 import { Area } from '../../../../core/models/area.models';
+import { ApiResponse } from '../../../../core/models/auth.models';
+import { FormDefinition, FormFieldDefinition } from '../../../../core/models/form.models';
 import { AreaService } from '../../../../core/services/area.service';
+import { FormService } from '../../../../core/services/form.service';
 import { EMPTY_BPMN_XML } from '../../shared/bpmn-templates';
 import { customModdle } from '../../shared/custom-moddle';
 
@@ -59,11 +63,28 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
   protected laneBindingMessage = '';
   protected isAreasLoading = false;
   protected areasError = '';
+  protected selectedUserTask: any | null = null;
+  protected taskFormPanelOpen = false;
+  protected formLoading = false;
+  protected formSaving = false;
+  protected formError = '';
+  protected formSuccess = '';
+  protected taskFormDefinition: FormDefinition | null = null;
+  protected formDraft: FormDefinition = {
+    id: '',
+    processKey: '',
+    processVersion: 0,
+    taskDefinitionKey: '',
+    title: '',
+    fields: [],
+    active: true,
+  };
 
   readonly sampleXml = EMPTY_BPMN_XML;
 
   constructor(
     private readonly areaService: AreaService,
+    private readonly formService: FormService,
     private readonly zone: NgZone,
     private readonly cdr: ChangeDetectorRef,
   ) {}
@@ -244,11 +265,19 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     const laneElement = this.resolveLaneElement(element);
     if (!laneElement) {
       this.clearLaneSelection();
+    } else {
+      this.selectedLaneElement = laneElement;
+      this.syncSelectedLaneState();
+    }
+
+    const userTaskElement = this.resolveUserTaskElement(element);
+    if (!userTaskElement) {
+      this.clearUserTaskSelection();
       return;
     }
 
-    this.selectedLaneElement = laneElement;
-    this.syncSelectedLaneState();
+    this.selectedUserTask = userTaskElement;
+    this.cdr.markForCheck();
   }
 
   private clearLaneSelection(): void {
@@ -256,6 +285,10 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     this.selectedLaneAreaId = '';
     this.selectedLaneAreaName = '';
     this.laneBindingMessage = '';
+  }
+
+  private clearUserTaskSelection(): void {
+    this.selectedUserTask = null;
   }
 
   private readLaneAreaId(element: any): string {
@@ -493,6 +526,207 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     }
 
     return null;
+  }
+
+  private resolveUserTaskElement(element: any | null): any | null {
+    if (!element) {
+      return null;
+    }
+
+    if (element?.businessObject?.$type === 'bpmn:UserTask' || element?.type === 'bpmn:UserTask') {
+      return element;
+    }
+
+    if (!this.modeler || !element?.id) {
+      return null;
+    }
+
+    const elementRegistry = this.modeler.get('elementRegistry') as {
+      get: (id: string) => any;
+    };
+    const registryElement = elementRegistry.get(element.id);
+
+    if (registryElement?.businessObject?.$type === 'bpmn:UserTask' || registryElement?.type === 'bpmn:UserTask') {
+      return registryElement;
+    }
+
+    return null;
+  }
+
+  protected closeTaskFormPanel(): void {
+    if (this.formSaving) {
+      return;
+    }
+
+    this.taskFormPanelOpen = false;
+  }
+
+  protected openTaskFormPanel(taskElement?: any): void {
+    const userTask = taskElement ?? this.selectedUserTask;
+    if (!userTask || this.readonlyMode) {
+      return;
+    }
+
+    this.closeContextPad();
+    this.taskFormPanelOpen = true;
+    this.formError = '';
+    this.formSuccess = '';
+    this.formLoading = true;
+    this.cdr.markForCheck();
+
+    const taskDefinitionKey = userTask.businessObject?.id || userTask.id;
+    const payloadProcessKey = this.normalizeProcessKey(this.processKey || this.processName);
+    const payloadVersion = this.processVersion ?? 1;
+
+    this.formService.obtenerFormulario(payloadProcessKey, payloadVersion, taskDefinitionKey).subscribe({
+      next: (response: ApiResponse<FormDefinition>) => {
+        const definition = response.data ?? null;
+        this.taskFormDefinition = definition;
+        if (definition) {
+          this.formDraft = { ...definition, fields: [...(definition.fields ?? [])] };
+        } else {
+          this.formDraft = {
+            id: '',
+            processKey: payloadProcessKey,
+            processVersion: payloadVersion,
+            taskDefinitionKey,
+            title: `${userTask.businessObject?.name || userTask.id} formulario`,
+            fields: [],
+            active: true,
+          };
+        }
+        this.formLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.taskFormDefinition = null;
+        this.formDraft = {
+          id: '',
+          processKey: payloadProcessKey,
+          processVersion: payloadVersion,
+          taskDefinitionKey,
+          title: `${userTask.businessObject?.name || userTask.id} formulario`,
+          fields: [],
+          active: true,
+        };
+        this.formLoading = false;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  protected addFormField(): void {
+    this.formDraft.fields = [
+      ...(this.formDraft.fields ?? []),
+      {
+        name: '',
+        label: '',
+        type: 'text',
+        required: false,
+        placeholder: '',
+        helpText: '',
+        order: (this.formDraft.fields?.length ?? 0) + 1,
+        options: [],
+      },
+    ];
+  }
+
+  protected removeFormField(index: number): void {
+    this.formDraft.fields = (this.formDraft.fields ?? []).filter((_, currentIndex) => currentIndex !== index);
+    this.reorderFormFields();
+  }
+
+  protected moveField(index: number, direction: -1 | 1): void {
+    const fields = [...(this.formDraft.fields ?? [])];
+    const target = index + direction;
+    if (target < 0 || target >= fields.length) {
+      return;
+    }
+
+    [fields[index], fields[target]] = [fields[target], fields[index]];
+    this.formDraft.fields = fields;
+    this.reorderFormFields();
+  }
+
+  protected saveTaskForm(): void {
+    if (!this.formDraft.processKey || !this.formDraft.processVersion || !this.formDraft.taskDefinitionKey) {
+      this.formError = 'Falta contexto del proceso o de la tarea.';
+      return;
+    }
+
+    this.formSaving = true;
+    this.formError = '';
+    this.formSuccess = '';
+    const request = {
+      processKey: this.formDraft.processKey,
+      processVersion: this.formDraft.processVersion,
+      taskDefinitionKey: this.formDraft.taskDefinitionKey,
+      title: this.formDraft.title,
+      fields: (this.formDraft.fields ?? []).map((field, index) => ({
+        ...field,
+        order: index + 1,
+      })) as FormFieldDefinition[],
+      active: this.formDraft.active,
+    };
+
+    const save$ = this.taskFormDefinition?.id
+      ? this.formService.actualizarFormulario(this.taskFormDefinition.id, request)
+      : this.formService.crearFormulario(request);
+
+    save$.pipe(
+      finalize(() => {
+        this.formSaving = false;
+        this.cdr.markForCheck();
+      }),
+    ).subscribe({
+      next: (response: ApiResponse<FormDefinition>) => {
+        this.taskFormDefinition = response.data ?? null;
+        this.formSuccess = 'Formulario guardado correctamente.';
+        this.cdr.markForCheck();
+      },
+      error: (error: any) => {
+        this.formError = error?.error?.message || 'No se pudo guardar el formulario.';
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  protected get selectedUserTaskLabel(): string {
+    return this.selectedUserTask?.businessObject?.name || this.selectedUserTask?.id || 'Ninguna userTask seleccionada';
+  }
+
+  protected get taskFormContext(): string {
+    return `${this.processKey || 'processKey no disponible'} · v${this.processVersion ?? 1} · ${this.formDraft.taskDefinitionKey || 'taskDefinitionKey no disponible'}`;
+  }
+
+  protected get hasTaskForm(): boolean {
+    return !!this.taskFormDefinition;
+  }
+
+  protected updateFieldOptions(field: FormFieldDefinition, raw: string): void {
+    field.options = raw
+      .split(',')
+      .map((option) => option.trim())
+      .filter((option) => !!option);
+  }
+
+  private closeContextPad(): void {
+    if (!this.modeler) {
+      return;
+    }
+
+    const contextPad = this.modeler.get('contextPad') as {
+      close?: () => void;
+    };
+
+    contextPad.close?.();
+  }
+
+  private reorderFormFields(): void {
+    this.formDraft.fields = (this.formDraft.fields ?? []).map((field, index) => ({
+      ...field,
+      order: index + 1,
+    }));
   }
 
   private restoreLaneAreaBindings(): void {
