@@ -114,6 +114,13 @@
   font-weight: 700;
 }
 
+.toolbar-button.active {
+  background: #e2e8f0;
+  color: #0f172a;
+  border-color: rgba(34, 197, 94, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.18);
+}
+
 .toolbar-button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
@@ -243,6 +250,13 @@
   flex-wrap: wrap;
 }
 
+.task-card__hint {
+  flex-basis: 100%;
+  color: #64748b;
+  font-size: 0.78rem;
+  text-align: right;
+}
+
 .task-action {
   padding-inline: 1rem;
   border: none;
@@ -258,6 +272,11 @@
   background: rgba(255, 255, 255, 0.75);
 }
 
+.task-empty__title {
+  font-weight: 700;
+  color: #0f172a;
+}
+
 @media (max-width: 768px) {
   .task-inbox-hero {
     flex-direction: column;
@@ -265,5 +284,9 @@
 
   .task-card__meta {
     grid-template-columns: 1fr;
+  }
+
+  .task-card__hint {
+    text-align: left;
   }
 }

@@ -25,7 +25,19 @@ export class TaskInstanceService {
   }
 
   listarPendientes(): Observable<ApiResponse<TareaInstancia[]>> {
-    return this.listarTodas();
+    return this.http.get<ApiResponse<TareaInstancia[]>>(`${this.apiUrl}/camunda/tasks/my`);
+  }
+
+  listarMisTareas(): Observable<ApiResponse<TareaInstancia[]>> {
+    return this.http.get<ApiResponse<TareaInstancia[]>>(`${this.apiUrl}/camunda/tasks/my`);
+  }
+
+  listarTareasDeMiArea(): Observable<ApiResponse<TareaInstancia[]>> {
+    return this.http.get<ApiResponse<TareaInstancia[]>>(`${this.apiUrl}/camunda/tasks/my-area`);
+  }
+
+  listarTodasCamunda(): Observable<ApiResponse<TareaInstancia[]>> {
+    return this.http.get<ApiResponse<TareaInstancia[]>>(`${this.apiUrl}/camunda/tasks/all`);
   }
 
   obtenerPorId(id: string): Observable<ApiResponse<TareaInstancia>> {
@@ -35,6 +47,13 @@ export class TaskInstanceService {
   completarTarea(taskId: string): Observable<ApiResponse<Record<string, unknown>>> {
     return this.http.post<ApiResponse<Record<string, unknown>>>(
       `${this.apiUrl}/camunda/tasks/${taskId}/complete`,
+      {},
+    );
+  }
+
+  tomarTarea(taskId: string): Observable<ApiResponse<Record<string, unknown>>> {
+    return this.http.post<ApiResponse<Record<string, unknown>>>(
+      `${this.apiUrl}/camunda/tasks/${taskId}/claim`,
       {},
     );
   }

@@ -13,8 +13,34 @@
       <button type="button" class="toolbar-button accent" (click)="refreshTasks()" [disabled]="isLoading">
         {{ isLoading ? 'Cargando...' : 'Refrescar' }}
       </button>
-      <button type="button" class="toolbar-button" (click)="showPending()" [disabled]="isLoading">Pendientes</button>
-      <button type="button" class="toolbar-button" (click)="showAll()" [disabled]="isLoading">Todas</button>
+      <button
+        type="button"
+        class="toolbar-button"
+        [class.active]="viewMode === 'mine'"
+        (click)="showMine()"
+        [disabled]="isLoading"
+      >
+        {{ myTasksTabLabel }}
+      </button>
+      <button
+        type="button"
+        class="toolbar-button"
+        [class.active]="viewMode === 'area'"
+        (click)="showArea()"
+        [disabled]="isLoading"
+      >
+        {{ myAreaTabLabel }}
+      </button>
+      <button
+        type="button"
+        class="toolbar-button"
+        *ngIf="showAllTab"
+        [class.active]="viewMode === 'all'"
+        (click)="showAll()"
+        [disabled]="isLoading"
+      >
+        {{ allTasksTabLabel }}
+      </button>
     </div>
   </header>
 
@@ -60,14 +86,36 @@
         <button type="button" class="toolbar-button accent task-action" (click)="openTask(task)">
           Ver detalle
         </button>
-        <button type="button" class="toolbar-button task-action" (click)="completeTask(task)" [disabled]="isLoading">
-          Completar
-        </button>
+        <ng-container *ngIf="viewMode === 'mine'">
+          <button type="button" class="toolbar-button task-action" (click)="completeTask(task)" [disabled]="isLoading">
+            Completar
+          </button>
+        </ng-container>
+
+        <ng-container *ngIf="viewMode === 'area'">
+          <button
+            type="button"
+            class="toolbar-button task-action"
+            *ngIf="!task.assignee"
+            [disabled]="isLoading || !canClaimTask(task)"
+            (click)="takeTask(task)"
+          >
+            Tomar tarea
+          </button>
+          <span class="task-card__hint" *ngIf="!task.assignee">{{ getClaimHint(task) }}</span>
+        </ng-container>
+
+        <ng-container *ngIf="viewMode === 'all'">
+          <span class="task-card__hint">{{ getClaimHint(task) }}</span>
+        </ng-container>
       </div>
     </article>
 
     <div class="task-empty" *ngIf="!isLoading && tasks.length === 0">
-      No hay tareas activas en Camunda.
+      <div class="task-empty__title">No hay tareas para mostrar</div>
+      <div *ngIf="viewMode === 'mine'">Aun no tienes tareas asignadas.</div>
+      <div *ngIf="viewMode === 'area'">No hay tareas disponibles para tomar en tu area.</div>
+      <div *ngIf="viewMode === 'all'">No hay tareas activas en Camunda.</div>
     </div>
   </section>
 </section>

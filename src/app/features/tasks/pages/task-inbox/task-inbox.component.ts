@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { finalize } from 'rxjs';
+import { finalize, forkJoin, of } from 'rxjs';
 import { TaskInstanceService } from '../../../../core/services/task-instance.service';
 import { TareaInstancia } from '../../../../core/models/task-instance.models';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -24,7 +24,10 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
   protected isLoading = false;
   protected errorMessage = '';
   protected successMessage = '';
-  protected filterMode: 'pending' | 'all' = 'pending';
+  protected viewMode: 'mine' | 'area' | 'all' = 'mine';
+  protected myTasksCount = 0;
+  protected myAreaTasksCount = 0;
+  protected allTasksCount = 0;
 
   private feedbackTimer: ReturnType<typeof setTimeout> | null = null;
   private queryParamsSubscription?: { unsubscribe: () => void };
@@ -32,7 +35,7 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.queryParamsSubscription = this.route.queryParamMap.subscribe((params) => {
       const mode = params.get('mode');
-      this.filterMode = mode === 'all' ? 'all' : 'pending';
+      this.viewMode = mode === 'area' ? 'area' : mode === 'all' ? 'all' : 'mine';
       void this.loadTasks();
     });
   }
@@ -46,8 +49,12 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
     await this.loadTasks();
   }
 
-  protected async showPending(): Promise<void> {
-    await this.router.navigate(['/tasks'], { queryParams: { mode: 'pending' } });
+  protected async showMine(): Promise<void> {
+    await this.router.navigate(['/tasks'], { queryParams: { mode: 'mine' } });
+  }
+
+  protected async showArea(): Promise<void> {
+    await this.router.navigate(['/tasks'], { queryParams: { mode: 'area' } });
   }
 
   protected async showAll(): Promise<void> {
@@ -103,8 +110,62 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
     return task.areaNombre?.trim() || 'Área no identificada';
   }
 
+  protected canClaimTask(task: TareaInstancia): boolean {
+    const user = this.authService.currentUser();
+    if (!user?.areaId || !task?.areaId || task.assignee) {
+      return false;
+    }
+
+    return user.areaId.trim().toLowerCase() === task.areaId.trim().toLowerCase();
+  }
+
+  protected getClaimHint(task: TareaInstancia): string {
+    if (task.assignee) {
+      return `Asignada a ${this.getAssigneeLabel(task)}`;
+    }
+
+    const user = this.authService.currentUser();
+    if (!task.areaId) {
+      return 'Area no identificada';
+    }
+
+    if (!user?.areaId) {
+      return `Solo usuarios del area ${this.getAreaLabel(task)} pueden tomar esta tarea`;
+    }
+
+    if (user.areaId.trim().toLowerCase() !== task.areaId.trim().toLowerCase()) {
+      return `Solo usuarios del area ${this.getAreaLabel(task)} pueden tomar esta tarea`;
+    }
+
+    return 'Puedes tomar esta tarea';
+  }
+
   protected get filterSummary(): string {
-    return this.filterMode === 'all' ? 'Todas las tareas de Camunda' : 'Tareas pendientes de Camunda';
+    if (this.viewMode === 'all') {
+      return 'Todas las tareas de Camunda';
+    }
+
+    if (this.viewMode === 'area') {
+      return 'Tareas de mi area';
+    }
+
+    return 'Mis tareas';
+  }
+
+  protected get showAllTab(): boolean {
+    return this.authService.isAdmin();
+  }
+
+  protected get myTasksTabLabel(): string {
+    return `Mis tareas${this.myTasksCount > 0 ? ` (${this.myTasksCount})` : ''}`;
+  }
+
+  protected get myAreaTabLabel(): string {
+    return `Tareas de mi area${this.myAreaTasksCount > 0 ? ` (${this.myAreaTasksCount})` : ''}`;
+  }
+
+  protected get allTasksTabLabel(): string {
+    return `Todas${this.allTasksCount > 0 ? ` (${this.allTasksCount})` : ''}`;
   }
 
   protected get processOptions(): string[] {
@@ -134,6 +195,33 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
 
   protected openTask(task: TareaInstancia): void {
     void this.router.navigate(['/tasks', task.id], { state: { task } });
+  }
+
+  protected takeTask(task: TareaInstancia): void {
+    if (!task.id || !this.canClaimTask(task)) {
+      return;
+    }
+
+    this.isLoading = true;
+    this.cdr.detectChanges();
+
+    this.taskService
+      .tomarTarea(task.id)
+      .pipe(
+        finalize(() => {
+          this.isLoading = false;
+          this.cdr.detectChanges();
+        }),
+      )
+      .subscribe({
+        next: () => {
+          this.showFeedback(`La tarea "${this.getTaskName(task)}" fue tomada correctamente.`, 'success');
+          void this.loadTasks();
+        },
+        error: (error: any) => {
+          this.showFeedback(error?.error?.message || 'No se pudo tomar la tarea.', 'error');
+        },
+      });
   }
 
   protected trackByInstance(_: number, task: TareaInstancia): string {
@@ -172,8 +260,18 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
     this.errorMessage = '';
     this.cdr.detectChanges();
 
-    this.taskService
-      .listarTodas()
+    const request$ = this.viewMode === 'all'
+      ? this.taskService.listarTodasCamunda()
+      : this.viewMode === 'area'
+        ? this.taskService.listarTareasDeMiArea()
+        : this.taskService.listarMisTareas();
+
+    forkJoin({
+      current: request$,
+      mine: this.taskService.listarMisTareas().pipe(finalize(() => undefined)),
+      area: this.taskService.listarTareasDeMiArea().pipe(finalize(() => undefined)),
+      all: this.showAllTab ? this.taskService.listarTodasCamunda().pipe(finalize(() => undefined)) : of(null),
+    })
       .pipe(
         finalize(() => {
           this.isLoading = false;
@@ -181,16 +279,20 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
         }),
       )
       .subscribe({
-        next: (response) => {
-          const tasks = response?.data ?? [];
-          this.tasks = this.filterMode === 'pending'
-            ? tasks.filter((task) => (task.id ? true : false))
-            : tasks;
+        next: (result) => {
+          const tasks = result.current?.data ?? [];
+          this.tasks = tasks;
+          this.myTasksCount = result.mine?.data?.length ?? 0;
+          this.myAreaTasksCount = result.area?.data?.length ?? 0;
+          this.allTasksCount = this.showAllTab ? (result.all?.data?.length ?? 0) : 0;
           this.showFeedback(`Se cargaron ${tasks.length} tareas activas de Camunda.`, 'success');
           this.cdr.detectChanges();
         },
         error: (error: any) => {
           this.tasks = [];
+          this.myTasksCount = 0;
+          this.myAreaTasksCount = 0;
+          this.allTasksCount = 0;
           this.showFeedback(error?.error?.message || 'No se pudieron cargar las tareas de Camunda.', 'error');
           this.cdr.detectChanges();
         },
