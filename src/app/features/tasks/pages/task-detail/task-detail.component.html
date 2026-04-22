@@ -10,7 +10,7 @@
 
     <div class="task-detail-actions">
       <button type="button" class="toolbar-button" (click)="goBack()">Volver</button>
-      <button type="button" class="toolbar-button accent" (click)="openPlaceholderAction()" [disabled]="!task || isCompleting">
+      <button type="button" class="toolbar-button accent" (click)="openPlaceholderAction()" [disabled]="!task || isCompleting || (hasForm && !isFormValid)">
         {{ isCompleting ? 'Completando...' : 'Completar tarea' }}
       </button>
       <button type="button" class="toolbar-button" (click)="toggleTechnicalDetails()" [disabled]="!task">
@@ -66,6 +66,85 @@
         <strong>{{ task.taskDefinitionKey || 'Sin key' }}</strong>
       </div>
     </div>
+  </section>
+
+  <section class="task-detail-card" *ngIf="task">
+    <div class="task-detail-row">
+      <span>Formulario de tarea</span>
+      <strong>{{ hasForm ? (formDefinition?.title || 'Formulario de tarea') : 'Esta tarea no tiene formulario configurado' }}</strong>
+    </div>
+
+    <div class="task-detail-form-message" *ngIf="formLoading">
+      Cargando formulario...
+    </div>
+
+    <div class="task-detail-form-message" *ngIf="formMessage && !formLoading">
+      {{ formMessage }}
+    </div>
+
+    <form class="task-detail-form" *ngIf="hasForm && !formLoading">
+      <div class="task-detail-form__field" *ngFor="let field of formDefinition?.fields || []">
+        <label>
+          <span>
+            {{ field.label || field.name || 'Campo sin nombre' }}
+            <strong *ngIf="field.required">*</strong>
+          </span>
+
+          <ng-container [ngSwitch]="field.type">
+            <input
+              *ngSwitchCase="'text'"
+              type="text"
+              [ngModel]="getFieldValue(field)"
+              (ngModelChange)="setFieldValue(field.name, $event)"
+              [ngModelOptions]="{ standalone: true }"
+              [required]="field.required"
+              [placeholder]="field.placeholder || ''"
+            />
+            <textarea
+              *ngSwitchCase="'textarea'"
+              [ngModel]="getFieldValue(field)"
+              (ngModelChange)="setFieldValue(field.name, $event)"
+              [ngModelOptions]="{ standalone: true }"
+              [required]="field.required"
+              [placeholder]="field.placeholder || ''"
+            ></textarea>
+            <input
+              *ngSwitchCase="'number'"
+              type="number"
+              [ngModel]="getFieldValue(field)"
+              (ngModelChange)="setFieldValue(field.name, $event)"
+              [ngModelOptions]="{ standalone: true }"
+              [required]="field.required"
+              [placeholder]="field.placeholder || ''"
+            />
+            <input
+              *ngSwitchCase="'date'"
+              type="date"
+              [ngModel]="getFieldValue(field)"
+              (ngModelChange)="setFieldValue(field.name, $event)"
+              [ngModelOptions]="{ standalone: true }"
+              [required]="field.required"
+              [placeholder]="field.placeholder || ''"
+            />
+            <select
+              *ngSwitchCase="'select'"
+              [ngModel]="getFieldValue(field)"
+              (ngModelChange)="setFieldValue(field.name, $event)"
+              [ngModelOptions]="{ standalone: true }"
+              [required]="field.required"
+            >
+              <option value="">Selecciona una opcion</option>
+              <option *ngFor="let option of field.options || []" [value]="option">{{ option }}</option>
+            </select>
+          </ng-container>
+
+          <small *ngIf="field.helpText">{{ field.helpText }}</small>
+          <small class="task-detail-form__error" *ngIf="isFieldMissing(field)">
+            Este campo es obligatorio.
+          </small>
+        </label>
+      </div>
+    </form>
   </section>
 
   <section class="task-detail-card" *ngIf="!task && !isLoading && !errorMessage">

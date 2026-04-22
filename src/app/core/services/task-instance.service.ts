@@ -51,6 +51,16 @@ export class TaskInstanceService {
     );
   }
 
+  completarTareaConVariables(
+    taskId: string,
+    variables: Record<string, unknown>,
+  ): Observable<ApiResponse<Record<string, unknown>>> {
+    return this.http.post<ApiResponse<Record<string, unknown>>>(
+      `${this.apiUrl}/camunda/tasks/${taskId}/complete`,
+      { variables },
+    );
+  }
+
   tomarTarea(taskId: string): Observable<ApiResponse<Record<string, unknown>>> {
     return this.http.post<ApiResponse<Record<string, unknown>>>(
       `${this.apiUrl}/camunda/tasks/${taskId}/claim`,

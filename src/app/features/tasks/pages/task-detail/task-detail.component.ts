@@ -1,14 +1,18 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
+import { FormDefinition, FormFieldDefinition } from '../../../../core/models/form.models';
 import { TaskInstanceService } from '../../../../core/services/task-instance.service';
+import { FormService } from '../../../../core/services/form.service';
 import { TareaInstancia } from '../../../../core/models/task-instance.models';
+import { ApiResponse } from '../../../../core/models/auth.models';
 
 @Component({
   selector: 'app-task-detail',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './task-detail.component.html',
   styleUrl: './task-detail.component.css',
 })
@@ -16,12 +20,17 @@ export class TaskDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly taskService = inject(TaskInstanceService);
+  private readonly formService = inject(FormService);
   private readonly cdr = inject(ChangeDetectorRef);
 
   protected task: TareaInstancia | null = null;
   protected isLoading = false;
   protected isCompleting = false;
   protected showTechnicalDetails = false;
+  protected formDefinition: FormDefinition | null = null;
+  protected formValues: Record<string, unknown> = {};
+  protected formMessage = '';
+  protected formLoading = false;
   protected errorMessage = '';
   protected successMessage = '';
   private loadingTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -32,6 +41,7 @@ export class TaskDetailComponent implements OnInit {
 
     if (navigationTask?.id) {
       this.task = navigationTask;
+      void this.loadFormForTask(navigationTask);
     }
 
     if (!id) {
@@ -90,6 +100,74 @@ export class TaskDetailComponent implements OnInit {
     this.showTechnicalDetails = !this.showTechnicalDetails;
   }
 
+  protected get processVersion(): number {
+    const processDefinitionId = this.task?.processDefinitionId?.trim();
+    if (!processDefinitionId) {
+      return 1;
+    }
+
+    const parts = processDefinitionId.split(':');
+    if (parts.length < 2) {
+      return 1;
+    }
+
+    const version = Number(parts[1]);
+    return Number.isFinite(version) && version > 0 ? version : 1;
+  }
+
+  protected get hasForm(): boolean {
+    return !!this.formDefinition;
+  }
+
+  protected get isFormValid(): boolean {
+    if (!this.formDefinition) {
+      return true;
+    }
+
+    return (this.formDefinition.fields ?? []).every((field) => {
+      if (!field.required) {
+        return true;
+      }
+
+      const value = this.formValues[field.name];
+      if (value === undefined || value === null) {
+        return false;
+      }
+
+      if (typeof value === 'string') {
+        return value.trim().length > 0;
+      }
+
+      return true;
+    });
+  }
+
+  protected isFieldMissing(field: FormFieldDefinition): boolean {
+    if (!field.required) {
+      return false;
+    }
+
+    const value = this.formValues[field.name];
+    if (value === undefined || value === null) {
+      return true;
+    }
+
+    return typeof value === 'string' ? value.trim().length === 0 : false;
+  }
+
+  protected getFieldValue(field: FormFieldDefinition): string | number | boolean | '' {
+    const value = this.formValues[field.name];
+    if (typeof value === 'boolean' || typeof value === 'number') {
+      return value;
+    }
+
+    return typeof value === 'string' ? value : '';
+  }
+
+  protected setFieldValue(fieldName: string, value: unknown): void {
+    this.formValues[fieldName] = value as never;
+  }
+
   private loadTask(id: string): void {
     this.isLoading = true;
     this.errorMessage = '';
@@ -116,6 +194,9 @@ export class TaskDetailComponent implements OnInit {
       .subscribe({
         next: (response) => {
           this.task = response.data ?? this.task;
+          if (this.task) {
+            void this.loadFormForTask(this.task);
+          }
           this.cdr.detectChanges();
         },
         error: (error: any) => {
@@ -130,13 +211,23 @@ export class TaskDetailComponent implements OnInit {
       return;
     }
 
+    if (this.formDefinition && !this.isFormValid) {
+      this.errorMessage = 'Completa los campos obligatorios del formulario antes de finalizar la tarea.';
+      this.cdr.detectChanges();
+      return;
+    }
+
     this.isCompleting = true;
     this.errorMessage = '';
     this.successMessage = '';
     this.cdr.detectChanges();
 
+    const variables = this.formDefinition
+      ? this.buildVariablesPayload()
+      : {};
+
     this.taskService
-      .completarTarea(this.task.id)
+      .completarTareaConVariables(this.task.id, variables)
       .pipe(
         finalize(() => {
           this.isCompleting = false;
@@ -154,6 +245,89 @@ export class TaskDetailComponent implements OnInit {
           this.cdr.detectChanges();
         },
       });
+  }
+
+  private loadFormForTask(task: TareaInstancia): void {
+    const processKey = this.extractProcessKey(task.processDefinitionId);
+    if (!processKey) {
+      this.formDefinition = null;
+      this.formMessage = 'Esta tarea no tiene formulario configurado.';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.formLoading = true;
+    this.formMessage = '';
+    this.cdr.detectChanges();
+
+    this.formService
+      .obtenerFormulario(processKey, this.processVersion, task.taskDefinitionKey || '')
+      .pipe(
+        finalize(() => {
+          this.formLoading = false;
+          this.cdr.detectChanges();
+        }),
+      )
+      .subscribe({
+        next: (response: ApiResponse<FormDefinition>) => {
+          this.formDefinition = response.data ?? null;
+          this.formValues = {};
+          if (!this.formDefinition) {
+            this.formMessage = 'Esta tarea no tiene formulario configurado.';
+          }
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          this.formDefinition = null;
+          this.formMessage = 'Esta tarea no tiene formulario configurado.';
+          this.cdr.detectChanges();
+        },
+      });
+  }
+
+  private extractProcessKey(processDefinitionId?: string | null): string {
+    const raw = processDefinitionId?.trim();
+    if (!raw) {
+      return '';
+    }
+
+    const [key] = raw.split(':');
+    return key?.trim() || '';
+  }
+
+  private buildVariablesPayload(): Record<string, unknown> {
+    const variables: Record<string, unknown> = {};
+    if (!this.formDefinition) {
+      return variables;
+    }
+
+    for (const field of this.formDefinition.fields ?? []) {
+      const value = this.formValues[field.name];
+      if (value === undefined || value === null || value === '') {
+        continue;
+      }
+
+      variables[field.name] = this.normalizeVariableValue(field, value);
+    }
+
+    return variables;
+  }
+
+  private normalizeVariableValue(field: FormFieldDefinition, value: unknown): unknown {
+    if (field.type === 'number') {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : value;
+    }
+
+    if (field.type === 'date') {
+      return String(value);
+    }
+
+    if (typeof value === 'boolean') {
+      return value;
+    }
+
+    return value;
   }
 
   private clearLoadingTimeout(): void {
