@@ -1,0 +1,20 @@
+<section class="task-form-assignment" *ngIf="visible">
+  <div class="task-form-assignment__header">
+    <p class="task-form-assignment__eyebrow">User task</p>
+    <strong>{{ selectedUserTaskLabel }}</strong>
+    <span class="task-form-assignment__meta">{{ taskFormContext }}</span>
+  </div>
+
+  <div class="task-form-assignment__note">
+    Puedes asociar un formulario a esta tarea sin tocar el XML BPMN. El formulario se guarda por contexto del proceso.
+  </div>
+
+  <button
+    type="button"
+    class="task-form-assignment__button"
+    (click)="configure.emit()"
+    [disabled]="readonlyMode"
+  >
+    {{ hasTaskForm ? 'Editar formulario' : 'Configurar formulario' }}
+  </button>
+</section>

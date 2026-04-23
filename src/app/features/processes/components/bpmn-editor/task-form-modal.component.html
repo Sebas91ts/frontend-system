@@ -1,0 +1,87 @@
+<section class="task-form-modal" *ngIf="open">
+  <div class="task-form-modal__backdrop" (click)="close.emit()"></div>
+  <div class="task-form-modal__card">
+    <header class="task-form-modal__header">
+      <div>
+        <p class="task-form-modal__eyebrow">Configuracion de formulario</p>
+        <h3>{{ formDraft.title || 'Formulario de tarea' }}</h3>
+        <p>{{ formContext }}</p>
+      </div>
+      <button type="button" class="task-form-modal__close" (click)="close.emit()">Cerrar</button>
+    </header>
+
+    <div class="task-form-modal__status" *ngIf="formLoading">Cargando formulario...</div>
+    <div class="task-form-modal__status success" *ngIf="formSuccess">{{ formSuccess }}</div>
+    <div class="task-form-modal__status error" *ngIf="formError">{{ formError }}</div>
+
+    <label class="task-form-modal__field">
+      <span>Titulo</span>
+      <input [(ngModel)]="formDraft.title" type="text" />
+    </label>
+
+    <div class="task-form-modal__toolbar">
+      <button type="button" class="toolbar-button" (click)="addField.emit()">Agregar campo</button>
+      <button type="button" class="toolbar-button accent" (click)="save.emit()" [disabled]="formSaving">
+        {{ formSaving ? 'Guardando...' : 'Guardar formulario' }}
+      </button>
+    </div>
+
+    <div class="task-form-list" *ngIf="formDraft.fields.length">
+      <article class="task-form-field" *ngFor="let field of formDraft.fields; let i = index">
+        <div class="task-form-field__row">
+          <label>
+            <span>Nombre</span>
+            <input [(ngModel)]="field.name" type="text" />
+          </label>
+          <label>
+            <span>Etiqueta</span>
+            <input [(ngModel)]="field.label" type="text" />
+          </label>
+          <label>
+            <span>Tipo</span>
+            <select [(ngModel)]="field.type">
+              <option value="text">text</option>
+              <option value="textarea">textarea</option>
+              <option value="number">number</option>
+              <option value="date">date</option>
+              <option value="select">select</option>
+              <option value="file">file</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="task-form-field__row">
+          <label>
+            <span>Placeholder</span>
+            <input [(ngModel)]="field.placeholder" type="text" />
+          </label>
+          <label>
+            <span>Ayuda</span>
+            <input [(ngModel)]="field.helpText" type="text" />
+          </label>
+          <label>
+            <span>Opciones separadas por coma</span>
+            <input
+              [ngModel]="(field.options || []).join(', ')"
+              (ngModelChange)="updateOptions.emit({ field, raw: $event })"
+              type="text"
+            />
+          </label>
+        </div>
+
+        <div class="task-form-field__row task-form-field__row--compact">
+          <label><input [(ngModel)]="field.required" type="checkbox" /> Requerido</label>
+          <div class="task-form-field__actions">
+            <button type="button" class="toolbar-button" (click)="moveField.emit({ index: i, direction: -1 })">Arriba</button>
+            <button type="button" class="toolbar-button" (click)="moveField.emit({ index: i, direction: 1 })">Abajo</button>
+            <button type="button" class="toolbar-button danger" (click)="removeField.emit(i)">Eliminar</button>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <div class="task-form-modal__empty" *ngIf="!formDraft.fields.length && !formLoading">
+      Todavia no hay campos definidos para este formulario.
+    </div>
+  </div>
+</section>

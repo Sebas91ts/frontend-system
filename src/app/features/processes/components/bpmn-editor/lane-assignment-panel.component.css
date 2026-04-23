@@ -1,0 +1,73 @@
+.lane-assignment {
+  margin: 1rem;
+  padding: 1rem;
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  background: #eff6ff;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.lane-assignment__header {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.lane-assignment__eyebrow {
+  margin: 0;
+  color: #2563eb;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+}
+
+.lane-assignment__meta {
+  color: #475569;
+  font-size: 0.82rem;
+}
+
+.lane-assignment__field {
+  display: grid;
+  gap: 0.35rem;
+  color: #0f172a;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.lane-assignment__field span {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  color: #475569;
+}
+
+.lane-assignment__field select {
+  width: 100%;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #111827;
+  padding: 0.8rem 0.9rem;
+  font: inherit;
+  outline: none;
+}
+
+.lane-assignment__note {
+  border-radius: 10px;
+  padding: 0.75rem 0.85rem;
+  background: rgba(255, 255, 255, 0.7);
+  color: #1e3a8a;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.lane-assignment__note.error {
+  background: rgba(254, 226, 226, 0.9);
+  color: #991b1b;
+}
+
+.lane-assignment__note:not(.error) {
+  border: 1px solid rgba(191, 219, 254, 0.7);
+}
+
