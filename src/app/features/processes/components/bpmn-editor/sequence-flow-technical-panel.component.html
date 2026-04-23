@@ -1,0 +1,51 @@
+<section class="sequence-flow-panel" *ngIf="visible && technicalState">
+  <div class="sequence-flow-panel__header">
+    <p class="sequence-flow-panel__eyebrow">Sequence flow tecnico</p>
+    <strong>{{ technicalState.flowId }}</strong>
+    <span class="sequence-flow-panel__meta">{{ technicalState.sourceGatewayLabel }} → {{ technicalState.targetLabel }}</span>
+  </div>
+
+  <div class="sequence-flow-panel__summary">
+    <div><span>Gateway origen</span><strong>{{ technicalState.sourceGatewayId }}</strong></div>
+    <div><span>Target</span><strong>{{ technicalState.targetId }}</strong></div>
+  </div>
+
+  <label class="sequence-flow-panel__field">
+    <span>Condicion BPMN actual</span>
+    <textarea
+      [ngModel]="conditionDraft"
+      (ngModelChange)="conditionDraftChange.emit($event)"
+      [disabled]="readonlyMode"
+      rows="4"
+      spellcheck="false"
+      placeholder="${aprobado == true}"
+    ></textarea>
+  </label>
+
+  <label class="sequence-flow-panel__checkbox">
+    <input
+      type="checkbox"
+      [ngModel]="defaultFlowDraft"
+      (ngModelChange)="defaultFlowDraftChange.emit($event)"
+      [disabled]="readonlyMode"
+    />
+    Marcar como default flow del gateway
+  </label>
+
+  <div class="sequence-flow-panel__note">
+    Estado actual: {{ technicalState.isDefaultFlow ? 'Default flow' : 'Flow condicionado o normal' }}
+  </div>
+
+  <div class="sequence-flow-panel__note" *ngIf="feedbackMessage">
+    {{ feedbackMessage }}
+  </div>
+
+  <button
+    type="button"
+    class="sequence-flow-panel__button"
+    (click)="applyChanges.emit()"
+    [disabled]="readonlyMode"
+  >
+    Aplicar cambios tecnicos
+  </button>
+</section>

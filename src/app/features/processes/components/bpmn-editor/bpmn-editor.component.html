@@ -23,6 +23,18 @@
       (areaChange)="onLaneAreaChange($event)"
     />
 
+    <app-sequence-flow-technical-panel
+      [visible]="!!selectedSequenceFlowElement"
+      [readonlyMode]="readonlyMode"
+      [technicalState]="selectedSequenceFlowTechnicalState"
+      [conditionDraft]="selectedSequenceFlowConditionDraft"
+      [defaultFlowDraft]="selectedSequenceFlowDefaultDraft"
+      [feedbackMessage]="sequenceFlowFeedbackMessage"
+      (conditionDraftChange)="selectedSequenceFlowConditionDraft = $event"
+      (defaultFlowDraftChange)="selectedSequenceFlowDefaultDraft = $event"
+      (applyChanges)="applySequenceFlowTechnicalChanges()"
+    />
+
     <app-task-form-assignment-card
       [visible]="!!selectedUserTask"
       [selectedUserTaskLabel]="selectedUserTaskLabel"

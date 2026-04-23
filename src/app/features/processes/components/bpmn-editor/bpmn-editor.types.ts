@@ -10,3 +10,18 @@ export type LaneAreaBinding = {
   matchedByName: boolean;
 };
 
+export type SequenceFlowTechnicalState = {
+  flowId: string;
+  sourceGatewayId: string;
+  sourceGatewayLabel: string;
+  targetId: string;
+  targetLabel: string;
+  conditionExpression: string;
+  isDefaultFlow: boolean;
+};
+
+export type ExclusiveGatewayValidationResult = {
+  valid: boolean;
+  message: string;
+  invalidGatewayIds: string[];
+};

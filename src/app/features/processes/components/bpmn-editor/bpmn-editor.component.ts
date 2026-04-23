@@ -10,8 +10,15 @@ import { AreaService } from '../../../../core/services/area.service';
 import { FormService } from '../../../../core/services/form.service';
 import { EMPTY_BPMN_XML } from '../../shared/bpmn-templates';
 import { customModdle } from '../../shared/custom-moddle';
-import { LaneAreaBinding, LaneValidationResult } from './bpmn-editor.types';
+import { validateExclusiveGatewayXml } from '../../shared/bpmn-gateway-validation';
+import {
+  ExclusiveGatewayValidationResult,
+  LaneAreaBinding,
+  LaneValidationResult,
+  SequenceFlowTechnicalState,
+} from './bpmn-editor.types';
 import { LaneAssignmentPanelComponent } from './lane-assignment-panel.component';
+import { SequenceFlowTechnicalPanelComponent } from './sequence-flow-technical-panel.component';
 import { TaskFormAssignmentCardComponent } from './task-form-assignment-card.component';
 import { TaskFormModalComponent } from './task-form-modal.component';
 
@@ -25,6 +32,7 @@ type SaveXmlResult = {
   imports: [
     CommonModule,
     LaneAssignmentPanelComponent,
+    SequenceFlowTechnicalPanelComponent,
     TaskFormAssignmentCardComponent,
     TaskFormModalComponent,
   ],
@@ -59,6 +67,10 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
   protected laneBindingMessage = '';
   protected isAreasLoading = false;
   protected areasError = '';
+  protected selectedSequenceFlowElement: any | null = null;
+  protected selectedSequenceFlowConditionDraft = '';
+  protected selectedSequenceFlowDefaultDraft = false;
+  protected sequenceFlowFeedbackMessage = '';
   protected selectedUserTask: any | null = null;
   protected taskFormPanelOpen = false;
   protected formLoading = false;
@@ -227,6 +239,19 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     };
   }
 
+  public async validateExclusiveGatewayAssignments(): Promise<ExclusiveGatewayValidationResult> {
+    try {
+      const xml = await this.exportToXml();
+      return validateExclusiveGatewayXml(xml);
+    } catch {
+      return {
+        valid: false,
+        message: 'No se pudo exportar el XML BPMN para validar los exclusive gateways.',
+        invalidGatewayIds: [],
+      };
+    }
+  }
+
   protected closeTaskFormPanel(): void {
     if (this.formSaving) {
       return;
@@ -377,12 +402,46 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     return !!this.taskFormDefinition;
   }
 
+  protected get selectedSequenceFlowTechnicalState(): SequenceFlowTechnicalState | null {
+    if (!this.selectedSequenceFlowElement) {
+      return null;
+    }
+
+    const businessObject = this.selectedSequenceFlowElement.businessObject;
+    const sourceGateway = businessObject?.sourceRef;
+    const target = businessObject?.targetRef;
+
+    return {
+      flowId: businessObject?.id || this.selectedSequenceFlowElement.id || 'sequenceFlow sin id',
+      sourceGatewayId: sourceGateway?.id || 'Gateway sin id',
+      sourceGatewayLabel: sourceGateway?.name || sourceGateway?.id || 'ExclusiveGateway',
+      targetId: target?.id || 'Nodo destino sin id',
+      targetLabel: target?.name || target?.id || 'Nodo destino',
+      conditionExpression: this.readSequenceFlowCondition(this.selectedSequenceFlowElement),
+      isDefaultFlow: this.isDefaultSequenceFlow(this.selectedSequenceFlowElement),
+    };
+  }
+
   protected onTaskFormFieldMove(event: { index: number; direction: -1 | 1 }): void {
     this.moveField(event.index, event.direction);
   }
 
   protected onTaskFormOptionsChange(event: { field: FormFieldDefinition; raw: string }): void {
     this.updateFieldOptions(event.field, event.raw);
+  }
+
+  protected applySequenceFlowTechnicalChanges(): void {
+    if (!this.selectedSequenceFlowElement || this.readonlyMode) {
+      return;
+    }
+
+    this.updateSequenceFlowCondition(this.selectedSequenceFlowConditionDraft);
+    this.updateSequenceFlowDefault(this.selectedSequenceFlowDefaultDraft);
+    this.syncSelectedSequenceFlowState();
+    this.sequenceFlowFeedbackMessage = this.selectedSequenceFlowDefaultDraft
+      ? 'Default flow y condicion tecnica actualizados.'
+      : 'Condicion tecnica del sequenceFlow actualizada.';
+    this.cdr.markForCheck();
   }
 
   protected updateFieldOptions(field: FormFieldDefinition, raw: string): void {
@@ -435,6 +494,14 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
       this.syncSelectedLaneState();
     }
 
+    const sequenceFlowElement = this.resolveExclusiveGatewaySequenceFlowElement(element);
+    if (!sequenceFlowElement) {
+      this.clearSequenceFlowSelection();
+    } else {
+      this.selectedSequenceFlowElement = sequenceFlowElement;
+      this.syncSelectedSequenceFlowState();
+    }
+
     const userTaskElement = this.resolveUserTaskElement(element);
     if (!userTaskElement) {
       this.clearUserTaskSelection();
@@ -456,6 +523,13 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     this.selectedUserTask = null;
   }
 
+  private clearSequenceFlowSelection(): void {
+    this.selectedSequenceFlowElement = null;
+    this.selectedSequenceFlowConditionDraft = '';
+    this.selectedSequenceFlowDefaultDraft = false;
+    this.sequenceFlowFeedbackMessage = '';
+  }
+
   private readLaneAreaId(element: any): string {
     const extensionValues = element?.businessObject?.extensionElements?.values ?? [];
     const areaRef = extensionValues.find((value: any) => value?.$type === 'custom:areaRef');
@@ -473,6 +547,16 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     this.laneBindingMessage = binding.areaId
       ? `Lane vinculada a ${binding.areaName}.`
       : 'Esta lane aun no tiene un area asignada.';
+    this.cdr.markForCheck();
+  }
+
+  private syncSelectedSequenceFlowState(): void {
+    if (!this.selectedSequenceFlowElement) {
+      return;
+    }
+
+    this.selectedSequenceFlowConditionDraft = this.readSequenceFlowCondition(this.selectedSequenceFlowElement);
+    this.selectedSequenceFlowDefaultDraft = this.isDefaultSequenceFlow(this.selectedSequenceFlowElement);
     this.cdr.markForCheck();
   }
 
@@ -543,6 +627,16 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
         } else {
           this.selectedLaneElement = laneElement;
           this.syncSelectedLaneState();
+        }
+      }
+
+      if (this.selectedSequenceFlowElement) {
+        const sequenceFlowElement = this.resolveExclusiveGatewaySequenceFlowElement(this.selectedSequenceFlowElement);
+        if (!sequenceFlowElement) {
+          this.clearSequenceFlowSelection();
+        } else {
+          this.selectedSequenceFlowElement = sequenceFlowElement;
+          this.syncSelectedSequenceFlowState();
         }
       }
 
@@ -718,6 +812,45 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     return null;
   }
 
+  private resolveExclusiveGatewaySequenceFlowElement(element: any | null): any | null {
+    const sequenceFlow = this.resolveSequenceFlowElement(element);
+    if (!sequenceFlow) {
+      return null;
+    }
+
+    const sourceBusinessObject = sequenceFlow?.businessObject?.sourceRef;
+    if (!sourceBusinessObject || sourceBusinessObject.$type !== 'bpmn:ExclusiveGateway') {
+      return null;
+    }
+
+    return sequenceFlow;
+  }
+
+  private resolveSequenceFlowElement(element: any | null): any | null {
+    if (!element) {
+      return null;
+    }
+
+    if (element?.businessObject?.$type === 'bpmn:SequenceFlow' || element?.type === 'bpmn:SequenceFlow') {
+      return element;
+    }
+
+    if (!this.modeler || !element?.id) {
+      return null;
+    }
+
+    const elementRegistry = this.modeler.get('elementRegistry') as {
+      get: (id: string) => any;
+    };
+    const registryElement = elementRegistry.get(element.id);
+
+    if (registryElement?.businessObject?.$type === 'bpmn:SequenceFlow' || registryElement?.type === 'bpmn:SequenceFlow') {
+      return registryElement;
+    }
+
+    return null;
+  }
+
   private closeContextPad(): void {
     if (!this.modeler) {
       return;
@@ -728,6 +861,58 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     };
 
     contextPad.close?.();
+  }
+
+  private readSequenceFlowCondition(element: any): string {
+    const conditionExpression = element?.businessObject?.conditionExpression;
+    return conditionExpression?.body ?? '';
+  }
+
+  private isDefaultSequenceFlow(element: any): boolean {
+    const businessObject = element?.businessObject;
+    return businessObject?.sourceRef?.default === businessObject;
+  }
+
+  private updateSequenceFlowCondition(rawCondition: string): void {
+    if (!this.modeler || !this.selectedSequenceFlowElement) {
+      return;
+    }
+
+    const condition = rawCondition ?? '';
+    const trimmedCondition = condition.trim();
+    const moddle = this.modeler.get('moddle') as {
+      create: (type: string, attrs?: Record<string, unknown>) => any;
+    };
+    const modeling = this.modeler.get('modeling') as {
+      updateProperties: (element: any, properties: Record<string, unknown>) => void;
+    };
+
+    const conditionExpression = trimmedCondition
+      ? moddle.create('bpmn:FormalExpression', { body: condition })
+      : undefined;
+
+    modeling.updateProperties(this.selectedSequenceFlowElement, {
+      conditionExpression,
+    });
+  }
+
+  private updateSequenceFlowDefault(markAsDefault: boolean): void {
+    if (!this.modeler || !this.selectedSequenceFlowElement) {
+      return;
+    }
+
+    const sourceElement = this.selectedSequenceFlowElement.source;
+    if (!sourceElement) {
+      return;
+    }
+
+    const modeling = this.modeler.get('modeling') as {
+      updateProperties: (element: any, properties: Record<string, unknown>) => void;
+    };
+
+    modeling.updateProperties(sourceElement, {
+      default: markAsDefault ? this.selectedSequenceFlowElement.businessObject : undefined,
+    });
   }
 
   private reorderFormFields(): void {

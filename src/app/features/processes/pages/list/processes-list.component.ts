@@ -5,6 +5,7 @@ import { finalize, timeout } from 'rxjs';
 import { Proceso } from '../../../../core/models/process.models';
 import { ProcessService } from '../../../../core/services/process.service';
 import { EMPTY_BPMN_XML } from '../../shared/bpmn-templates';
+import { validateExclusiveGatewayXml } from '../../shared/bpmn-gateway-validation';
 import { ProcessDialogsComponent } from '../../components/process-dialogs/process-dialogs.component';
 import { ProcessListPanelComponent } from '../../components/process-list-panel/process-list-panel.component';
 
@@ -173,6 +174,12 @@ export class ProcessesListComponent implements OnInit, OnDestroy {
 
   protected publishProceso(proceso: Proceso): void {
     if (this.publishingId || proceso.estado !== 'BORRADOR') {
+      return;
+    }
+
+    const gatewayValidation = validateExclusiveGatewayXml(proceso.xml ?? '');
+    if (!gatewayValidation.valid) {
+      this.showFeedback(gatewayValidation.message, 'error');
       return;
     }
 
