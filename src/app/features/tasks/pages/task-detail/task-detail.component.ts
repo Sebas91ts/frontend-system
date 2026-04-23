@@ -3,7 +3,12 @@ import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { finalize, firstValueFrom } from 'rxjs';
-import { FormDefinition, FormFieldDefinition, UploadedFileMetadata } from '../../../../core/models/form.models';
+import {
+  FormDefinition,
+  FormFieldDefinition,
+  FormFieldOptionDefinition,
+  UploadedFileMetadata,
+} from '../../../../core/models/form.models';
 import { FileUploadService } from '../../../../core/services/file-upload.service';
 import { TaskInstanceService } from '../../../../core/services/task-instance.service';
 import { FormService } from '../../../../core/services/form.service';
@@ -166,6 +171,14 @@ export class TaskDetailComponent implements OnInit {
         return !!fileMeta?.secureUrl || !!fileMeta?.publicId || !!fileValue;
       }
 
+      if (field.type === 'checkbox') {
+        return this.formValues[field.name] === true;
+      }
+
+      if (field.type === 'checklist') {
+        return this.getChecklistValues(field.name).length > 0;
+      }
+
       const value = this.formValues[field.name];
       if (value === undefined || value === null) {
         return false;
@@ -194,6 +207,14 @@ export class TaskDetailComponent implements OnInit {
       return !fileMeta?.secureUrl && !fileMeta?.publicId && !fileValue;
     }
 
+    if (field.type === 'checkbox') {
+      return this.formValues[field.name] !== true;
+    }
+
+    if (field.type === 'checklist') {
+      return this.getChecklistValues(field.name).length === 0;
+    }
+
     const value = this.formValues[field.name];
     if (value === undefined || value === null) {
       return true;
@@ -213,6 +234,35 @@ export class TaskDetailComponent implements OnInit {
 
   protected setFieldValue(fieldName: string, value: unknown): void {
     this.formValues[fieldName] = value as never;
+  }
+
+  protected getFieldOptions(field: FormFieldDefinition): FormFieldOptionDefinition[] {
+    if (field.optionItems?.length) {
+      return field.optionItems;
+    }
+
+    return (field.options ?? []).map((option) => ({
+      label: option,
+      value: option,
+    }));
+  }
+
+  protected getChecklistValues(fieldName: string): string[] {
+    const value = this.formValues[fieldName];
+    return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+  }
+
+  protected isChecklistOptionSelected(fieldName: string, optionValue: string): boolean {
+    return this.getChecklistValues(fieldName).includes(optionValue);
+  }
+
+  protected toggleChecklistValue(fieldName: string, optionValue: string, checked: boolean): void {
+    const currentValues = this.getChecklistValues(fieldName);
+    const nextValues = checked
+      ? Array.from(new Set([...currentValues, optionValue]))
+      : currentValues.filter((value) => value !== optionValue);
+
+    this.formValues[fieldName] = nextValues;
   }
 
   protected getSelectedFile(fieldName: string): File | null {
@@ -426,6 +476,10 @@ export class TaskDetailComponent implements OnInit {
         continue;
       }
 
+      if (field.type === 'checklist' && Array.isArray(value) && value.length === 0) {
+        continue;
+      }
+
       if (field.type === 'file') {
         variables[field.name] = await this.uploadFileValue(value as File | UploadedFileMetadata | null);
         continue;
@@ -465,6 +519,10 @@ export class TaskDetailComponent implements OnInit {
 
     if (field.type === 'date') {
       return String(value);
+    }
+
+    if (field.type === 'checklist') {
+      return JSON.stringify(Array.isArray(value) ? value : []);
     }
 
     if (typeof value === 'boolean') {

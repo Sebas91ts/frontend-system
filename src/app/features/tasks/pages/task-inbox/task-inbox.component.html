@@ -198,8 +198,26 @@
                 [ngModelOptions]="{ standalone: true }"
               >
                 <option value="">Selecciona una opcion</option>
-                <option *ngFor="let option of field.options || []" [value]="option">{{ option }}</option>
+                <option *ngFor="let option of getQuickWorkFieldOptions(field)" [value]="option.value">{{ option.label }}</option>
               </select>
+              <label *ngSwitchCase="'checkbox'" class="quick-work__choice">
+                <input
+                  type="checkbox"
+                  [checked]="getQuickWorkFieldValue(field) === true"
+                  (change)="setQuickWorkFieldValue(field.name, $any($event.target).checked)"
+                />
+                <span>{{ field.helpText || 'Marca esta opcion si corresponde.' }}</span>
+              </label>
+              <div *ngSwitchCase="'checklist'" class="quick-work__checklist">
+                <label class="quick-work__choice" *ngFor="let option of getQuickWorkFieldOptions(field)">
+                  <input
+                    type="checkbox"
+                    [checked]="isQuickWorkChecklistSelected(field.name, option.value)"
+                    (change)="toggleQuickWorkChecklistValue(field.name, option.value, $any($event.target).checked)"
+                  />
+                  <span>{{ option.label }}</span>
+                </label>
+              </div>
               <div *ngSwitchCase="'file'" class="quick-work__file">
                 <input type="file" (change)="onQuickWorkFileSelected(field, $event)" />
                 <div class="quick-work__file-state" *ngIf="getQuickWorkSelectedFile(field.name)">
@@ -215,7 +233,7 @@
             </ng-container>
 
             <small *ngIf="field.helpText">{{ field.helpText }}</small>
-            <small class="task-detail-form__error" *ngIf="field.required && !getQuickWorkFieldValue(field) && field.type !== 'file'">
+            <small class="task-detail-form__error" *ngIf="isQuickWorkFieldMissing(field)">
               Este campo es obligatorio.
             </small>
           </label>

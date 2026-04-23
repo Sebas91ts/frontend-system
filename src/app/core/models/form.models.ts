@@ -1,12 +1,28 @@
+export interface FormFieldOptionDefinition {
+  label: string;
+  value: string;
+}
+
+export type FormFieldType =
+  | 'text'
+  | 'textarea'
+  | 'number'
+  | 'date'
+  | 'select'
+  | 'checkbox'
+  | 'checklist'
+  | 'file';
+
 export interface FormFieldDefinition {
   name: string;
   label: string;
-  type: 'text' | 'textarea' | 'number' | 'date' | 'select' | 'file';
+  type: FormFieldType;
   required: boolean;
   placeholder?: string | null;
   helpText?: string | null;
   order: number;
   options?: string[] | null;
+  optionItems?: FormFieldOptionDefinition[] | null;
 }
 
 export interface UploadedFileMetadata {
@@ -19,7 +35,7 @@ export interface UploadedFileMetadata {
 }
 
 export interface FormFieldValue {
-  value?: string | number | boolean | UploadedFileMetadata | null;
+  value?: string | number | boolean | string[] | UploadedFileMetadata | null;
   file?: UploadedFileMetadata | null;
 }
 

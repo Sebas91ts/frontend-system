@@ -56,7 +56,9 @@
   gap: 0.35rem;
 }
 
-.sequence-flow-panel__field textarea {
+.sequence-flow-panel__field textarea,
+.sequence-flow-panel__field select,
+.sequence-flow-panel__field input {
   width: 100%;
   border: 1px solid #fdba74;
   border-radius: 12px;
@@ -64,8 +66,11 @@
   color: #431407;
   padding: 0.8rem 0.9rem;
   font: inherit;
-  resize: vertical;
   outline: none;
+}
+
+.sequence-flow-panel__field textarea {
+  resize: vertical;
   font-family: 'Consolas', 'SFMono-Regular', monospace;
 }
 
@@ -77,6 +82,15 @@
   font-size: 0.88rem;
 }
 
+.sequence-flow-panel__builder {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.sequence-flow-panel__builder--disabled {
+  opacity: 0.65;
+}
+
 .sequence-flow-panel__note {
   border-radius: 10px;
   padding: 0.75rem 0.85rem;
@@ -85,6 +99,34 @@
   color: #9a3412;
   font-size: 0.84rem;
   line-height: 1.5;
+}
+
+.sequence-flow-panel__note.error {
+  background: rgba(254, 226, 226, 0.9);
+  border-color: rgba(252, 165, 165, 0.8);
+  color: #991b1b;
+}
+
+.sequence-flow-panel__generated {
+  border-radius: 12px;
+  border: 1px solid rgba(253, 186, 116, 0.8);
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0.8rem 0.9rem;
+  color: #7c2d12;
+}
+
+.sequence-flow-panel__generated summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.sequence-flow-panel__generated code {
+  display: block;
+  margin-top: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'Consolas', 'SFMono-Regular', monospace;
+  color: #431407;
 }
 
 .sequence-flow-panel__button {
@@ -102,4 +144,3 @@
   cursor: not-allowed;
   opacity: 0.6;
 }
-

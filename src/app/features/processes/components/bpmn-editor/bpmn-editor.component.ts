@@ -1,17 +1,34 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, Input, NgZone, OnDestroy, ViewChild } from '@angular/core';
+import {
+  AfterViewInit,
+  ChangeDetectorRef,
+  Component,
+  ElementRef,
+  Input,
+  OnChanges,
+  OnDestroy,
+  SimpleChanges,
+  ViewChild,
+} from '@angular/core';
 import Modeler from 'bpmn-js/lib/Modeler';
 import { BpmnPropertiesPanelModule, BpmnPropertiesProviderModule } from 'bpmn-js-properties-panel';
 import { finalize } from 'rxjs';
 import { Area } from '../../../../core/models/area.models';
 import { ApiResponse } from '../../../../core/models/auth.models';
-import { FormDefinition, FormFieldDefinition } from '../../../../core/models/form.models';
+import {
+  FormDefinition,
+  FormFieldDefinition,
+  FormFieldOptionDefinition,
+  FormFieldType,
+} from '../../../../core/models/form.models';
 import { AreaService } from '../../../../core/services/area.service';
 import { FormService } from '../../../../core/services/form.service';
 import { EMPTY_BPMN_XML } from '../../shared/bpmn-templates';
-import { customModdle } from '../../shared/custom-moddle';
 import { validateExclusiveGatewayXml } from '../../shared/bpmn-gateway-validation';
+import { customModdle } from '../../shared/custom-moddle';
 import {
+  ConditionFieldOption,
+  ConditionOperator,
   ExclusiveGatewayValidationResult,
   LaneAreaBinding,
   LaneValidationResult,
@@ -39,7 +56,7 @@ type SaveXmlResult = {
   templateUrl: './bpmn-editor.component.html',
   styleUrl: './bpmn-editor.component.css',
 })
-export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
+export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges {
   @Input() processName = '';
   @Input() processKey = '';
   @Input() processVersion: number | null = null;
@@ -55,22 +72,32 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
 
   private modeler: Modeler | null = null;
   private resizeObserver: ResizeObserver | null = null;
-  protected selectedLaneElement: any | null = null;
   private selectionChangedHandler?: (event: any) => void;
   private commandStackChangedHandler?: () => void;
   private laneOverlayIds = new Map<string, string>();
   private overlayRefreshFrameId: number | null = null;
 
+  protected selectedLaneElement: any | null = null;
   protected activeAreas: Area[] = [];
   protected selectedLaneAreaId = '';
   protected selectedLaneAreaName = '';
   protected laneBindingMessage = '';
   protected isAreasLoading = false;
   protected areasError = '';
+
   protected selectedSequenceFlowElement: any | null = null;
-  protected selectedSequenceFlowConditionDraft = '';
+  protected availableConditionFields: ConditionFieldOption[] = [];
+  protected conditionFieldsLoading = false;
+  protected conditionFieldsError = '';
+  protected selectedSequenceFlowFieldName = '';
+  protected selectedSequenceFlowOperator: ConditionOperator | '' = '';
+  protected selectedSequenceFlowValue = '';
+  protected selectedSequenceFlowGeneratedExpression = '';
+  protected selectedSequenceFlowParseWarning = '';
+  protected selectedSequenceFlowValidationMessage = '';
   protected selectedSequenceFlowDefaultDraft = false;
   protected sequenceFlowFeedbackMessage = '';
+
   protected selectedUserTask: any | null = null;
   protected taskFormPanelOpen = false;
   protected formLoading = false;
@@ -93,7 +120,6 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
   constructor(
     private readonly areaService: AreaService,
     private readonly formService: FormService,
-    private readonly zone: NgZone,
     private readonly cdr: ChangeDetectorRef,
   ) {}
 
@@ -102,12 +128,21 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     this.setupResizeHandling();
     this.setupSelectionHandling();
     setTimeout(() => {
-      void this.loadActiveAreas();
+      this.loadActiveAreas();
+    }, 0);
+    setTimeout(() => {
+      this.loadAvailableConditionFields();
     }, 0);
     if (this.autoCreateDiagram) {
       setTimeout(() => {
         void this.createNewDiagram();
       }, 0);
+    }
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['processKey'] || changes['processName']) {
+      this.loadAvailableConditionFields();
     }
   }
 
@@ -142,6 +177,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
 
     await this.modeler.importXML(normalizedXml);
     this.clearLaneSelection();
+    this.clearSequenceFlowSelection();
     this.restoreLaneAreaBindings();
     this.refreshLaneAreaOverlays();
     this.scheduleFitViewport();
@@ -168,30 +204,6 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     this.fitViewport();
   }
 
-  protected onLaneAreaChange(areaId: string): void {
-    if (!this.modeler || !this.selectedLaneElement || this.readonlyMode) {
-      return;
-    }
-
-    this.selectedLaneAreaId = areaId;
-    this.updateLaneAreaReference(areaId);
-  }
-
-  protected get selectedLaneName(): string {
-    return this.selectedLaneElement?.businessObject?.name || this.selectedLaneElement?.id || 'Ninguna lane seleccionada';
-  }
-
-  protected get selectedLaneAreaLabel(): string {
-    if (!this.selectedLaneAreaId) {
-      return 'Sin area asignada';
-    }
-
-    return (
-      this.activeAreas.find((area) => area.id === this.selectedLaneAreaId)?.nombre ??
-      'Area no encontrada'
-    );
-  }
-
   public validateLaneAssignments(): LaneValidationResult {
     if (!this.modeler) {
       return {
@@ -209,8 +221,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
       };
     }
 
-    const laneElements = this.getLaneElements();
-    const missingLaneNames = laneElements
+    const missingLaneNames = this.getLaneElements()
       .filter((laneElement) => {
         const binding = this.resolveLaneAreaBinding(laneElement);
         if (!binding.areaId) {
@@ -219,10 +230,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
 
         return !this.activeAreas.some((area) => area.id === binding.areaId);
       })
-      .map((laneElement) => {
-        const laneName = laneElement?.businessObject?.name?.trim?.();
-        return laneName || laneElement?.id || 'Lane sin nombre';
-      });
+      .map((laneElement) => laneElement?.businessObject?.name?.trim?.() || laneElement?.id || 'Lane sin nombre');
 
     if (missingLaneNames.length === 0) {
       return {
@@ -241,8 +249,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
 
   public async validateExclusiveGatewayAssignments(): Promise<ExclusiveGatewayValidationResult> {
     try {
-      const xml = await this.exportToXml();
-      return validateExclusiveGatewayXml(xml);
+      return validateExclusiveGatewayXml(await this.exportToXml());
     } catch {
       return {
         valid: false,
@@ -252,12 +259,129 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  protected closeTaskFormPanel(): void {
-    if (this.formSaving) {
+  protected get selectedLaneName(): string {
+    return this.selectedLaneElement?.businessObject?.name || this.selectedLaneElement?.id || 'Ninguna lane seleccionada';
+  }
+
+  protected get selectedLaneAreaLabel(): string {
+    if (!this.selectedLaneAreaId) {
+      return 'Sin area asignada';
+    }
+
+    return this.activeAreas.find((area) => area.id === this.selectedLaneAreaId)?.nombre ?? 'Area no encontrada';
+  }
+
+  protected get selectedUserTaskLabel(): string {
+    return this.selectedUserTask?.businessObject?.name || this.selectedUserTask?.id || 'Ninguna userTask seleccionada';
+  }
+
+  protected get taskFormContext(): string {
+    return `${this.processKey || 'processKey no disponible'} | v${this.processVersion ?? 1} | ${this.formDraft.taskDefinitionKey || 'taskDefinitionKey no disponible'}`;
+  }
+
+  protected get hasTaskForm(): boolean {
+    return !!this.taskFormDefinition;
+  }
+
+  protected get selectedSequenceFlowTechnicalState(): SequenceFlowTechnicalState | null {
+    if (!this.selectedSequenceFlowElement) {
+      return null;
+    }
+
+    const businessObject = this.selectedSequenceFlowElement.businessObject;
+    const sourceGateway = businessObject?.sourceRef;
+    const target = businessObject?.targetRef;
+
+    return {
+      flowId: businessObject?.id || this.selectedSequenceFlowElement.id || 'sequenceFlow sin id',
+      sourceGatewayId: sourceGateway?.id || 'Gateway sin id',
+      sourceGatewayLabel: sourceGateway?.name || sourceGateway?.id || 'ExclusiveGateway',
+      targetId: target?.id || 'Nodo destino sin id',
+      targetLabel: target?.name || target?.id || 'Nodo destino',
+      conditionExpression: this.readSequenceFlowCondition(this.selectedSequenceFlowElement),
+      isDefaultFlow: this.isDefaultSequenceFlow(this.selectedSequenceFlowElement),
+    };
+  }
+
+  protected onLaneAreaChange(areaId: string): void {
+    if (!this.modeler || !this.selectedLaneElement || this.readonlyMode) {
       return;
     }
 
-    this.taskFormPanelOpen = false;
+    this.selectedLaneAreaId = areaId;
+    this.updateLaneAreaReference(areaId);
+  }
+
+  protected onSequenceFlowFieldChange(fieldName: string): void {
+    this.selectedSequenceFlowFieldName = fieldName;
+    const selectedField = this.getSelectedConditionField();
+    const validOperators = this.getOperatorOptionsForField(selectedField).map((item) => item.value);
+    if (!this.selectedSequenceFlowOperator || !validOperators.includes(this.selectedSequenceFlowOperator)) {
+      this.selectedSequenceFlowOperator = '';
+    }
+    if (selectedField?.type === 'select' && !selectedField.options.includes(this.selectedSequenceFlowValue)) {
+      this.selectedSequenceFlowValue = '';
+    }
+    this.selectedSequenceFlowParseWarning = '';
+    this.selectedSequenceFlowValidationMessage = '';
+    this.refreshGeneratedExpressionPreview();
+  }
+
+  protected onSequenceFlowOperatorChange(operator: ConditionOperator | ''): void {
+    this.selectedSequenceFlowOperator = operator;
+    if (!this.operatorRequiresValue(operator)) {
+      this.selectedSequenceFlowValue = '';
+    }
+    this.selectedSequenceFlowParseWarning = '';
+    this.selectedSequenceFlowValidationMessage = '';
+    this.refreshGeneratedExpressionPreview();
+  }
+
+  protected onSequenceFlowValueChange(value: string): void {
+    this.selectedSequenceFlowValue = value;
+    this.selectedSequenceFlowValidationMessage = '';
+    this.refreshGeneratedExpressionPreview();
+  }
+
+  protected onSequenceFlowDefaultDraftChange(value: boolean): void {
+    this.selectedSequenceFlowDefaultDraft = value;
+    this.sequenceFlowFeedbackMessage = '';
+    this.selectedSequenceFlowValidationMessage = '';
+    if (value) {
+      this.selectedSequenceFlowFieldName = '';
+      this.selectedSequenceFlowOperator = '';
+      this.selectedSequenceFlowValue = '';
+      this.selectedSequenceFlowParseWarning = '';
+    }
+    this.refreshGeneratedExpressionPreview();
+  }
+
+  protected applySequenceFlowTechnicalChanges(): void {
+    if (!this.selectedSequenceFlowElement || this.readonlyMode) {
+      return;
+    }
+
+    const validationMessage = this.validateSequenceFlowBuilder();
+    this.selectedSequenceFlowValidationMessage = validationMessage;
+    if (validationMessage) {
+      this.sequenceFlowFeedbackMessage = '';
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.updateSequenceFlowCondition(this.selectedSequenceFlowGeneratedExpression);
+    this.updateSequenceFlowDefault(this.selectedSequenceFlowDefaultDraft);
+    this.syncSelectedSequenceFlowState();
+    this.sequenceFlowFeedbackMessage = this.selectedSequenceFlowDefaultDraft
+      ? 'Default flow actualizado correctamente.'
+      : 'Condicion del sequenceFlow guardada correctamente.';
+    this.cdr.markForCheck();
+  }
+
+  protected closeTaskFormPanel(): void {
+    if (!this.formSaving) {
+      this.taskFormPanelOpen = false;
+    }
   }
 
   protected openTaskFormPanel(taskElement?: any): void {
@@ -281,19 +405,17 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
       next: (response: ApiResponse<FormDefinition>) => {
         const definition = response.data ?? null;
         this.taskFormDefinition = definition;
-        if (definition) {
-          this.formDraft = { ...definition, fields: [...(definition.fields ?? [])] };
-        } else {
-          this.formDraft = {
-            id: '',
-            processKey: payloadProcessKey,
-            processVersion: payloadVersion,
-            taskDefinitionKey,
-            title: `${userTask.businessObject?.name || userTask.id} formulario`,
-            fields: [],
-            active: true,
-          };
-        }
+        this.formDraft = definition
+          ? { ...definition, fields: [...(definition.fields ?? [])] }
+          : {
+              id: '',
+              processKey: payloadProcessKey,
+              processVersion: payloadVersion,
+              taskDefinitionKey,
+              title: `${userTask.businessObject?.name || userTask.id} formulario`,
+              fields: [],
+              active: true,
+            };
         this.formLoading = false;
         this.cdr.markForCheck();
       },
@@ -326,6 +448,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
         helpText: '',
         order: (this.formDraft.fields?.length ?? 0) + 1,
         options: [],
+        optionItems: [],
       },
     ];
   }
@@ -353,18 +476,25 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
+    const fieldValidationError = this.validateFormDraftFields();
+    if (fieldValidationError) {
+      this.formError = fieldValidationError;
+      this.formSuccess = '';
+      return;
+    }
+
     this.formSaving = true;
     this.formError = '';
     this.formSuccess = '';
+
     const request = {
       processKey: this.formDraft.processKey,
       processVersion: this.formDraft.processVersion,
       taskDefinitionKey: this.formDraft.taskDefinitionKey,
       title: this.formDraft.title,
-      fields: (this.formDraft.fields ?? []).map((field, index) => ({
-        ...field,
-        order: index + 1,
-      })) as FormFieldDefinition[],
+      fields: (this.formDraft.fields ?? []).map((field, index) =>
+        this.normalizeFormFieldForSave(field, index + 1),
+      ) as FormFieldDefinition[],
       active: this.formDraft.active,
     };
 
@@ -372,83 +502,29 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
       ? this.formService.actualizarFormulario(this.taskFormDefinition.id, request)
       : this.formService.crearFormulario(request);
 
-    save$.pipe(
-      finalize(() => {
-        this.formSaving = false;
-        this.cdr.markForCheck();
-      }),
-    ).subscribe({
-      next: (response: ApiResponse<FormDefinition>) => {
-        this.taskFormDefinition = response.data ?? null;
-        this.formSuccess = 'Formulario guardado correctamente.';
-        this.cdr.markForCheck();
-      },
-      error: (error: any) => {
-        this.formError = error?.error?.message || 'No se pudo guardar el formulario.';
-        this.cdr.markForCheck();
-      },
-    });
-  }
-
-  protected get selectedUserTaskLabel(): string {
-    return this.selectedUserTask?.businessObject?.name || this.selectedUserTask?.id || 'Ninguna userTask seleccionada';
-  }
-
-  protected get taskFormContext(): string {
-    return `${this.processKey || 'processKey no disponible'} · v${this.processVersion ?? 1} · ${this.formDraft.taskDefinitionKey || 'taskDefinitionKey no disponible'}`;
-  }
-
-  protected get hasTaskForm(): boolean {
-    return !!this.taskFormDefinition;
-  }
-
-  protected get selectedSequenceFlowTechnicalState(): SequenceFlowTechnicalState | null {
-    if (!this.selectedSequenceFlowElement) {
-      return null;
-    }
-
-    const businessObject = this.selectedSequenceFlowElement.businessObject;
-    const sourceGateway = businessObject?.sourceRef;
-    const target = businessObject?.targetRef;
-
-    return {
-      flowId: businessObject?.id || this.selectedSequenceFlowElement.id || 'sequenceFlow sin id',
-      sourceGatewayId: sourceGateway?.id || 'Gateway sin id',
-      sourceGatewayLabel: sourceGateway?.name || sourceGateway?.id || 'ExclusiveGateway',
-      targetId: target?.id || 'Nodo destino sin id',
-      targetLabel: target?.name || target?.id || 'Nodo destino',
-      conditionExpression: this.readSequenceFlowCondition(this.selectedSequenceFlowElement),
-      isDefaultFlow: this.isDefaultSequenceFlow(this.selectedSequenceFlowElement),
-    };
+    save$
+      .pipe(
+        finalize(() => {
+          this.formSaving = false;
+          this.cdr.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: (response: ApiResponse<FormDefinition>) => {
+          this.taskFormDefinition = response.data ?? null;
+          this.formSuccess = 'Formulario guardado correctamente.';
+          this.loadAvailableConditionFields();
+          this.cdr.markForCheck();
+        },
+        error: (error: any) => {
+          this.formError = error?.error?.message || 'No se pudo guardar el formulario.';
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   protected onTaskFormFieldMove(event: { index: number; direction: -1 | 1 }): void {
     this.moveField(event.index, event.direction);
-  }
-
-  protected onTaskFormOptionsChange(event: { field: FormFieldDefinition; raw: string }): void {
-    this.updateFieldOptions(event.field, event.raw);
-  }
-
-  protected applySequenceFlowTechnicalChanges(): void {
-    if (!this.selectedSequenceFlowElement || this.readonlyMode) {
-      return;
-    }
-
-    this.updateSequenceFlowCondition(this.selectedSequenceFlowConditionDraft);
-    this.updateSequenceFlowDefault(this.selectedSequenceFlowDefaultDraft);
-    this.syncSelectedSequenceFlowState();
-    this.sequenceFlowFeedbackMessage = this.selectedSequenceFlowDefaultDraft
-      ? 'Default flow y condicion tecnica actualizados.'
-      : 'Condicion tecnica del sequenceFlow actualizada.';
-    this.cdr.markForCheck();
-  }
-
-  protected updateFieldOptions(field: FormFieldDefinition, raw: string): void {
-    field.options = raw
-      .split(',')
-      .map((option) => option.trim())
-      .filter((option) => !!option);
   }
 
   private initializeModeler(): void {
@@ -505,11 +581,10 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     const userTaskElement = this.resolveUserTaskElement(element);
     if (!userTaskElement) {
       this.clearUserTaskSelection();
-      return;
+    } else {
+      this.selectedUserTask = userTaskElement;
+      this.cdr.markForCheck();
     }
-
-    this.selectedUserTask = userTaskElement;
-    this.cdr.markForCheck();
   }
 
   private clearLaneSelection(): void {
@@ -525,7 +600,12 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
 
   private clearSequenceFlowSelection(): void {
     this.selectedSequenceFlowElement = null;
-    this.selectedSequenceFlowConditionDraft = '';
+    this.selectedSequenceFlowFieldName = '';
+    this.selectedSequenceFlowOperator = '';
+    this.selectedSequenceFlowValue = '';
+    this.selectedSequenceFlowGeneratedExpression = '';
+    this.selectedSequenceFlowParseWarning = '';
+    this.selectedSequenceFlowValidationMessage = '';
     this.selectedSequenceFlowDefaultDraft = false;
     this.sequenceFlowFeedbackMessage = '';
   }
@@ -555,8 +635,11 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    this.selectedSequenceFlowConditionDraft = this.readSequenceFlowCondition(this.selectedSequenceFlowElement);
+    const currentExpression = this.readSequenceFlowCondition(this.selectedSequenceFlowElement);
     this.selectedSequenceFlowDefaultDraft = this.isDefaultSequenceFlow(this.selectedSequenceFlowElement);
+    this.selectedSequenceFlowGeneratedExpression = currentExpression;
+    this.selectedSequenceFlowValidationMessage = '';
+    this.hydrateSequenceFlowConditionBuilder(currentExpression);
     this.cdr.markForCheck();
   }
 
@@ -585,9 +668,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     }
     this.laneOverlayIds.clear();
 
-    const laneElements = elementRegistry.filter(
-      (element) => element?.businessObject?.$type === 'bpmn:Lane',
-    );
+    const laneElements = elementRegistry.filter((element) => element?.businessObject?.$type === 'bpmn:Lane');
 
     for (const laneElement of laneElements) {
       const binding = this.resolveLaneAreaBinding(laneElement);
@@ -654,17 +735,10 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     };
     const modeling = this.modeler.get('modeling') as {
       updateProperties: (element: any, properties: Record<string, unknown>) => void;
-      updateModdleProperties: (
-        element: any,
-        businessObject: any,
-        properties: Record<string, unknown>,
-      ) => void;
       updateLabel?: (element: any, text: string) => void;
     };
 
-    const selectedArea = areaId
-      ? (this.activeAreas.find((area) => area.id === areaId) ?? null)
-      : null;
+    const selectedArea = areaId ? this.activeAreas.find((area) => area.id === areaId) ?? null : null;
     const selectedAreaName = selectedArea?.nombre ?? (areaId ? 'Area no encontrada' : '');
 
     this.persistLaneAreaBinding(this.selectedLaneElement, areaId, selectedAreaName, moddle, modeling);
@@ -696,6 +770,59 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
       error: (error: any) => {
         this.isAreasLoading = false;
         this.areasError = error?.error?.message || 'No se pudieron cargar las areas activas.';
+      },
+    });
+  }
+
+  private loadAvailableConditionFields(): void {
+    const normalizedProcessKey = this.normalizeProcessKey(this.processKey || this.processName);
+    if (!normalizedProcessKey || normalizedProcessKey === 'proceso_sin_nombre') {
+      this.availableConditionFields = [];
+      return;
+    }
+
+    this.conditionFieldsLoading = true;
+    this.conditionFieldsError = '';
+    this.cdr.markForCheck();
+
+    this.formService.listarPorProceso(normalizedProcessKey).subscribe({
+      next: (response) => {
+        const fieldMap = new Map<string, ConditionFieldOption>();
+
+        for (const definition of response.data ?? []) {
+          for (const field of definition.fields ?? []) {
+            const fieldName = field.name?.trim();
+            if (!fieldName || fieldMap.has(fieldName)) {
+              continue;
+            }
+
+            const optionItems = this.normalizeFieldOptionItems(field);
+
+            fieldMap.set(fieldName, {
+              name: fieldName,
+              label: field.label?.trim() || fieldName,
+              type: field.type,
+              options: optionItems.map((option) => option.value),
+              optionItems,
+            });
+          }
+        }
+
+        this.availableConditionFields = Array.from(fieldMap.values()).sort((left, right) =>
+          left.label.localeCompare(right.label),
+        );
+        this.conditionFieldsLoading = false;
+        if (this.selectedSequenceFlowElement) {
+          this.syncSelectedSequenceFlowState();
+        }
+        this.cdr.markForCheck();
+      },
+      error: (error: any) => {
+        this.conditionFieldsLoading = false;
+        this.conditionFieldsError =
+          error?.error?.message || 'No se pudieron cargar los campos de formularios del proceso.';
+        this.availableConditionFields = [];
+        this.cdr.markForCheck();
       },
     });
   }
@@ -780,11 +907,9 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     };
     const registryElement = elementRegistry.get(element.id);
 
-    if (registryElement?.businessObject?.$type === 'bpmn:Lane' || registryElement?.type === 'bpmn:Lane') {
-      return registryElement;
-    }
-
-    return null;
+    return registryElement?.businessObject?.$type === 'bpmn:Lane' || registryElement?.type === 'bpmn:Lane'
+      ? registryElement
+      : null;
   }
 
   private resolveUserTaskElement(element: any | null): any | null {
@@ -805,25 +930,14 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     };
     const registryElement = elementRegistry.get(element.id);
 
-    if (registryElement?.businessObject?.$type === 'bpmn:UserTask' || registryElement?.type === 'bpmn:UserTask') {
-      return registryElement;
-    }
-
-    return null;
+    return registryElement?.businessObject?.$type === 'bpmn:UserTask' || registryElement?.type === 'bpmn:UserTask'
+      ? registryElement
+      : null;
   }
 
   private resolveExclusiveGatewaySequenceFlowElement(element: any | null): any | null {
     const sequenceFlow = this.resolveSequenceFlowElement(element);
-    if (!sequenceFlow) {
-      return null;
-    }
-
-    const sourceBusinessObject = sequenceFlow?.businessObject?.sourceRef;
-    if (!sourceBusinessObject || sourceBusinessObject.$type !== 'bpmn:ExclusiveGateway') {
-      return null;
-    }
-
-    return sequenceFlow;
+    return sequenceFlow?.businessObject?.sourceRef?.$type === 'bpmn:ExclusiveGateway' ? sequenceFlow : null;
   }
 
   private resolveSequenceFlowElement(element: any | null): any | null {
@@ -844,11 +958,9 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     };
     const registryElement = elementRegistry.get(element.id);
 
-    if (registryElement?.businessObject?.$type === 'bpmn:SequenceFlow' || registryElement?.type === 'bpmn:SequenceFlow') {
-      return registryElement;
-    }
-
-    return null;
+    return registryElement?.businessObject?.$type === 'bpmn:SequenceFlow' || registryElement?.type === 'bpmn:SequenceFlow'
+      ? registryElement
+      : null;
   }
 
   private closeContextPad(): void {
@@ -863,14 +975,16 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     contextPad.close?.();
   }
 
+  private getSelectedConditionField(): ConditionFieldOption | null {
+    return this.availableConditionFields.find((field) => field.name === this.selectedSequenceFlowFieldName) ?? null;
+  }
+
   private readSequenceFlowCondition(element: any): string {
-    const conditionExpression = element?.businessObject?.conditionExpression;
-    return conditionExpression?.body ?? '';
+    return element?.businessObject?.conditionExpression?.body ?? '';
   }
 
   private isDefaultSequenceFlow(element: any): boolean {
-    const businessObject = element?.businessObject;
-    return businessObject?.sourceRef?.default === businessObject;
+    return element?.businessObject?.sourceRef?.default === element?.businessObject;
   }
 
   private updateSequenceFlowCondition(rawCondition: string): void {
@@ -878,8 +992,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    const condition = rawCondition ?? '';
-    const trimmedCondition = condition.trim();
+    const trimmedCondition = (rawCondition ?? '').trim();
     const moddle = this.modeler.get('moddle') as {
       create: (type: string, attrs?: Record<string, unknown>) => any;
     };
@@ -887,22 +1000,15 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
       updateProperties: (element: any, properties: Record<string, unknown>) => void;
     };
 
-    const conditionExpression = trimmedCondition
-      ? moddle.create('bpmn:FormalExpression', { body: condition })
-      : undefined;
-
     modeling.updateProperties(this.selectedSequenceFlowElement, {
-      conditionExpression,
+      conditionExpression: trimmedCondition
+        ? moddle.create('bpmn:FormalExpression', { body: trimmedCondition })
+        : undefined,
     });
   }
 
   private updateSequenceFlowDefault(markAsDefault: boolean): void {
-    if (!this.modeler || !this.selectedSequenceFlowElement) {
-      return;
-    }
-
-    const sourceElement = this.selectedSequenceFlowElement.source;
-    if (!sourceElement) {
+    if (!this.modeler || !this.selectedSequenceFlowElement?.source) {
       return;
     }
 
@@ -910,9 +1016,308 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
       updateProperties: (element: any, properties: Record<string, unknown>) => void;
     };
 
-    modeling.updateProperties(sourceElement, {
+    modeling.updateProperties(this.selectedSequenceFlowElement.source, {
       default: markAsDefault ? this.selectedSequenceFlowElement.businessObject : undefined,
     });
+  }
+
+  private hydrateSequenceFlowConditionBuilder(expression: string): void {
+    this.selectedSequenceFlowFieldName = '';
+    this.selectedSequenceFlowOperator = '';
+    this.selectedSequenceFlowValue = '';
+    this.selectedSequenceFlowParseWarning = '';
+
+    if (this.selectedSequenceFlowDefaultDraft) {
+      this.selectedSequenceFlowGeneratedExpression = '';
+      return;
+    }
+
+    const parsed = this.parseVisualCondition(expression);
+    if (!parsed) {
+      this.selectedSequenceFlowGeneratedExpression = expression;
+      if (expression.trim()) {
+        this.selectedSequenceFlowParseWarning =
+          'La condicion actual no pudo convertirse automaticamente al constructor visual. Si guardas desde aqui, se reemplazara por una nueva regla.';
+      }
+      return;
+    }
+
+    this.selectedSequenceFlowFieldName = parsed.fieldName;
+    this.selectedSequenceFlowOperator = parsed.operator;
+    this.selectedSequenceFlowValue = parsed.value;
+    this.refreshGeneratedExpressionPreview();
+  }
+
+  private parseVisualCondition(expression: string): { fieldName: string; operator: ConditionOperator; value: string } | null {
+    const normalized = expression.trim();
+    if (!normalized) {
+      return null;
+    }
+
+    const fileExistsMatch = normalized.match(/^\$\{\s*([a-zA-Z_][\w]*)\s*!=\s*null\s*\}$/);
+    if (fileExistsMatch) {
+      return { fieldName: fileExistsMatch[1], operator: 'exists', value: '' };
+    }
+
+    const fileNotExistsMatch = normalized.match(/^\$\{\s*([a-zA-Z_][\w]*)\s*==\s*null\s*\}$/);
+    if (fileNotExistsMatch) {
+      return { fieldName: fileNotExistsMatch[1], operator: 'not_exists', value: '' };
+    }
+
+    const booleanTrueMatch = normalized.match(/^\$\{\s*([a-zA-Z_][\w]*)\s*==\s*true\s*\}$/i);
+    if (booleanTrueMatch) {
+      return { fieldName: booleanTrueMatch[1], operator: 'is_true', value: '' };
+    }
+
+    const booleanFalseMatch = normalized.match(/^\$\{\s*([a-zA-Z_][\w]*)\s*==\s*false\s*\}$/i);
+    if (booleanFalseMatch) {
+      return { fieldName: booleanFalseMatch[1], operator: 'is_false', value: '' };
+    }
+
+    const containsMatch = normalized.match(/^\$\{\s*([a-zA-Z_][\w]*)\s*!=\s*null\s*&&\s*\1\.contains\((.+)\)\s*\}$/);
+    if (containsMatch) {
+      return {
+        fieldName: containsMatch[1],
+        operator: 'contains',
+        value: this.unquoteBpmnLiteral(containsMatch[2]),
+      };
+    }
+
+    const notContainsMatch = normalized.match(/^\$\{\s*([a-zA-Z_][\w]*)\s*==\s*null\s*\|\|\s*!\1\.contains\((.+)\)\s*\}$/);
+    if (notContainsMatch) {
+      return {
+        fieldName: notContainsMatch[1],
+        operator: 'not_contains',
+        value: this.unquoteBpmnLiteral(notContainsMatch[2]),
+      };
+    }
+
+    const simpleMatch = normalized.match(/^\$\{\s*([a-zA-Z_][\w]*)\s*(==|!=|>=|<=|>|<)\s*(.+)\s*\}$/);
+    if (!simpleMatch) {
+      return null;
+    }
+
+    return {
+      fieldName: simpleMatch[1],
+      operator: this.mapSymbolToOperator(simpleMatch[2], simpleMatch[3]),
+      value: this.unquoteBpmnLiteral(simpleMatch[3]),
+    };
+  }
+
+  private mapSymbolToOperator(symbol: string, rawValue: string): ConditionOperator {
+    switch (symbol) {
+      case '==':
+        return 'equals';
+      case '!=':
+        return 'not_equals';
+      case '>=':
+        return 'greater_or_equal';
+      case '<=':
+        return 'less_or_equal';
+      case '>':
+        return this.looksLikeDateLiteral(rawValue) ? 'after' : 'greater_than';
+      case '<':
+        return this.looksLikeDateLiteral(rawValue) ? 'before' : 'less_than';
+      default:
+        return 'equals';
+    }
+  }
+
+  private looksLikeDateLiteral(rawValue: string): boolean {
+    return /^\d{4}-\d{2}-\d{2}$/.test(this.unquoteBpmnLiteral(rawValue));
+  }
+
+  private unquoteBpmnLiteral(rawValue: string): string {
+    const trimmed = rawValue.trim();
+    if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith('\'') && trimmed.endsWith('\''))) {
+      return trimmed.slice(1, -1);
+    }
+    return trimmed;
+  }
+
+  private validateSequenceFlowBuilder(): string {
+    if (this.selectedSequenceFlowDefaultDraft) {
+      return '';
+    }
+
+    const selectedField = this.getSelectedConditionField();
+    if (!selectedField) {
+      return 'Debes seleccionar un campo del formulario.';
+    }
+
+    if (!this.selectedSequenceFlowOperator) {
+      return 'Debes seleccionar un operador.';
+    }
+
+    const validOperator = this.getOperatorOptionsForField(selectedField)
+      .map((option) => option.value)
+      .includes(this.selectedSequenceFlowOperator);
+    if (!validOperator) {
+      return 'El operador seleccionado no es compatible con el tipo de campo.';
+    }
+
+    if (this.operatorRequiresValue(this.selectedSequenceFlowOperator) && !this.selectedSequenceFlowValue.trim()) {
+      return 'Debes ingresar un valor para completar la condicion.';
+    }
+
+    if (selectedField.type === 'number' && this.operatorRequiresValue(this.selectedSequenceFlowOperator)) {
+      if (!Number.isFinite(Number(this.selectedSequenceFlowValue))) {
+        return 'El valor debe ser numerico para este campo.';
+      }
+    }
+
+    if (selectedField.type === 'select' && this.operatorRequiresValue(this.selectedSequenceFlowOperator)) {
+      if (!selectedField.optionItems.some((option) => option.value === this.selectedSequenceFlowValue)) {
+        return 'Debes elegir una opcion valida para este campo.';
+      }
+    }
+
+    return '';
+  }
+
+  private refreshGeneratedExpressionPreview(): void {
+    if (this.selectedSequenceFlowDefaultDraft) {
+      this.selectedSequenceFlowGeneratedExpression = '';
+      return;
+    }
+
+    const selectedField = this.getSelectedConditionField();
+    if (!selectedField || !this.selectedSequenceFlowOperator) {
+      this.selectedSequenceFlowGeneratedExpression = '';
+      return;
+    }
+
+    if (this.operatorRequiresValue(this.selectedSequenceFlowOperator) && !this.selectedSequenceFlowValue.trim()) {
+      this.selectedSequenceFlowGeneratedExpression = '';
+      return;
+    }
+
+    this.selectedSequenceFlowGeneratedExpression = this.buildBpmnConditionExpression(
+      selectedField,
+      this.selectedSequenceFlowOperator,
+      this.selectedSequenceFlowValue,
+    );
+  }
+
+  private buildBpmnConditionExpression(
+    field: ConditionFieldOption,
+    operator: ConditionOperator,
+    rawValue: string,
+  ): string {
+    const fieldReference = field.name;
+    const normalizedValue = this.formatBpmnLiteral(field, rawValue);
+
+    switch (operator) {
+      case 'equals':
+        return `\${${fieldReference} == ${normalizedValue}}`;
+      case 'not_equals':
+        return `\${${fieldReference} != ${normalizedValue}}`;
+      case 'contains':
+        return `\${${fieldReference} != null && ${fieldReference}.contains(${normalizedValue})}`;
+      case 'not_contains':
+        return `\${${fieldReference} == null || !${fieldReference}.contains(${normalizedValue})}`;
+      case 'greater_than':
+        return `\${${fieldReference} > ${normalizedValue}}`;
+      case 'less_than':
+        return `\${${fieldReference} < ${normalizedValue}}`;
+      case 'greater_or_equal':
+        return `\${${fieldReference} >= ${normalizedValue}}`;
+      case 'less_or_equal':
+        return `\${${fieldReference} <= ${normalizedValue}}`;
+      case 'before':
+        return `\${${fieldReference} < ${normalizedValue}}`;
+      case 'after':
+        return `\${${fieldReference} > ${normalizedValue}}`;
+      case 'exists':
+        return `\${${fieldReference} != null}`;
+      case 'not_exists':
+        return `\${${fieldReference} == null}`;
+      case 'is_true':
+        return `\${${fieldReference} == true}`;
+      case 'is_false':
+        return `\${${fieldReference} == false}`;
+      default:
+        return '';
+    }
+  }
+
+  private formatBpmnLiteral(field: ConditionFieldOption, rawValue: string): string {
+    const trimmedValue = rawValue.trim();
+    if (field.type === 'number') {
+      return String(Number(trimmedValue));
+    }
+
+    if (/^(true|false)$/i.test(trimmedValue)) {
+      return trimmedValue.toLowerCase();
+    }
+
+    return `"${trimmedValue.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  }
+
+  private getOperatorOptionsForField(field: ConditionFieldOption | null): Array<{ value: ConditionOperator }> {
+    if (!field) {
+      return [];
+    }
+
+    switch (field.type) {
+      case 'text':
+      case 'textarea':
+        return [
+          { value: 'equals' },
+          { value: 'not_equals' },
+          { value: 'contains' },
+          { value: 'not_contains' },
+          { value: 'exists' },
+          { value: 'not_exists' },
+        ];
+      case 'number':
+        return [
+          { value: 'equals' },
+          { value: 'not_equals' },
+          { value: 'greater_than' },
+          { value: 'less_than' },
+          { value: 'greater_or_equal' },
+          { value: 'less_or_equal' },
+        ];
+      case 'date':
+        return [
+          { value: 'equals' },
+          { value: 'before' },
+          { value: 'after' },
+        ];
+      case 'select':
+        return [
+          { value: 'equals' },
+          { value: 'not_equals' },
+        ];
+      case 'checkbox':
+        return [
+          { value: 'is_true' },
+          { value: 'is_false' },
+        ];
+      case 'checklist':
+        return [
+          { value: 'exists' },
+          { value: 'not_exists' },
+        ];
+      case 'file':
+        return [
+          { value: 'exists' },
+          { value: 'not_exists' },
+        ];
+      default:
+        return [];
+    }
+  }
+
+  private operatorRequiresValue(operator: ConditionOperator | ''): boolean {
+    return (
+      operator !== '' &&
+      operator !== 'exists' &&
+      operator !== 'not_exists' &&
+      operator !== 'is_true' &&
+      operator !== 'is_false'
+    );
   }
 
   private reorderFormFields(): void {
@@ -949,9 +1354,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
         continue;
       }
 
-      modeling.updateProperties(laneElement, {
-        name: binding.areaName,
-      });
+      modeling.updateProperties(laneElement, { name: binding.areaName });
       modeling.updateLabel?.(laneElement, binding.areaName);
     }
   }
@@ -999,6 +1402,97 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
     return value.trim().toLowerCase().replace(/\s+/g, ' ');
   }
 
+  private validateFormDraftFields(): string {
+    const duplicatedNames = new Set<string>();
+
+    for (const field of this.formDraft.fields ?? []) {
+      const trimmedName = field.name?.trim() || '';
+      if (!trimmedName) {
+        return 'Cada campo debe tener una variable Camunda.';
+      }
+
+      if (!/^[a-z][a-zA-Z0-9_]*$/.test(trimmedName)) {
+        return `La variable "${trimmedName}" no es valida. Usa camelCase o snake_case sin espacios ni tildes.`;
+      }
+
+      if (duplicatedNames.has(trimmedName)) {
+        return `La variable "${trimmedName}" esta repetida en el formulario.`;
+      }
+
+      duplicatedNames.add(trimmedName);
+
+      if (!field.label?.trim()) {
+        return `El campo "${trimmedName}" debe tener una etiqueta visible.`;
+      }
+
+      if (this.fieldSupportsOptionItems(field.type)) {
+        const optionItems = this.normalizeFieldOptionItems(field);
+        if (!optionItems.length) {
+          return `El campo "${trimmedName}" debe tener al menos una opcion.`;
+        }
+
+        const seenValues = new Set<string>();
+        for (const option of optionItems) {
+          if (!option.label.trim() || !option.value.trim()) {
+            return `Todas las opciones del campo "${trimmedName}" deben tener label y value.`;
+          }
+          if (seenValues.has(option.value)) {
+            return `El campo "${trimmedName}" tiene opciones con values repetidos.`;
+          }
+          seenValues.add(option.value);
+        }
+      }
+    }
+
+    return '';
+  }
+
+  private normalizeFormFieldForSave(field: FormFieldDefinition, order: number): FormFieldDefinition {
+    const optionItems = this.normalizeFieldOptionItems(field);
+    const normalizedType = field.type as FormFieldType;
+
+    return {
+      ...field,
+      name: field.name.trim(),
+      label: field.label.trim(),
+      type: normalizedType,
+      placeholder: this.fieldSupportsPlaceholder(normalizedType) ? (field.placeholder ?? '') : '',
+      helpText: field.helpText ?? '',
+      order,
+      options: this.fieldSupportsOptionItems(normalizedType)
+        ? optionItems.map((option) => option.value)
+        : [],
+      optionItems: this.fieldSupportsOptionItems(normalizedType) ? optionItems : [],
+    };
+  }
+
+  private normalizeFieldOptionItems(field: FormFieldDefinition): FormFieldOptionDefinition[] {
+    if (field.optionItems?.length) {
+      return field.optionItems
+        .map((option) => ({
+          label: (option.label ?? '').trim(),
+          value: (option.value ?? '').trim(),
+        }))
+        .filter((option) => !!option.label || !!option.value);
+    }
+
+    return (field.options ?? [])
+      .map((option) => option.trim())
+      .filter((option) => !!option)
+      .map((option) => ({
+        label: option,
+        value: option,
+      }));
+  }
+
+  private fieldSupportsPlaceholder(type: FormFieldType): boolean {
+    return type === 'text' || type === 'textarea' || type === 'number';
+  }
+
+  private fieldSupportsOptionItems(type: FormFieldType): boolean {
+    return type === 'select' || type === 'checklist';
+  }
+
   private persistLaneAreaBinding(
     laneElement: any,
     areaId: string,
@@ -1010,21 +1504,15 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
       updateProperties: (element: any, properties: Record<string, unknown>) => void;
     },
   ): void {
-    const businessObject = laneElement.businessObject;
-    const extensionValues = businessObject.extensionElements?.values ?? [];
+    const extensionValues = laneElement.businessObject.extensionElements?.values ?? [];
     const values = extensionValues.filter((value: any) => value?.$type !== 'custom:areaRef');
 
     if (areaId) {
       values.push(moddle.create('custom:areaRef', { body: areaId }));
     }
 
-    const extensionElements = moddle.create('bpmn:ExtensionElements', {
-      values,
-    });
-
-    const updatedProperties: Record<string, unknown> = {
-      extensionElements,
-    };
+    const extensionElements = moddle.create('bpmn:ExtensionElements', { values });
+    const updatedProperties: Record<string, unknown> = { extensionElements };
 
     if (areaName && areaName !== 'Area no encontrada') {
       updatedProperties['name'] = areaName;
@@ -1038,10 +1526,8 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
       return xml;
     }
 
-    const parser = new DOMParser();
-    const document = parser.parseFromString(xml, 'application/xml');
-    const parseError = document.getElementsByTagName('parsererror')[0];
-    if (parseError) {
+    const document = new DOMParser().parseFromString(xml, 'application/xml');
+    if (document.getElementsByTagName('parsererror')[0]) {
       return xml;
     }
 
@@ -1050,24 +1536,22 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy {
       return xml;
     }
 
-    const processKey = this.normalizeProcessKey(this.processKey || this.processName);
-    const processName = this.processName?.trim() || 'Proceso sin nombre';
+    const normalizedProcessKey = this.normalizeProcessKey(this.processKey || this.processName);
+    const normalizedProcessName = this.processName?.trim() || 'Proceso sin nombre';
 
-    processElement.setAttribute('id', processKey);
-    processElement.setAttribute('name', processName);
+    processElement.setAttribute('id', normalizedProcessKey);
+    processElement.setAttribute('name', normalizedProcessName);
     processElement.setAttribute('isExecutable', 'true');
 
-    const participant = document
-      .getElementsByTagNameNS('http://www.omg.org/spec/BPMN/20100524/MODEL', 'participant')[0];
+    const participant = document.getElementsByTagNameNS('http://www.omg.org/spec/BPMN/20100524/MODEL', 'participant')[0];
     if (participant) {
-      participant.setAttribute('processRef', processKey);
+      participant.setAttribute('processRef', normalizedProcessKey);
       if (!participant.getAttribute('name')) {
-        participant.setAttribute('name', processName);
+        participant.setAttribute('name', normalizedProcessName);
       }
     }
 
-    const serializer = new XMLSerializer();
-    return serializer.serializeToString(document);
+    return new XMLSerializer().serializeToString(document);
   }
 
   private normalizeProcessKey(source: string): string {

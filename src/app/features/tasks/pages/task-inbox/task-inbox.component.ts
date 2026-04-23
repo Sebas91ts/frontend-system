@@ -6,7 +6,12 @@ import { finalize, forkJoin, firstValueFrom, of } from 'rxjs';
 import { TaskInstanceService } from '../../../../core/services/task-instance.service';
 import { TareaInstancia } from '../../../../core/models/task-instance.models';
 import { AuthService } from '../../../../core/services/auth.service';
-import { FormDefinition, FormFieldDefinition, UploadedFileMetadata } from '../../../../core/models/form.models';
+import {
+  FormDefinition,
+  FormFieldDefinition,
+  FormFieldOptionDefinition,
+  UploadedFileMetadata,
+} from '../../../../core/models/form.models';
 import { FormService } from '../../../../core/services/form.service';
 import { FileUploadService } from '../../../../core/services/file-upload.service';
 import { ApiResponse } from '../../../../core/models/auth.models';
@@ -304,6 +309,14 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
         return !!selectedFile;
       }
 
+      if (field.type === 'checkbox') {
+        return this.quickWorkValues[field.name] === true;
+      }
+
+      if (field.type === 'checklist') {
+        return this.getQuickWorkChecklistValues(field.name).length > 0;
+      }
+
       const value = this.quickWorkValues[field.name];
       if (value === undefined || value === null) {
         return false;
@@ -317,6 +330,31 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
     return false;
   }
 
+  protected isQuickWorkFieldMissing(field: FormFieldDefinition): boolean {
+    if (!field.required) {
+      return false;
+    }
+
+    if (field.type === 'file') {
+      return !this.getQuickWorkSelectedFile(field.name) && !this.getQuickWorkFile(field.name);
+    }
+
+    if (field.type === 'checkbox') {
+      return this.quickWorkValues[field.name] !== true;
+    }
+
+    if (field.type === 'checklist') {
+      return this.getQuickWorkChecklistValues(field.name).length === 0;
+    }
+
+    const value = this.quickWorkValues[field.name];
+    if (value === undefined || value === null) {
+      return true;
+    }
+
+    return typeof value === 'string' ? value.trim().length === 0 : false;
+  }
+
   protected getQuickWorkFieldValue(field: FormFieldDefinition): string | number | boolean | '' {
     const value = this.quickWorkValues[field.name];
     if (typeof value === 'boolean' || typeof value === 'number') {
@@ -328,6 +366,35 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
 
   protected setQuickWorkFieldValue(fieldName: string, value: unknown): void {
     this.quickWorkValues[fieldName] = value as never;
+  }
+
+  protected getQuickWorkFieldOptions(field: FormFieldDefinition): FormFieldOptionDefinition[] {
+    if (field.optionItems?.length) {
+      return field.optionItems;
+    }
+
+    return (field.options ?? []).map((option) => ({
+      label: option,
+      value: option,
+    }));
+  }
+
+  protected getQuickWorkChecklistValues(fieldName: string): string[] {
+    const value = this.quickWorkValues[fieldName];
+    return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+  }
+
+  protected isQuickWorkChecklistSelected(fieldName: string, optionValue: string): boolean {
+    return this.getQuickWorkChecklistValues(fieldName).includes(optionValue);
+  }
+
+  protected toggleQuickWorkChecklistValue(fieldName: string, optionValue: string, checked: boolean): void {
+    const currentValues = this.getQuickWorkChecklistValues(fieldName);
+    const nextValues = checked
+      ? Array.from(new Set([...currentValues, optionValue]))
+      : currentValues.filter((value) => value !== optionValue);
+
+    this.quickWorkValues[fieldName] = nextValues;
   }
 
   protected getQuickWorkFile(fieldName: string): UploadedFileMetadata | null {
@@ -574,8 +641,17 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
         continue;
       }
 
+      if (field.type === 'checklist' && Array.isArray(value) && value.length === 0) {
+        continue;
+      }
+
       if (field.type === 'file') {
         variables[field.name] = await this.uploadQuickWorkFileValue(value as File | UploadedFileMetadata | null);
+        continue;
+      }
+
+      if (field.type === 'checklist') {
+        variables[field.name] = JSON.stringify(Array.isArray(value) ? value : []);
         continue;
       }
 

@@ -1,6 +1,6 @@
 <section class="sequence-flow-panel" *ngIf="visible && technicalState">
   <div class="sequence-flow-panel__header">
-    <p class="sequence-flow-panel__eyebrow">Sequence flow tecnico</p>
+    <p class="sequence-flow-panel__eyebrow">Condicion de salida</p>
     <strong>{{ technicalState.flowId }}</strong>
     <span class="sequence-flow-panel__meta">{{ technicalState.sourceGatewayLabel }} → {{ technicalState.targetLabel }}</span>
   </div>
@@ -10,18 +10,6 @@
     <div><span>Target</span><strong>{{ technicalState.targetId }}</strong></div>
   </div>
 
-  <label class="sequence-flow-panel__field">
-    <span>Condicion BPMN actual</span>
-    <textarea
-      [ngModel]="conditionDraft"
-      (ngModelChange)="conditionDraftChange.emit($event)"
-      [disabled]="readonlyMode"
-      rows="4"
-      spellcheck="false"
-      placeholder="${aprobado == true}"
-    ></textarea>
-  </label>
-
   <label class="sequence-flow-panel__checkbox">
     <input
       type="checkbox"
@@ -29,12 +17,103 @@
       (ngModelChange)="defaultFlowDraftChange.emit($event)"
       [disabled]="readonlyMode"
     />
-    Marcar como default flow del gateway
+    Usar como flujo por defecto
   </label>
+
+  <div class="sequence-flow-panel__note" *ngIf="fieldsLoading">
+    Cargando campos de formularios del proceso...
+  </div>
+
+  <div class="sequence-flow-panel__note error" *ngIf="fieldsError">
+    {{ fieldsError }}
+  </div>
+
+  <div class="sequence-flow-panel__note" *ngIf="parseWarningMessage">
+    {{ parseWarningMessage }}
+  </div>
+
+  <div class="sequence-flow-panel__builder" [class.sequence-flow-panel__builder--disabled]="defaultFlowDraft">
+    <label class="sequence-flow-panel__field">
+      <span>Campo</span>
+      <select
+        [ngModel]="selectedFieldName"
+        (ngModelChange)="selectedFieldNameChange.emit($event)"
+        [disabled]="readonlyMode || defaultFlowDraft || !availableFields.length"
+      >
+        <option value="">Selecciona un campo</option>
+        <option *ngFor="let field of availableFields" [value]="field.name">
+          {{ field.label }} ({{ field.name }})
+        </option>
+      </select>
+    </label>
+
+    <label class="sequence-flow-panel__field">
+      <span>Operador</span>
+      <select
+        [ngModel]="selectedOperator"
+        (ngModelChange)="selectedOperatorChange.emit($event)"
+        [disabled]="readonlyMode || defaultFlowDraft || !selectedField"
+      >
+        <option value="">Selecciona un operador</option>
+        <option *ngFor="let operator of operatorOptions" [value]="operator.value">
+          {{ operator.label }}
+        </option>
+      </select>
+    </label>
+
+    <label class="sequence-flow-panel__field" *ngIf="requiresValue">
+      <span>Valor</span>
+      <select
+        *ngIf="usesSelectInput"
+        [ngModel]="conditionValue"
+        (ngModelChange)="conditionValueChange.emit($event)"
+        [disabled]="readonlyMode || defaultFlowDraft"
+      >
+        <option value="">Selecciona un valor</option>
+        <option *ngFor="let option of valueOptions" [value]="option.value">
+          {{ option.label }}
+        </option>
+      </select>
+
+      <input
+        *ngIf="usesDateInput"
+        type="date"
+        [ngModel]="conditionValue"
+        (ngModelChange)="conditionValueChange.emit($event)"
+        [disabled]="readonlyMode || defaultFlowDraft"
+      />
+
+      <input
+        *ngIf="usesNumberInput"
+        type="number"
+        [ngModel]="conditionValue"
+        (ngModelChange)="conditionValueChange.emit($event)"
+        [disabled]="readonlyMode || defaultFlowDraft"
+      />
+
+      <input
+        *ngIf="!usesSelectInput && !usesDateInput && !usesNumberInput"
+        type="text"
+        [ngModel]="conditionValue"
+        (ngModelChange)="conditionValueChange.emit($event)"
+        [disabled]="readonlyMode || defaultFlowDraft"
+        placeholder="Ingresa un valor"
+      />
+    </label>
+  </div>
+
+  <div class="sequence-flow-panel__note error" *ngIf="validationMessage">
+    {{ validationMessage }}
+  </div>
 
   <div class="sequence-flow-panel__note">
     Estado actual: {{ technicalState.isDefaultFlow ? 'Default flow' : 'Flow condicionado o normal' }}
   </div>
+
+  <details class="sequence-flow-panel__generated">
+    <summary>Expresion BPMN generada</summary>
+    <code>{{ generatedExpression || 'Aun no hay una expresion generada.' }}</code>
+  </details>
 
   <div class="sequence-flow-panel__note" *ngIf="feedbackMessage">
     {{ feedbackMessage }}
@@ -44,8 +123,8 @@
     type="button"
     class="sequence-flow-panel__button"
     (click)="applyChanges.emit()"
-    [disabled]="readonlyMode"
+    [disabled]="readonlyMode || fieldsLoading"
   >
-    Aplicar cambios tecnicos
+    Guardar condicion
   </button>
 </section>

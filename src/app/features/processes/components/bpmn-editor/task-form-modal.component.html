@@ -14,74 +14,198 @@
     <div class="task-form-modal__status success" *ngIf="formSuccess">{{ formSuccess }}</div>
     <div class="task-form-modal__status error" *ngIf="formError">{{ formError }}</div>
 
-    <label class="task-form-modal__field">
-      <span>Titulo</span>
-      <input [(ngModel)]="formDraft.title" type="text" />
-    </label>
+    <div class="task-form-modal__layout">
+      <section class="task-form-modal__editor">
+        <label class="task-form-modal__field">
+          <span>Titulo</span>
+          <input [(ngModel)]="formDraft.title" type="text" />
+        </label>
 
-    <div class="task-form-modal__toolbar">
-      <button type="button" class="toolbar-button" (click)="addField.emit()">Agregar campo</button>
-      <button type="button" class="toolbar-button accent" (click)="save.emit()" [disabled]="formSaving">
-        {{ formSaving ? 'Guardando...' : 'Guardar formulario' }}
-      </button>
-    </div>
-
-    <div class="task-form-list" *ngIf="formDraft.fields.length">
-      <article class="task-form-field" *ngFor="let field of formDraft.fields; let i = index">
-        <div class="task-form-field__row">
-          <label>
-            <span>Nombre</span>
-            <input [(ngModel)]="field.name" type="text" />
-          </label>
-          <label>
-            <span>Etiqueta</span>
-            <input [(ngModel)]="field.label" type="text" />
-          </label>
-          <label>
-            <span>Tipo</span>
-            <select [(ngModel)]="field.type">
-              <option value="text">text</option>
-              <option value="textarea">textarea</option>
-              <option value="number">number</option>
-              <option value="date">date</option>
-              <option value="select">select</option>
-              <option value="file">file</option>
-            </select>
-          </label>
+        <div class="task-form-modal__toolbar">
+          <button type="button" class="toolbar-button" (click)="addField.emit()">Agregar campo</button>
+          <button type="button" class="toolbar-button accent" (click)="save.emit()" [disabled]="formSaving">
+            {{ formSaving ? 'Guardando...' : 'Guardar formulario' }}
+          </button>
         </div>
 
-        <div class="task-form-field__row">
-          <label>
-            <span>Placeholder</span>
-            <input [(ngModel)]="field.placeholder" type="text" />
-          </label>
-          <label>
-            <span>Ayuda</span>
-            <input [(ngModel)]="field.helpText" type="text" />
-          </label>
-          <label>
-            <span>Opciones separadas por coma</span>
-            <input
-              [ngModel]="(field.options || []).join(', ')"
-              (ngModelChange)="updateOptions.emit({ field, raw: $event })"
-              type="text"
-            />
-          </label>
+        <div class="task-form-list" *ngIf="formDraft.fields.length">
+          <article class="task-form-field" *ngFor="let field of formDraft.fields; let i = index">
+            <div class="task-form-field__title">
+              <strong>{{ field.label || field.name || ('Campo ' + (i + 1)) }}</strong>
+              <span>{{ field.type }}</span>
+            </div>
+
+            <div class="task-form-field__row">
+              <label class="task-form-field__block">
+                <span>Variable Camunda</span>
+                <input [(ngModel)]="field.name" (ngModelChange)="onVariableInput(field)" type="text" placeholder="Ej. montoTotal" />
+                <small>Este nombre se usará como variable del proceso. No usar espacios. Ejemplo: montoTotal</small>
+                <small class="task-form-field__error" *ngIf="getVariableValidationMessage(field)">
+                  {{ getVariableValidationMessage(field) }}
+                </small>
+                <button
+                  type="button"
+                  class="task-form-field__suggest"
+                  *ngIf="getVariableSuggestion(field)"
+                  (click)="suggestVariable(field)"
+                >
+                  Sugerir {{ getVariableSuggestion(field) }}
+                </button>
+              </label>
+
+              <label class="task-form-field__block">
+                <span>Etiqueta</span>
+                <input [(ngModel)]="field.label" type="text" placeholder="Ej. Monto de compra" />
+                <small>Texto que verá el usuario en el formulario.</small>
+              </label>
+
+              <label class="task-form-field__block">
+                <span>Tipo</span>
+                <select [(ngModel)]="field.type" (ngModelChange)="onFieldTypeChange(field)">
+                  <option value="text">text</option>
+                  <option value="textarea">textarea</option>
+                  <option value="number">number</option>
+                  <option value="date">date</option>
+                  <option value="select">select</option>
+                  <option value="checkbox">checkbox</option>
+                  <option value="checklist">checklist</option>
+                  <option value="file">file</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="task-form-field__row">
+              <label class="task-form-field__block">
+                <span>Placeholder</span>
+                <input [(ngModel)]="field.placeholder" type="text" [disabled]="!supportsPlaceholder(field)" placeholder="Texto guía dentro del input" />
+                <small>Solo aplica para text, textarea y number.</small>
+              </label>
+
+              <label class="task-form-field__block">
+                <span>Ayuda</span>
+                <input [(ngModel)]="field.helpText" type="text" placeholder="Texto descriptivo debajo del campo" />
+                <small>Explica qué debe ingresar el usuario.</small>
+              </label>
+
+              <label class="task-form-field__block task-form-field__toggle">
+                <span>Configuracion</span>
+                <label><input [(ngModel)]="field.required" type="checkbox" /> Requerido</label>
+              </label>
+            </div>
+
+            <div class="task-form-field__options" *ngIf="supportsOptions(field)">
+              <div class="task-form-field__options-header">
+                <div>
+                  <span>Opciones</span>
+                  <small>Define lo que verá el usuario y el valor que se enviará a Camunda.</small>
+                </div>
+                <button type="button" class="toolbar-button" (click)="addOption(field)">Agregar opcion</button>
+              </div>
+
+              <div class="task-form-field__option" *ngFor="let option of ensureOptionItems(field); let optionIndex = index; trackBy: trackOption">
+                <label>
+                  <span>Label visible</span>
+                  <input [(ngModel)]="option.label" (ngModelChange)="onOptionChange(field, option)" type="text" placeholder="Ej. Aprobado" />
+                </label>
+                <label>
+                  <span>Value interno</span>
+                  <input [(ngModel)]="option.value" (ngModelChange)="onOptionChange(field, option)" type="text" placeholder="Ej. aprobado" />
+                </label>
+                <button type="button" class="toolbar-button danger" (click)="removeOption(field, optionIndex)">Eliminar</button>
+              </div>
+            </div>
+
+            <div class="task-form-field__actions">
+              <button type="button" class="toolbar-button" (click)="moveField.emit({ index: i, direction: -1 })">Arriba</button>
+              <button type="button" class="toolbar-button" (click)="moveField.emit({ index: i, direction: 1 })">Abajo</button>
+              <button type="button" class="toolbar-button danger" (click)="removeField.emit(i)">Eliminar campo</button>
+            </div>
+          </article>
         </div>
 
-        <div class="task-form-field__row task-form-field__row--compact">
-          <label><input [(ngModel)]="field.required" type="checkbox" /> Requerido</label>
-          <div class="task-form-field__actions">
-            <button type="button" class="toolbar-button" (click)="moveField.emit({ index: i, direction: -1 })">Arriba</button>
-            <button type="button" class="toolbar-button" (click)="moveField.emit({ index: i, direction: 1 })">Abajo</button>
-            <button type="button" class="toolbar-button danger" (click)="removeField.emit(i)">Eliminar</button>
-          </div>
+        <div class="task-form-modal__empty" *ngIf="!formDraft.fields.length && !formLoading">
+          Todavia no hay campos definidos para este formulario.
         </div>
-      </article>
-    </div>
+      </section>
 
-    <div class="task-form-modal__empty" *ngIf="!formDraft.fields.length && !formLoading">
-      Todavia no hay campos definidos para este formulario.
+      <aside class="task-form-preview">
+        <div class="task-form-preview__header">
+          <p class="task-form-modal__eyebrow">Vista previa</p>
+          <strong>{{ formDraft.title || 'Formulario de tarea' }}</strong>
+        </div>
+
+        <div class="task-form-preview__field" *ngFor="let field of formDraft.fields">
+          <label>
+            <span>
+              {{ field.label || field.name || 'Campo sin nombre' }}
+              <strong *ngIf="field.required">*</strong>
+            </span>
+
+            <ng-container [ngSwitch]="field.type">
+              <input
+                *ngSwitchCase="'text'"
+                type="text"
+                [placeholder]="field.placeholder || ''"
+                [ngModel]="getPreviewValue(field.name)"
+                (ngModelChange)="setPreviewValue(field.name, $event)"
+              />
+              <textarea
+                *ngSwitchCase="'textarea'"
+                [placeholder]="field.placeholder || ''"
+                [ngModel]="getPreviewValue(field.name)"
+                (ngModelChange)="setPreviewValue(field.name, $event)"
+              ></textarea>
+              <input
+                *ngSwitchCase="'number'"
+                type="number"
+                [placeholder]="field.placeholder || ''"
+                [ngModel]="getPreviewValue(field.name)"
+                (ngModelChange)="setPreviewValue(field.name, $event)"
+              />
+              <input
+                *ngSwitchCase="'date'"
+                type="date"
+                [ngModel]="getPreviewValue(field.name)"
+                (ngModelChange)="setPreviewValue(field.name, $event)"
+              />
+              <select
+                *ngSwitchCase="'select'"
+                [ngModel]="getPreviewValue(field.name)"
+                (ngModelChange)="setPreviewValue(field.name, $event)"
+              >
+                <option value="">Selecciona una opcion</option>
+                <option *ngFor="let option of ensureOptionItems(field)" [value]="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+              <label class="task-form-preview__checkbox" *ngSwitchCase="'checkbox'">
+                <input
+                  type="checkbox"
+                  [ngModel]="!!getPreviewValue(field.name)"
+                  (ngModelChange)="setPreviewValue(field.name, $event)"
+                />
+                {{ field.label || field.name }}
+              </label>
+              <div class="task-form-preview__checklist" *ngSwitchCase="'checklist'">
+                <label *ngFor="let option of ensureOptionItems(field)">
+                  <input
+                    type="checkbox"
+                    [checked]="getPreviewChecklistValues(field.name).includes(option.value)"
+                    (change)="togglePreviewChecklist(field, option.value, $any($event.target).checked)"
+                  />
+                  {{ option.label }}
+                </label>
+              </div>
+              <div class="task-form-preview__file" *ngSwitchCase="'file'">
+                <input type="file" />
+              </div>
+            </ng-container>
+
+            <small *ngIf="field.helpText">{{ field.helpText }}</small>
+            <small class="task-form-preview__meta">Variable: {{ field.name || 'sin definir' }}</small>
+          </label>
+        </div>
+      </aside>
     </div>
   </div>
 </section>

@@ -135,8 +135,26 @@
               [required]="field.required"
             >
               <option value="">Selecciona una opcion</option>
-              <option *ngFor="let option of field.options || []" [value]="option">{{ option }}</option>
+              <option *ngFor="let option of getFieldOptions(field)" [value]="option.value">{{ option.label }}</option>
             </select>
+            <label *ngSwitchCase="'checkbox'" class="task-detail-choice">
+              <input
+                type="checkbox"
+                [checked]="getFieldValue(field) === true"
+                (change)="setFieldValue(field.name, ($any($event.target)).checked)"
+              />
+              <span>{{ field.helpText || 'Marca esta opcion si corresponde.' }}</span>
+            </label>
+            <div *ngSwitchCase="'checklist'" class="task-detail-checklist">
+              <label class="task-detail-choice" *ngFor="let option of getFieldOptions(field)">
+                <input
+                  type="checkbox"
+                  [checked]="isChecklistOptionSelected(field.name, option.value)"
+                  (change)="toggleChecklistValue(field.name, option.value, $any($event.target).checked)"
+                />
+                <span>{{ option.label }}</span>
+              </label>
+            </div>
             <div *ngSwitchCase="'file'" class="task-detail-file">
               <input
                 type="file"
