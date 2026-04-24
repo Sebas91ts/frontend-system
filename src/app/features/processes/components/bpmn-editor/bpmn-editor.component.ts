@@ -89,6 +89,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
   protected availableConditionFields: ConditionFieldOption[] = [];
   protected conditionFieldsLoading = false;
   protected conditionFieldsError = '';
+  protected conditionFieldsEmptyMessage = '';
   protected selectedSequenceFlowFieldName = '';
   protected selectedSequenceFlowOperator: ConditionOperator | '' = '';
   protected selectedSequenceFlowValue = '';
@@ -116,6 +117,9 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
   };
 
   readonly sampleXml = EMPTY_BPMN_XML;
+  private processFormDefinitions: FormDefinition[] = [];
+  private loadedConditionProcessKey = '';
+  private sequenceFlowRefreshSnapshot: any | null = null;
 
   constructor(
     private readonly areaService: AreaService,
@@ -319,11 +323,24 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
     if (!this.selectedSequenceFlowOperator || !validOperators.includes(this.selectedSequenceFlowOperator)) {
       this.selectedSequenceFlowOperator = '';
     }
-    if (selectedField?.type === 'select' && !selectedField.options.includes(this.selectedSequenceFlowValue)) {
+    if (selectedField?.type === 'select') {
+      console.log('[ConditionBuilder] selected select field:', selectedField);
+      if (!this.getConditionFieldOptions(selectedField).some((option) => option.value === this.selectedSequenceFlowValue)) {
+        this.selectedSequenceFlowValue = '';
+      }
+    }
+    if (selectedField?.type === 'checkbox') {
       this.selectedSequenceFlowValue = '';
     }
     this.selectedSequenceFlowParseWarning = '';
     this.selectedSequenceFlowValidationMessage = '';
+    console.debug('[SequenceFlowBuilder] field selected', {
+      fieldName: selectedField?.name ?? fieldName,
+      fieldType: selectedField?.type ?? 'unknown',
+      fieldOptions: this.getConditionFieldOptions(selectedField),
+      selectedOperator: this.selectedSequenceFlowOperator,
+      selectedValue: this.selectedSequenceFlowValue,
+    });
     this.refreshGeneratedExpressionPreview();
   }
 
@@ -404,9 +421,17 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
     this.formService.obtenerFormulario(payloadProcessKey, payloadVersion, taskDefinitionKey).subscribe({
       next: (response: ApiResponse<FormDefinition>) => {
         const definition = response.data ?? null;
+        console.log('FORM GUARDADO:', definition);
         this.taskFormDefinition = definition;
         this.formDraft = definition
-          ? { ...definition, fields: [...(definition.fields ?? [])] }
+          ? {
+              ...definition,
+              fields: (definition.fields ?? []).map((field) => ({
+                ...field,
+                options: [...(field.options ?? [])],
+                optionItems: (field.optionItems ?? []).map((option) => ({ ...option })),
+              })),
+            }
           : {
               id: '',
               processKey: payloadProcessKey,
@@ -511,9 +536,24 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
       )
       .subscribe({
         next: (response: ApiResponse<FormDefinition>) => {
-          this.taskFormDefinition = response.data ?? null;
+          const updatedForm = response.data ?? null;
+          this.taskFormDefinition = updatedForm;
+          this.formDraft = updatedForm
+            ? {
+                ...updatedForm,
+                fields: (updatedForm.fields ?? []).map((field) => ({
+                  ...field,
+                  options: [...(field.options ?? [])],
+                  optionItems: (field.optionItems ?? []).map((option) => ({ ...option })),
+                })),
+              }
+            : this.formDraft;
           this.formSuccess = 'Formulario guardado correctamente.';
-          this.loadAvailableConditionFields();
+          this.processFormDefinitions = [];
+          this.loadedConditionProcessKey = '';
+          this.availableConditionFields = [];
+          this.rebuildAvailableConditionFields();
+          this.forceRefreshSelectedSequenceFlow();
           this.cdr.markForCheck();
         },
         error: (error: any) => {
@@ -600,6 +640,9 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
 
   private clearSequenceFlowSelection(): void {
     this.selectedSequenceFlowElement = null;
+    this.availableConditionFields = [];
+    this.conditionFieldsError = '';
+    this.conditionFieldsEmptyMessage = '';
     this.selectedSequenceFlowFieldName = '';
     this.selectedSequenceFlowOperator = '';
     this.selectedSequenceFlowValue = '';
@@ -635,6 +678,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
       return;
     }
 
+    this.rebuildAvailableConditionFields();
     const currentExpression = this.readSequenceFlowCondition(this.selectedSequenceFlowElement);
     this.selectedSequenceFlowDefaultDraft = this.isDefaultSequenceFlow(this.selectedSequenceFlowElement);
     this.selectedSequenceFlowGeneratedExpression = currentExpression;
@@ -777,54 +821,170 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
   private loadAvailableConditionFields(): void {
     const normalizedProcessKey = this.normalizeProcessKey(this.processKey || this.processName);
     if (!normalizedProcessKey || normalizedProcessKey === 'proceso_sin_nombre') {
+      this.processFormDefinitions = [];
+      this.loadedConditionProcessKey = '';
       this.availableConditionFields = [];
+      this.conditionFieldsEmptyMessage = '';
+      this.conditionFieldsError = '';
+      this.conditionFieldsLoading = false;
+      return;
+    }
+
+    if (this.loadedConditionProcessKey === normalizedProcessKey) {
+      this.rebuildAvailableConditionFields();
       return;
     }
 
     this.conditionFieldsLoading = true;
     this.conditionFieldsError = '';
+    this.conditionFieldsEmptyMessage = '';
     this.cdr.markForCheck();
 
     this.formService.listarPorProceso(normalizedProcessKey).subscribe({
       next: (response) => {
-        const fieldMap = new Map<string, ConditionFieldOption>();
-
-        for (const definition of response.data ?? []) {
-          for (const field of definition.fields ?? []) {
-            const fieldName = field.name?.trim();
-            if (!fieldName || fieldMap.has(fieldName)) {
-              continue;
-            }
-
-            const optionItems = this.normalizeFieldOptionItems(field);
-
-            fieldMap.set(fieldName, {
-              name: fieldName,
-              label: field.label?.trim() || fieldName,
-              type: field.type,
-              options: optionItems.map((option) => option.value),
-              optionItems,
-            });
-          }
-        }
-
-        this.availableConditionFields = Array.from(fieldMap.values()).sort((left, right) =>
-          left.label.localeCompare(right.label),
-        );
+        this.processFormDefinitions = response.data ?? [];
+        this.loadedConditionProcessKey = normalizedProcessKey;
         this.conditionFieldsLoading = false;
-        if (this.selectedSequenceFlowElement) {
-          this.syncSelectedSequenceFlowState();
-        }
+        this.rebuildAvailableConditionFields();
         this.cdr.markForCheck();
       },
       error: (error: any) => {
         this.conditionFieldsLoading = false;
         this.conditionFieldsError =
           error?.error?.message || 'No se pudieron cargar los campos de formularios del proceso.';
+        this.conditionFieldsEmptyMessage = '';
+        this.processFormDefinitions = [];
+        this.loadedConditionProcessKey = '';
         this.availableConditionFields = [];
         this.cdr.markForCheck();
       },
     });
+  }
+
+  private rebuildAvailableConditionFields(): void {
+    if (!this.selectedSequenceFlowElement) {
+      this.availableConditionFields = [];
+      this.conditionFieldsEmptyMessage = '';
+      return;
+    }
+
+    this.availableConditionFields = [];
+    const sourceGateway = this.selectedSequenceFlowElement.businessObject?.sourceRef;
+    const taskDefinitionKeys = this.collectReachablePreviousUserTaskKeys(sourceGateway);
+    const fieldMap = new Map<string, ConditionFieldOption>();
+    const allFields: FormFieldDefinition[] = [];
+    const latestVersion = Math.max(...this.processFormDefinitions.map((form) => form.processVersion || 0));
+    const latestForms = this.processFormDefinitions.filter((form) => (form.processVersion || 0) === latestVersion);
+
+    console.log('USANDO VERSION:', latestVersion);
+    console.log('FORMS FILTRADOS:', latestForms);
+
+    const fields = latestForms.flatMap((form) => form.fields ?? []);
+    console.log('ANTES DE PROCESAR FIELDS:', fields);
+
+    for (const field of fields) {
+      console.log('FIELD RAW:', field.name, field.type, field.options);
+      if (field.type === 'select') {
+        console.log('SELECT OPTIONS:', field.name, field.options, field.optionItems);
+      }
+    }
+
+    for (const definition of latestForms) {
+      const taskDefinitionKey = definition.taskDefinitionKey?.trim();
+      if (!taskDefinitionKey || !taskDefinitionKeys.has(taskDefinitionKey)) {
+        continue;
+      }
+
+      allFields.push(...(definition.fields ?? []));
+      for (const field of definition.fields ?? []) {
+        const fieldName = field.name?.trim();
+        if (!fieldName || fieldMap.has(fieldName)) {
+          continue;
+        }
+
+        const optionItems = this.normalizeFieldOptionItems(field);
+        fieldMap.set(fieldName, {
+          name: fieldName,
+          label: field.label?.trim() || fieldName,
+          type: field.type,
+          options: optionItems.map((option) => option.value),
+          optionItems,
+          normalizedOptions: optionItems,
+        });
+      }
+    }
+
+    this.availableConditionFields = Array.from(fieldMap.values()).sort((left, right) =>
+      left.label.localeCompare(right.label),
+    );
+    console.log('AVAILABLE FIELDS FINAL:', this.availableConditionFields);
+    this.conditionFieldsError = '';
+    this.conditionFieldsEmptyMessage = this.availableConditionFields.length
+      ? ''
+      : 'No hay variables disponibles antes de este gateway.';
+
+    if (
+      this.selectedSequenceFlowFieldName &&
+      !this.availableConditionFields.some((field) => field.name === this.selectedSequenceFlowFieldName)
+    ) {
+      this.selectedSequenceFlowFieldName = '';
+      this.selectedSequenceFlowOperator = '';
+      this.selectedSequenceFlowValue = '';
+      if (this.selectedSequenceFlowGeneratedExpression.trim()) {
+        this.selectedSequenceFlowParseWarning =
+          'La condicion actual usa una variable que no esta disponible antes de este gateway.';
+      }
+    }
+  }
+
+  private forceRefreshSelectedSequenceFlow(): void {
+    const currentFlow = this.selectedSequenceFlowElement;
+    this.sequenceFlowRefreshSnapshot = currentFlow;
+    this.selectedSequenceFlowElement = null;
+    this.cdr.markForCheck();
+
+    setTimeout(() => {
+      this.selectedSequenceFlowElement = this.sequenceFlowRefreshSnapshot;
+      this.sequenceFlowRefreshSnapshot = null;
+      if (this.selectedSequenceFlowElement) {
+        this.syncSelectedSequenceFlowState();
+      }
+      this.cdr.markForCheck();
+    });
+  }
+
+  private collectReachablePreviousUserTaskKeys(startNode: any): Set<string> {
+    const taskKeys = new Set<string>();
+    const visitedNodeIds = new Set<string>();
+    const nodesToVisit = startNode ? [startNode] : [];
+
+    while (nodesToVisit.length) {
+      const currentNode = nodesToVisit.pop();
+      const currentNodeId = currentNode?.id;
+      if (!currentNodeId || visitedNodeIds.has(currentNodeId)) {
+        continue;
+      }
+
+      visitedNodeIds.add(currentNodeId);
+      const incomingFlows = currentNode?.incoming ?? [];
+      for (const incomingFlow of incomingFlows) {
+        const previousNode = incomingFlow?.sourceRef;
+        const previousNodeId = previousNode?.id;
+        if (!previousNodeId) {
+          continue;
+        }
+
+        if (previousNode?.$type === 'bpmn:UserTask') {
+          taskKeys.add(previousNodeId);
+        }
+
+        if (!visitedNodeIds.has(previousNodeId)) {
+          nodesToVisit.push(previousNode);
+        }
+      }
+    }
+
+    return taskKeys;
   }
 
   private setupResizeHandling(): void {
@@ -1167,7 +1327,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
     }
 
     if (selectedField.type === 'select' && this.operatorRequiresValue(this.selectedSequenceFlowOperator)) {
-      if (!selectedField.optionItems.some((option) => option.value === this.selectedSequenceFlowValue)) {
+      if (!this.normalizeSelectOptions(selectedField).some((option) => option.value === this.selectedSequenceFlowValue)) {
         return 'Debes elegir una opcion valida para este campo.';
       }
     }
@@ -1252,6 +1412,87 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
     }
 
     return `"${trimmedValue.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  }
+
+  private normalizeSelectOptions(field: ConditionFieldOption | null): Array<{ label: string; value: string }> {
+    if (!field) {
+      return [];
+    }
+
+    if (field.normalizedOptions?.length) {
+      return field.normalizedOptions;
+    }
+
+    const rawOptions = this.readRawSelectOptions(field);
+    return rawOptions
+      .map((option) => this.normalizeSelectOptionEntry(option))
+      .filter((option): option is { label: string; value: string } => !!option);
+  }
+
+  private getConditionFieldOptions(field: ConditionFieldOption | null): Array<{ label: string; value: string }> {
+    return this.normalizeSelectOptions(field);
+  }
+
+  private readRawSelectOptions(field: ConditionFieldOption): unknown[] {
+    const candidates = [
+      (field as unknown as { optionItems?: unknown }).optionItems,
+      (field as unknown as { options?: unknown }).options,
+      (field as unknown as { values?: unknown }).values,
+    ];
+
+    for (const candidate of candidates) {
+      if (Array.isArray(candidate)) {
+        return candidate;
+      }
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate.split(',').map((value) => value.trim()).filter((value) => !!value);
+      }
+    }
+
+    return [];
+  }
+
+  private normalizeSelectOptionEntry(option: unknown): { label: string; value: string } | null {
+    if (typeof option === 'string') {
+      const trimmed = option.trim();
+      if (!trimmed) {
+        return null;
+      }
+
+      const splitMatch = trimmed.match(/^(.+?)\s*[=:|]\s*(.+)$/);
+      if (splitMatch) {
+        const label = splitMatch[1].trim();
+        const value = splitMatch[2].trim();
+        return { label: label || value, value: value || label };
+      }
+
+      return { label: trimmed, value: trimmed };
+    }
+
+    if (!option || typeof option !== 'object') {
+      return null;
+    }
+
+    const candidate = option as Record<string, unknown>;
+    const label = this.readStringCandidate(candidate['label']) || this.readStringCandidate(candidate['name']) || this.readStringCandidate(candidate['text']);
+    const value =
+      this.readStringCandidate(candidate['value']) ||
+      this.readStringCandidate(candidate['id']) ||
+      this.readStringCandidate(candidate['key']) ||
+      label;
+
+    if (!label && !value) {
+      return null;
+    }
+
+    return {
+      label: label || value,
+      value: value || label,
+    };
+  }
+
+  private readStringCandidate(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : '';
   }
 
   private getOperatorOptionsForField(field: ConditionFieldOption | null): Array<{ value: ConditionOperator }> {
@@ -1467,22 +1708,75 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
   }
 
   private normalizeFieldOptionItems(field: FormFieldDefinition): FormFieldOptionDefinition[] {
-    if (field.optionItems?.length) {
-      return field.optionItems
-        .map((option) => ({
-          label: (option.label ?? '').trim(),
-          value: (option.value ?? '').trim(),
-        }))
-        .filter((option) => !!option.label || !!option.value);
+    const fromOptionItems = this.normalizeOptionCollection(field.optionItems);
+    if (fromOptionItems.length) {
+      return fromOptionItems;
     }
 
-    return (field.options ?? [])
+    const fromOptions = this.normalizeOptionCollection(field.options);
+    if (fromOptions.length) {
+      return fromOptions;
+    }
+
+    return [];
+  }
+
+  private normalizeOptionCollection(rawOptions: unknown): FormFieldOptionDefinition[] {
+    if (!rawOptions) {
+      return [];
+    }
+
+    const values = Array.isArray(rawOptions) ? rawOptions : typeof rawOptions === 'string' ? this.splitLegacyOptions(rawOptions) : [];
+
+    return values
+      .map((option) => this.normalizeOptionValue(option))
+      .filter((option): option is FormFieldOptionDefinition => !!option);
+  }
+
+  private normalizeOptionValue(option: unknown): FormFieldOptionDefinition | null {
+    if (typeof option === 'string') {
+      const trimmed = option.trim();
+      if (!trimmed) {
+        return null;
+      }
+
+      const splitMatch = trimmed.match(/^(.+?)\s*[=:|]\s*(.+)$/);
+      if (splitMatch) {
+        const label = splitMatch[1].trim();
+        const value = splitMatch[2].trim();
+        return label || value ? { label: label || value, value: value || label } : null;
+      }
+
+      return { label: trimmed, value: trimmed };
+    }
+
+    if (option && typeof option === 'object') {
+      const candidate = option as Record<string, unknown>;
+      const label = this.readStringCandidate(candidate['label']) || this.readStringCandidate(candidate['name']) || this.readStringCandidate(candidate['text']);
+      const value =
+        this.readStringCandidate(candidate['value']) ||
+        this.readStringCandidate(candidate['id']) ||
+        this.readStringCandidate(candidate['key']) ||
+        label;
+
+      if (!label && !value) {
+        return null;
+      }
+
+      return {
+        label: label || value,
+        value: value || label,
+      };
+    }
+
+    return null;
+  }
+
+  private splitLegacyOptions(rawValue: string): string[] {
+    return rawValue
+      .split(/[,\n;]/)
       .map((option) => option.trim())
-      .filter((option) => !!option)
-      .map((option) => ({
-        label: option,
-        value: option,
-      }));
+      .filter((option) => !!option);
   }
 
   private fieldSupportsPlaceholder(type: FormFieldType): boolean {

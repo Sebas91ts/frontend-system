@@ -28,6 +28,10 @@
     {{ fieldsError }}
   </div>
 
+  <div class="sequence-flow-panel__note" *ngIf="emptyFieldsMessage">
+    {{ emptyFieldsMessage }}
+  </div>
+
   <div class="sequence-flow-panel__note" *ngIf="parseWarningMessage">
     {{ parseWarningMessage }}
   </div>

@@ -30,6 +30,7 @@ export class SequenceFlowTechnicalPanelComponent {
   @Input() parseWarningMessage = '';
   @Input() fieldsLoading = false;
   @Input() fieldsError = '';
+  @Input() emptyFieldsMessage = '';
 
   @Output() readonly selectedFieldNameChange = new EventEmitter<string>();
   @Output() readonly selectedOperatorChange = new EventEmitter<ConditionOperator | ''>();
@@ -37,8 +38,11 @@ export class SequenceFlowTechnicalPanelComponent {
   @Output() readonly defaultFlowDraftChange = new EventEmitter<boolean>();
   @Output() readonly applyChanges = new EventEmitter<void>();
 
+  protected resolvedSelectedField: ConditionFieldOption | null = null;
+  protected resolvedValueOptions: Array<{ label: string; value: string }> = [];
+
   protected get selectedField(): ConditionFieldOption | null {
-    return this.availableFields.find((field) => field.name === this.selectedFieldName) ?? null;
+    return this.resolvedSelectedField;
   }
 
   protected get operatorOptions(): ConditionOperatorOption[] {
@@ -67,11 +71,96 @@ export class SequenceFlowTechnicalPanelComponent {
   }
 
   protected get usesNumberInput(): boolean {
-    return this.selectedField?.type === 'number';
+    return this.resolvedSelectedField?.type === 'number';
   }
 
   protected get valueOptions() {
-    return this.selectedField?.optionItems ?? [];
+    return this.resolvedValueOptions;
+  }
+
+  ngOnChanges(): void {
+    this.refreshResolvedField();
+  }
+
+  private refreshResolvedField(): void {
+    this.resolvedSelectedField = this.availableFields.find((field) => field.name === this.selectedFieldName) ?? null;
+    this.resolvedValueOptions = this.resolvedSelectedField ? this.normalizeSelectOptions(this.resolvedSelectedField) : [];
+  }
+
+  private normalizeSelectOptions(field: ConditionFieldOption): Array<{ label: string; value: string }> {
+    const rawOptions = [
+      field.optionItems,
+      field.options,
+      (field as unknown as { values?: unknown }).values,
+    ];
+
+    for (const candidate of rawOptions) {
+      const normalized = this.normalizeSelectOptionSource(candidate);
+      if (normalized.length) {
+        return normalized;
+      }
+    }
+
+    return [];
+  }
+
+  private normalizeSelectOptionSource(source: unknown): Array<{ label: string; value: string }> {
+    if (!source) {
+      return [];
+    }
+
+    const items = Array.isArray(source)
+      ? source
+      : typeof source === 'string'
+        ? source.split(',').map((option) => option.trim()).filter((option) => !!option)
+        : [];
+
+    return items
+      .map((option) => this.normalizeSelectOptionEntry(option))
+      .filter((option): option is { label: string; value: string } => !!option);
+  }
+
+  private normalizeSelectOptionEntry(option: unknown): { label: string; value: string } | null {
+    if (typeof option === 'string') {
+      const trimmed = option.trim();
+      if (!trimmed) {
+        return null;
+      }
+
+      const splitMatch = trimmed.match(/^(.+?)\s*[=:|]\s*(.+)$/);
+      if (splitMatch) {
+        const label = splitMatch[1].trim();
+        const value = splitMatch[2].trim();
+        return { label: label || value, value: value || label };
+      }
+
+      return { label: trimmed, value: trimmed };
+    }
+
+    if (!option || typeof option !== 'object') {
+      return null;
+    }
+
+    const candidate = option as Record<string, unknown>;
+    const label = this.readStringCandidate(candidate['label']) || this.readStringCandidate(candidate['name']) || this.readStringCandidate(candidate['text']);
+    const value =
+      this.readStringCandidate(candidate['value']) ||
+      this.readStringCandidate(candidate['id']) ||
+      this.readStringCandidate(candidate['key']) ||
+      label;
+
+    if (!label && !value) {
+      return null;
+    }
+
+    return {
+      label: label || value,
+      value: value || label,
+    };
+  }
+
+  private readStringCandidate(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : '';
   }
 }
 

@@ -43,6 +43,11 @@ export class FormService {
   }
 
   listarPorProceso(processKey: string): Observable<ApiResponse<FormDefinition[]>> {
-    return this.http.get<ApiResponse<FormDefinition[]>>(`${this.apiUrl}/forms/process/${encodeURIComponent(processKey)}`);
+    return this.http.get<ApiResponse<FormDefinition[]>>(`${this.apiUrl}/forms/process/${encodeURIComponent(processKey)}`).pipe(
+      tap({
+        next: (response) => console.log('FORMULARIOS BACKEND:', JSON.stringify(response.data ?? [], null, 2)),
+        error: (error) => console.error('[FormService] GET /api/forms/process -> error', error),
+      }),
+    );
   }
 }

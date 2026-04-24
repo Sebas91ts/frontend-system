@@ -41,6 +41,7 @@ export type ConditionFieldOption = {
   type: ConditionFieldType;
   options: string[];
   optionItems: ConditionFieldValueOption[];
+  normalizedOptions?: ConditionFieldValueOption[];
 };
 
 export type ConditionOperator =
