@@ -2,17 +2,17 @@
   <section class="hero">
     <div class="hero__copy">
       <p class="eyebrow">Control central</p>
-      <h1>Panel de Administracion</h1>
+      <h1>Dashboard BPM</h1>
       <p class="hero__text">
-        Gestiona usuarios, procesos BPM y accesos desde un solo lugar. Todo con una vista clara,
-        rapida y pensada para operar sin perder contexto.
+        Visualiza el estado operativo del sistema, la carga de trabajo y las ultimas ejecuciones sin
+        salir del panel administrativo.
       </p>
 
       <div class="hero__actions">
-        <button type="button" class="action-button accent" (click)="goToUsers()">Gestionar usuarios</button>
-        <button type="button" class="action-button" (click)="goToAreas()">Gestionar areas</button>
+        <button type="button" class="action-button accent" (click)="goToTasks()">Abrir tareas</button>
         <button type="button" class="action-button" (click)="goToProcesses()">Abrir procesos</button>
-        <button type="button" class="action-button" (click)="goToTasks()">Bandeja de tareas</button>
+        <button type="button" class="action-button" (click)="goToUsers()">Gestionar usuarios</button>
+        <button type="button" class="action-button" (click)="goToAreas()">Gestionar areas</button>
       </div>
     </div>
 
@@ -25,40 +25,89 @@
     </aside>
   </section>
 
-  <section class="cards-grid">
-    <article class="feature-card">
-      <p class="feature-card__tag">Usuarios</p>
-      <h2>CRUD de usuarios</h2>
-      <p>Listar, editar y eliminar usuarios del sistema con flujo claro y simple de operar.</p>
-      <button type="button" class="action-button accent" (click)="goToUsers()">Ir al CRUD</button>
-    </article>
-
-    <article class="feature-card">
-      <p class="feature-card__tag">Procesos BPM</p>
-      <h2>Diseño y versionado</h2>
-      <p>Entrar al modelador BPM para crear, editar y versionar procesos empresariales.</p>
-      <button type="button" class="action-button accent" (click)="goToProcesses()">Abrir diseñador</button>
-    </article>
-
-    <article class="feature-card">
-      <p class="feature-card__tag">Areas</p>
-      <h2>Catalogo organizacional</h2>
-      <p>Gestiona areas reales para luego vincularlas con lanes y responsabilidades BPM.</p>
-      <button type="button" class="action-button accent" (click)="goToAreas()">Ir a areas</button>
-    </article>
-
-    <article class="feature-card">
-      <p class="feature-card__tag">Seguridad</p>
-      <h2>Acceso restringido</h2>
-      <p>Solo administradores pueden acceder a estas herramientas y a los endpoints protegidos.</p>
-      <span class="feature-card__status">ROLE_ADMIN activo</span>
-    </article>
-
-    <article class="feature-card">
-      <p class="feature-card__tag">Tareas</p>
-      <h2>Bandeja de ejecución</h2>
-      <p>Consulta tareas pendientes por instancia, área o usuario sin perder el contexto del proceso.</p>
-      <button type="button" class="action-button accent" (click)="goToTasks()">Abrir bandeja</button>
-    </article>
+  <section class="feedback-card" *ngIf="isLoading">
+    Cargando metricas del sistema...
   </section>
+
+  <section class="feedback-card feedback-card--error" *ngIf="errorMessage && !isLoading">
+    <p>{{ errorMessage }}</p>
+    <button type="button" class="action-button accent" (click)="reintentar()">Reintentar</button>
+  </section>
+
+  <ng-container *ngIf="summary && !isLoading">
+    <section class="summary-grid">
+      <article class="summary-card" *ngFor="let card of summaryCards">
+        <p>{{ card.label }}</p>
+        <strong>{{ card.value }}</strong>
+      </article>
+    </section>
+
+    <section class="panel-grid">
+      <article class="panel-card">
+        <div class="panel-card__header">
+          <div>
+            <p class="feature-card__tag">Areas</p>
+            <h2>Tareas completadas por area</h2>
+          </div>
+        </div>
+
+        <div class="metric-list" *ngIf="tareasPorArea.length; else emptyAreas">
+          <div class="metric-row" *ngFor="let item of tareasPorArea; trackBy: trackByLabel">
+            <span>{{ item.label }}</span>
+            <strong>{{ item.total }}</strong>
+          </div>
+        </div>
+
+        <ng-template #emptyAreas>
+          <p class="empty-state">Todavia no hay tareas completadas para mostrar por area.</p>
+        </ng-template>
+      </article>
+
+      <article class="panel-card">
+        <div class="panel-card__header">
+          <div>
+            <p class="feature-card__tag">Usuarios</p>
+            <h2>Tareas completadas por usuario</h2>
+          </div>
+        </div>
+
+        <div class="metric-list" *ngIf="tareasPorUsuario.length; else emptyUsers">
+          <div class="metric-row" *ngFor="let item of tareasPorUsuario; trackBy: trackByLabel">
+            <span>{{ item.label }}</span>
+            <strong>{{ item.total }}</strong>
+          </div>
+        </div>
+
+        <ng-template #emptyUsers>
+          <p class="empty-state">Todavia no hay tareas completadas para mostrar por usuario.</p>
+        </ng-template>
+      </article>
+    </section>
+
+    <section class="panel-card panel-card--full">
+      <div class="panel-card__header">
+        <div>
+          <p class="feature-card__tag">Actividad reciente</p>
+          <h2>Ultimas tareas completadas</h2>
+        </div>
+      </div>
+
+      <div class="recent-list" *ngIf="ultimasTareas.length; else emptyRecent">
+        <article class="recent-item" *ngFor="let item of ultimasTareas; trackBy: trackByTask">
+          <div class="recent-item__main">
+            <strong>{{ item.taskName }}</strong>
+            <p>{{ getProcessLabel(item) }} · {{ item.areaNombre }}</p>
+          </div>
+          <div class="recent-item__meta">
+            <span>{{ item.completedBy || 'Usuario no identificado' }}</span>
+            <small>{{ formatDate(item.completedAt) }}</small>
+          </div>
+        </article>
+      </div>
+
+      <ng-template #emptyRecent>
+        <p class="empty-state">Todavia no hay tareas completadas registradas en el historial.</p>
+      </ng-template>
+    </section>
+  </ng-container>
 </main>
