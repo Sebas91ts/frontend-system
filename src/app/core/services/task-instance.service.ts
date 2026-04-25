@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { API_BASE_URL } from '../config/api.config';
 import { ApiResponse } from '../models/auth.models';
+import { TaskExecutionLog } from '../models/task-history.models';
 import { TareaInstancia } from '../models/task-instance.models';
 
 @Injectable({
@@ -42,6 +43,12 @@ export class TaskInstanceService {
 
   obtenerPorId(id: string): Observable<ApiResponse<TareaInstancia>> {
     return this.http.get<ApiResponse<TareaInstancia>>(`${this.apiUrl}/camunda/tasks/${id}`);
+  }
+
+  obtenerHistorial(processInstanceId: string): Observable<ApiResponse<TaskExecutionLog[]>> {
+    return this.http.get<ApiResponse<TaskExecutionLog[]>>(
+      `${this.apiUrl}/process-instances/${processInstanceId}/history`,
+    );
   }
 
   completarTarea(taskId: string): Observable<ApiResponse<Record<string, unknown>>> {

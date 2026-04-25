@@ -1,20 +1,21 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { finalize, firstValueFrom } from 'rxjs';
+import { ApiResponse } from '../../../../core/models/auth.models';
 import {
   FormDefinition,
   FormFieldDefinition,
   FormFieldOptionDefinition,
   UploadedFileMetadata,
 } from '../../../../core/models/form.models';
-import { FileUploadService } from '../../../../core/services/file-upload.service';
-import { TaskInstanceService } from '../../../../core/services/task-instance.service';
-import { FormService } from '../../../../core/services/form.service';
-import { AuthService } from '../../../../core/services/auth.service';
+import { HistoryDisplayField, TaskExecutionLog } from '../../../../core/models/task-history.models';
 import { TareaInstancia } from '../../../../core/models/task-instance.models';
-import { ApiResponse } from '../../../../core/models/auth.models';
+import { AuthService } from '../../../../core/services/auth.service';
+import { FileUploadService } from '../../../../core/services/file-upload.service';
+import { FormService } from '../../../../core/services/form.service';
+import { TaskInstanceService } from '../../../../core/services/task-instance.service';
 
 @Component({
   selector: 'app-task-detail',
@@ -45,6 +46,9 @@ export class TaskDetailComponent implements OnInit {
   protected formLoading = false;
   protected errorMessage = '';
   protected successMessage = '';
+  protected historyEntries: TaskExecutionLog[] = [];
+  protected historyLoading = false;
+  protected historyMessage = '';
   private loadingTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   ngOnInit(): void {
@@ -53,11 +57,12 @@ export class TaskDetailComponent implements OnInit {
 
     if (navigationTask?.id) {
       this.task = navigationTask;
-      void this.loadFormForTask(navigationTask);
+      this.loadFormForTask(navigationTask);
+      this.loadHistory(navigationTask.processInstanceId || '');
     }
 
     if (!id) {
-      this.errorMessage = 'No se recibió el identificador de la tarea.';
+      this.errorMessage = 'No se recibio el identificador de la tarea.';
       return;
     }
 
@@ -101,7 +106,11 @@ export class TaskDetailComponent implements OnInit {
   }
 
   protected getAreaLabel(): string {
-    return this.task?.areaNombre?.trim() || 'Área no identificada';
+    return this.task?.areaNombre?.trim() || 'Area no identificada';
+  }
+
+  protected get historyAvailable(): boolean {
+    return this.historyEntries.length > 0;
   }
 
   protected openPlaceholderAction(): void {
@@ -311,6 +320,21 @@ export class TaskDetailComponent implements OnInit {
     return this.fileUploadState[field.name]?.error || '';
   }
 
+  protected getHistoryTaskLabel(entry: TaskExecutionLog): string {
+    return entry.taskName?.trim() || entry.taskDefinitionKey?.trim() || 'Tarea sin nombre';
+  }
+
+  protected getHistoryUserLabel(entry: TaskExecutionLog): string {
+    return entry.completedBy?.trim() || entry.assignedTo?.trim() || 'Usuario no identificado';
+  }
+
+  protected getHistoryFields(entry: TaskExecutionLog): HistoryDisplayField[] {
+    const data = entry.formData ?? {};
+    return Object.entries(data)
+      .map(([key, value]) => this.mapHistoryField(key, value))
+      .filter((field): field is HistoryDisplayField => !!field);
+  }
+
   protected onFileSelected(field: FormFieldDefinition, event: Event): void {
     const input = event.target as HTMLInputElement | null;
     const file = input?.files?.[0] ?? null;
@@ -341,7 +365,7 @@ export class TaskDetailComponent implements OnInit {
     this.loadingTimeoutId = setTimeout(() => {
       if (!this.task && this.isLoading) {
         this.isLoading = false;
-        this.errorMessage = 'La carga del detalle tardó demasiado. Intenta refrescar la página.';
+        this.errorMessage = 'La carga del detalle tardo demasiado. Intenta refrescar la pagina.';
         this.cdr.detectChanges();
       }
     }, 15000);
@@ -359,7 +383,8 @@ export class TaskDetailComponent implements OnInit {
         next: (response) => {
           this.task = response.data ?? this.task;
           if (this.task) {
-            void this.loadFormForTask(this.task);
+            this.loadFormForTask(this.task);
+            this.loadHistory(this.task.processInstanceId || '');
           }
           this.cdr.detectChanges();
         },
@@ -396,13 +421,10 @@ export class TaskDetailComponent implements OnInit {
 
     try {
       const variables = this.formDefinition ? await this.buildVariablesPayload() : {};
-      console.info('[TaskDetail] Completing task with variables', {
-        taskId: this.task.id,
-        variables,
-      });
 
       await firstValueFrom(this.taskService.completarTareaConVariables(this.task.id, variables));
-      this.successMessage = 'La tarea se completó correctamente.';
+      this.successMessage = 'La tarea se completo correctamente.';
+      this.prependCurrentExecutionToHistory(variables);
       this.cdr.detectChanges();
       setTimeout(() => void this.router.navigate(['/tasks']), 900);
     } catch (error: any) {
@@ -449,6 +471,42 @@ export class TaskDetailComponent implements OnInit {
           this.formDefinition = null;
           this.fileUploadState = {};
           this.formMessage = 'Esta tarea no tiene formulario configurado.';
+          this.cdr.detectChanges();
+        },
+      });
+  }
+
+  private loadHistory(processInstanceId: string): void {
+    if (!processInstanceId) {
+      this.historyEntries = [];
+      this.historyMessage = 'Esta tarea todavia no tiene historial disponible.';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.historyLoading = true;
+    this.historyMessage = '';
+    this.cdr.detectChanges();
+
+    this.taskService
+      .obtenerHistorial(processInstanceId)
+      .pipe(
+        finalize(() => {
+          this.historyLoading = false;
+          this.cdr.detectChanges();
+        }),
+      )
+      .subscribe({
+        next: (response) => {
+          this.historyEntries = response.data ?? [];
+          this.historyMessage = this.historyEntries.length
+            ? ''
+            : 'Aun no hay tareas completadas en esta instancia.';
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          this.historyEntries = [];
+          this.historyMessage = 'No se pudo cargar el historial de la instancia.';
           this.cdr.detectChanges();
         },
       });
@@ -530,6 +588,130 @@ export class TaskDetailComponent implements OnInit {
     }
 
     return value;
+  }
+
+  private mapHistoryField(key: string, value: unknown): HistoryDisplayField | null {
+    if (value === undefined || value === null || value === '') {
+      return null;
+    }
+
+    const file = this.asUploadedFile(value);
+    if (file) {
+      return {
+        key,
+        label: this.formatFieldLabel(key),
+        value: file.fileName || 'Archivo adjunto',
+        isFile: true,
+        file,
+      };
+    }
+
+    return {
+      key,
+      label: this.formatFieldLabel(key),
+      value: this.formatHistoryValue(value),
+      isFile: false,
+    };
+  }
+
+  private asUploadedFile(value: unknown): UploadedFileMetadata | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null;
+    }
+
+    const candidate = value as Partial<UploadedFileMetadata>;
+    if (!candidate.fileName && !candidate.secureUrl && !candidate.publicId) {
+      return null;
+    }
+
+    return {
+      fileName: candidate.fileName || 'Archivo',
+      secureUrl: candidate.secureUrl || '',
+      publicId: candidate.publicId || '',
+      mimeType: candidate.mimeType || null,
+      size: candidate.size || null,
+      resourceType: candidate.resourceType || null,
+    };
+  }
+
+  private formatFieldLabel(key: string): string {
+    return key
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/[_-]+/g, ' ')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .replace(/^./, (char) => char.toUpperCase());
+  }
+
+  private formatHistoryValue(value: unknown): string {
+    if (typeof value === 'boolean') {
+      return value ? 'Si' : 'No';
+    }
+
+    if (typeof value === 'number') {
+      return String(value);
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.formatHistoryValue(item)).join(', ');
+    }
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return '';
+      }
+
+      if (
+        (trimmed.startsWith('[') && trimmed.endsWith(']')) ||
+        (trimmed.startsWith('{') && trimmed.endsWith('}'))
+      ) {
+        try {
+          return this.formatHistoryValue(JSON.parse(trimmed));
+        } catch {
+          return trimmed;
+        }
+      }
+
+      return trimmed;
+    }
+
+    if (value && typeof value === 'object') {
+      return Object.entries(value as Record<string, unknown>)
+        .map(([entryKey, entryValue]) => `${this.formatFieldLabel(entryKey)}: ${this.formatHistoryValue(entryValue)}`)
+        .join(' | ');
+    }
+
+    return String(value);
+  }
+
+  private prependCurrentExecutionToHistory(variables: Record<string, unknown>): void {
+    if (!this.task?.processInstanceId) {
+      return;
+    }
+
+    const currentUser = this.authService.currentUser()?.email || this.task.assignee || '';
+    const now = new Date().toISOString();
+    this.historyEntries = [
+      ...this.historyEntries,
+      {
+        id: `tmp-${now}`,
+        processInstanceId: this.task.processInstanceId,
+        processDefinitionId: this.task.processDefinitionId || '',
+        processKey: this.extractProcessKey(this.task.processDefinitionId),
+        processVersion: this.processVersion,
+        taskDefinitionKey: this.task.taskDefinitionKey,
+        taskName: this.task.name || this.task.nombreTarea,
+        areaId: this.task.areaId,
+        areaNombre: this.task.areaNombre,
+        assignedTo: this.task.assignee || this.task.assignedTo,
+        completedBy: currentUser,
+        formData: variables,
+        createdAt: this.task.created || this.task.createdAt,
+        completedAt: now,
+      },
+    ];
+    this.historyMessage = '';
   }
 
   private clearLoadingTimeout(): void {

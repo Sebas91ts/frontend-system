@@ -3,18 +3,21 @@
     <div>
       <p class="task-detail-eyebrow">Detalle de tarea</p>
       <h1>{{ task?.name || 'Tarea sin nombre' }}</h1>
-      <p class="task-detail-copy">
-        Vista de detalle para una tarea real de Camunda.
-      </p>
+      <p class="task-detail-copy">Vista de detalle para una tarea real de Camunda.</p>
     </div>
 
     <div class="task-detail-actions">
       <button type="button" class="toolbar-button" (click)="goBack()">Volver</button>
-      <button type="button" class="toolbar-button accent" (click)="openPlaceholderAction()" [disabled]="!task || isCompleting || !canCompleteTask || (hasForm && !isFormValid)">
+      <button
+        type="button"
+        class="toolbar-button accent"
+        (click)="openPlaceholderAction()"
+        [disabled]="!task || isCompleting || !canCompleteTask || (hasForm && !isFormValid)"
+      >
         {{ isCompleting ? 'Enviando...' : 'Enviar formulario y completar' }}
       </button>
       <button type="button" class="toolbar-button" (click)="toggleTechnicalDetails()" [disabled]="!task">
-        {{ showTechnicalDetails ? 'Ocultar detalle técnico' : 'Ver más' }}
+        {{ showTechnicalDetails ? 'Ocultar detalle tecnico' : 'Ver mas' }}
       </button>
     </div>
   </header>
@@ -34,7 +37,7 @@
       <strong>{{ getProcessLabel() }}</strong>
     </div>
     <div class="task-detail-row">
-      <span>Área</span>
+      <span>Area</span>
       <strong>{{ getAreaLabel() }}</strong>
     </div>
     <div class="task-detail-row">
@@ -55,11 +58,11 @@
     </div>
     <div class="task-detail-technical" *ngIf="showTechnicalDetails">
       <div class="task-detail-row">
-        <span>Proceso técnico</span>
+        <span>Proceso tecnico</span>
         <strong>{{ task.processDefinitionId || 'Sin proceso' }}</strong>
       </div>
       <div class="task-detail-row">
-        <span>Instancia técnica</span>
+        <span>Instancia tecnica</span>
         <strong>{{ task.processInstanceId || 'Sin instancia' }}</strong>
       </div>
       <div class="task-detail-row">
@@ -75,9 +78,7 @@
       <strong>{{ hasForm ? (formDefinition?.title || 'Formulario de tarea') : 'Esta tarea no tiene formulario configurado' }}</strong>
     </div>
 
-    <div class="task-detail-form-message" *ngIf="formLoading">
-      Cargando formulario...
-    </div>
+    <div class="task-detail-form-message" *ngIf="formLoading">Cargando formulario...</div>
 
     <div class="task-detail-form-message" *ngIf="formMessage && !formLoading">
       {{ formMessage }}
@@ -156,15 +157,12 @@
               </label>
             </div>
             <div *ngSwitchCase="'file'" class="task-detail-file">
-              <input
-                type="file"
-                (change)="onFileSelected(field, $event)"
-              />
+              <input type="file" (change)="onFileSelected(field, $event)" />
               <div class="task-detail-file__state" *ngIf="getSelectedFile(field.name)">
                 Archivo seleccionado: {{ getSelectedFileName(field.name) }}
               </div>
               <div class="task-detail-file__state" *ngIf="!getSelectedFile(field.name)">
-                El archivo se validará al seleccionarlo y se enviará con el formulario.
+                El archivo se validara al seleccionarlo y se enviara con el formulario.
               </div>
               <div class="task-detail-file__state success" *ngIf="getFieldFile(field)">
                 Archivo cargado: {{ getFieldFile(field)?.fileName }}
@@ -177,12 +175,62 @@
           </ng-container>
 
           <small *ngIf="field.helpText">{{ field.helpText }}</small>
-          <small class="task-detail-form__error" *ngIf="isFieldMissing(field)">
-            Este campo es obligatorio.
-          </small>
+          <small class="task-detail-form__error" *ngIf="isFieldMissing(field)">Este campo es obligatorio.</small>
         </label>
       </div>
     </form>
+  </section>
+
+  <section class="task-detail-card" *ngIf="task">
+    <div class="task-detail-row">
+      <span>Historial</span>
+      <strong>{{ historyAvailable ? (historyEntries.length + ' tarea(s) registradas') : 'Sin registros aun' }}</strong>
+    </div>
+
+    <div class="task-detail-form-message" *ngIf="historyLoading">Cargando historial...</div>
+
+    <div class="task-detail-form-message" *ngIf="historyMessage && !historyLoading">
+      {{ historyMessage }}
+    </div>
+
+    <div class="task-history" *ngIf="historyAvailable && !historyLoading">
+      <article class="task-history__item" *ngFor="let entry of historyEntries">
+        <div class="task-history__dot" aria-hidden="true"></div>
+        <div class="task-history__content">
+          <div class="task-history__header">
+            <div>
+              <h3>{{ getHistoryTaskLabel(entry) }}</h3>
+              <p>
+                {{ getHistoryUserLabel(entry) }}
+                <span *ngIf="entry.areaNombre">| {{ entry.areaNombre }}</span>
+              </p>
+            </div>
+            <strong>{{ formatDate(entry.completedAt) }}</strong>
+          </div>
+
+          <div class="task-history__fields" *ngIf="getHistoryFields(entry).length; else noHistoryData">
+            <div class="task-history__field" *ngFor="let field of getHistoryFields(entry)">
+              <span>{{ field.label }}</span>
+              <ng-container *ngIf="field.isFile; else textHistoryValue">
+                <a *ngIf="field.file?.secureUrl; else missingFileUrl" [href]="field.file?.secureUrl" target="_blank" rel="noopener">
+                  {{ field.value }}
+                </a>
+                <ng-template #missingFileUrl>
+                  <strong>{{ field.value }}</strong>
+                </ng-template>
+              </ng-container>
+              <ng-template #textHistoryValue>
+                <strong>{{ field.value }}</strong>
+              </ng-template>
+            </div>
+          </div>
+
+          <ng-template #noHistoryData>
+            <p class="task-history__empty">Esta ejecucion no registro datos de formulario.</p>
+          </ng-template>
+        </div>
+      </article>
+    </div>
   </section>
 
   <section class="task-detail-card" *ngIf="!task && !isLoading && !errorMessage">

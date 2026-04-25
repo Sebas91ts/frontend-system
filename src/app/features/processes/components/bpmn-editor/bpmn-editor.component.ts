@@ -546,13 +546,13 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
                   options: [...(field.options ?? [])],
                   optionItems: (field.optionItems ?? []).map((option) => ({ ...option })),
                 })),
-              }
+            }
             : this.formDraft;
           this.formSuccess = 'Formulario guardado correctamente.';
           this.processFormDefinitions = [];
           this.loadedConditionProcessKey = '';
           this.availableConditionFields = [];
-          this.rebuildAvailableConditionFields();
+          this.loadAvailableConditionFields();
           this.forceRefreshSelectedSequenceFlow();
           this.cdr.markForCheck();
         },
@@ -938,17 +938,19 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
   }
 
   private forceRefreshSelectedSequenceFlow(): void {
+    if (!this.selectedSequenceFlowElement) {
+      this.cdr.markForCheck();
+      return;
+    }
+
     const currentFlow = this.selectedSequenceFlowElement;
     this.sequenceFlowRefreshSnapshot = currentFlow;
-    this.selectedSequenceFlowElement = null;
-    this.cdr.markForCheck();
 
     setTimeout(() => {
       this.selectedSequenceFlowElement = this.sequenceFlowRefreshSnapshot;
       this.sequenceFlowRefreshSnapshot = null;
-      if (this.selectedSequenceFlowElement) {
-        this.syncSelectedSequenceFlowState();
-      }
+      this.rebuildAvailableConditionFields();
+      this.syncSelectedSequenceFlowState();
       this.cdr.markForCheck();
     });
   }
