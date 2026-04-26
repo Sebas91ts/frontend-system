@@ -13,7 +13,9 @@
 
   <div class="timeline-list" *ngIf="history.length">
     <article class="timeline-item" *ngFor="let entry of history">
-      <div class="timeline-dot"></div>
+      <div class="timeline-dot" aria-hidden="true">
+        <span></span>
+      </div>
       <div class="timeline-body">
         <div class="timeline-top">
           <div>

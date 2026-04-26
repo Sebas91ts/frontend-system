@@ -3,11 +3,11 @@
 }
 
 .timeline-card {
-  background: #fff;
-  border: 1px solid #dbe4ee;
-  border-radius: 24px;
+  background: var(--bpm-surface);
+  border: 1px solid var(--bpm-border);
+  border-radius: var(--bpm-radius-lg);
   padding: 22px;
-  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--bpm-shadow-md);
 }
 
 .timeline-head {
@@ -45,6 +45,17 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  position: relative;
+}
+
+.timeline-list::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  background: linear-gradient(180deg, var(--bpm-primary-100), var(--bpm-success-100));
 }
 
 .timeline-item {
@@ -54,19 +65,34 @@ h3 {
 }
 
 .timeline-dot {
-  width: 12px;
-  height: 12px;
+  width: 20px;
+  height: 20px;
   border-radius: 999px;
-  background: #2563eb;
+  background: var(--bpm-primary-600);
   margin-top: 10px;
   box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.12);
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+}
+
+.timeline-dot span {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  border: 2px solid #ffffff;
+  border-top: 0;
+  border-left: 0;
+  transform: rotate(45deg) translate(-1px, -1px);
 }
 
 .timeline-body {
-  border: 1px solid #dbe5ef;
-  border-radius: 18px;
+  border: 1px solid var(--bpm-border);
+  border-radius: 20px;
   padding: 16px;
   background: linear-gradient(180deg, #ffffff, #f8fbff);
+  box-shadow: var(--bpm-shadow-sm);
 }
 
 .timeline-top {

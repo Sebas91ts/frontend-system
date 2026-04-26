@@ -49,15 +49,15 @@
     </div>
     <div class="task-detail-row">
       <span>Estado</span>
-      <strong>ACTIVA</strong>
+      <strong><span class="task-status-badge">ACTIVA</span></strong>
     </div>
     <div class="task-detail-row">
       <span>Creada</span>
       <strong>{{ formatDate(task.created) }}</strong>
     </div>
     <div class="task-detail-row">
-      <span>Instancia</span>
-      <strong>{{ getInstanceShortLabel() }}</strong>
+      <span>Seguimiento</span>
+      <strong>{{ getProcessLabel() }}</strong>
     </div>
     <div class="task-detail-technical" *ngIf="showTechnicalDetails">
       <div class="task-detail-row">

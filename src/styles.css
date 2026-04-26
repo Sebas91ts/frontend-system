@@ -1,6 +1,178 @@
-/* You can add global styles to this file, and also import other style files */
-
 @import 'tailwindcss';
+
+:root {
+  --bpm-primary-50: #eff6ff;
+  --bpm-primary-100: #dbeafe;
+  --bpm-primary-500: #2563eb;
+  --bpm-primary-600: #1d4ed8;
+  --bpm-primary-700: #1e40af;
+  --bpm-success-50: #ecfdf5;
+  --bpm-success-100: #d1fae5;
+  --bpm-success-500: #10b981;
+  --bpm-success-700: #047857;
+  --bpm-warning-50: #fffbeb;
+  --bpm-warning-100: #fef3c7;
+  --bpm-warning-500: #f59e0b;
+  --bpm-warning-700: #b45309;
+  --bpm-danger-50: #fef2f2;
+  --bpm-danger-100: #fee2e2;
+  --bpm-danger-500: #ef4444;
+  --bpm-danger-700: #b91c1c;
+  --bpm-neutral-0: #ffffff;
+  --bpm-neutral-50: #f8fafc;
+  --bpm-neutral-100: #f1f5f9;
+  --bpm-neutral-200: #e2e8f0;
+  --bpm-neutral-300: #cbd5e1;
+  --bpm-neutral-500: #64748b;
+  --bpm-neutral-700: #334155;
+  --bpm-neutral-900: #0f172a;
+  --bpm-surface: rgba(255, 255, 255, 0.94);
+  --bpm-border: rgba(148, 163, 184, 0.24);
+  --bpm-radius-sm: 12px;
+  --bpm-radius-md: 18px;
+  --bpm-radius-lg: 28px;
+  --bpm-shadow-sm: 0 10px 24px rgba(15, 23, 42, 0.07);
+  --bpm-shadow-md: 0 20px 48px rgba(15, 23, 42, 0.11);
+  --bpm-shadow-lg: 0 30px 70px rgba(15, 23, 42, 0.16);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--bpm-neutral-900);
+  background:
+    radial-gradient(circle at 10% 8%, rgba(37, 99, 235, 0.12), transparent 26%),
+    radial-gradient(circle at 90% 6%, rgba(16, 185, 129, 0.1), transparent 24%),
+    linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.toolbar-button,
+.primary-btn,
+.ghost-btn,
+.action-button,
+.process-list__open,
+.process-list__publish,
+.process-list__version,
+.process-list__start,
+.process-list__monitor,
+.save-now-button {
+  border-radius: 999px;
+  font-weight: 800;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.toolbar-button:hover:not(:disabled),
+.primary-btn:hover:not(:disabled),
+.ghost-btn:hover:not(:disabled),
+.action-button:hover:not(:disabled),
+.process-list__open:hover:not(:disabled),
+.process-list__publish:hover:not(:disabled),
+.process-list__version:hover:not(:disabled),
+.process-list__start:hover:not(:disabled),
+.process-list__monitor:hover:not(:disabled),
+.save-now-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.ui-badge,
+.badge,
+.task-state,
+.task-pill,
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  border-radius: 999px;
+  padding: 0.42rem 0.72rem;
+  font-size: 0.72rem;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.ui-badge::before,
+.badge::before,
+.task-state::before,
+.task-pill::before,
+.pill::before {
+  content: '';
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.ui-badge--primary,
+.badge-finished {
+  color: var(--bpm-primary-700);
+  background: var(--bpm-primary-50);
+  border-color: var(--bpm-primary-100);
+}
+
+.ui-badge--success,
+.badge-active,
+.pill--published,
+.task-state.active {
+  color: var(--bpm-success-700);
+  background: var(--bpm-success-50);
+  border-color: var(--bpm-success-100);
+}
+
+.ui-badge--warning,
+.pill--draft,
+.task-state.pending {
+  color: var(--bpm-warning-700);
+  background: var(--bpm-warning-50);
+  border-color: var(--bpm-warning-100);
+}
+
+.ui-badge--danger {
+  color: var(--bpm-danger-700);
+  background: var(--bpm-danger-50);
+  border-color: var(--bpm-danger-100);
+}
+
+.ui-badge--neutral,
+.badge-muted,
+.pill--historic,
+.task-pill {
+  color: var(--bpm-neutral-700);
+  background: var(--bpm-neutral-100);
+  border-color: var(--bpm-neutral-200);
+}
+
+.saas-card {
+  border: 1px solid var(--bpm-border);
+  border-radius: var(--bpm-radius-lg);
+  background: var(--bpm-surface);
+  box-shadow: var(--bpm-shadow-md);
+}
+
+.saas-eyebrow,
+.eyebrow,
+.task-inbox-eyebrow,
+.task-detail-eyebrow,
+.properties-eyebrow {
+  color: var(--bpm-primary-600);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
 
 .djs-palette {
   background: #ffffff !important;

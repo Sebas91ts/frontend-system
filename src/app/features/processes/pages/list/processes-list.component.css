@@ -1,7 +1,10 @@
 :host {
   display: block;
   min-height: 100vh;
-  background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 42%, #e2e8f0 100%);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(37, 99, 235, 0.14), transparent 28%),
+    radial-gradient(circle at 88% 2%, rgba(16, 185, 129, 0.1), transparent 24%),
+    linear-gradient(180deg, var(--bpm-neutral-50) 0%, #eef4fb 100%);
 }
 
 .processes-shell {
@@ -15,15 +18,18 @@
   justify-content: space-between;
   gap: 16px;
   padding: 24px;
-  border-radius: 24px;
-  background: rgba(15, 23, 42, 0.94);
-  color: #f8fafc;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+  border-radius: var(--bpm-radius-lg);
+  background:
+    radial-gradient(circle at top right, rgba(37, 99, 235, 0.24), transparent 38%),
+    linear-gradient(135deg, #ffffff, #f8fbff);
+  color: var(--bpm-neutral-900);
+  border: 1px solid var(--bpm-border);
+  box-shadow: var(--bpm-shadow-md);
 }
 
 .eyebrow {
   margin: 0 0 8px;
-  color: #86efac;
+  color: var(--bpm-primary-600);
   text-transform: uppercase;
   letter-spacing: 0.2em;
   font-size: 0.72rem;
@@ -38,7 +44,7 @@
 .subtitle {
   margin: 8px 0 0;
   max-width: 48rem;
-  color: #cbd5e1;
+  color: var(--bpm-neutral-500);
   line-height: 1.6;
 }
 
@@ -49,24 +55,24 @@
 }
 
 .toolbar-button {
-  border: 1px solid transparent;
+  border: 1px solid var(--bpm-border);
   cursor: pointer;
   font: inherit;
   transition: all 0.2s ease;
-  border-radius: 14px;
   padding: 12px 16px;
-  background: #1e293b;
-  color: #e2e8f0;
+  background: var(--bpm-neutral-0);
+  color: var(--bpm-neutral-700);
+  box-shadow: var(--bpm-shadow-sm);
 }
 
 .toolbar-button.accent {
-  background: linear-gradient(135deg, #22c55e, #86efac);
-  color: #052e16;
+  background: linear-gradient(135deg, var(--bpm-primary-600), #3b82f6);
+  color: #ffffff;
   font-weight: 700;
 }
 
 .toolbar-button:hover {
-  background: #334155;
+  background: var(--bpm-neutral-100);
 }
 
 .toolbar-button.accent:hover {
@@ -83,11 +89,11 @@
 }
 
 .list-card {
-  border-radius: 24px;
+  border-radius: var(--bpm-radius-lg);
   overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.14);
+  border: 1px solid var(--bpm-border);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: var(--bpm-shadow-md);
 }
 
 @media (max-width: 768px) {

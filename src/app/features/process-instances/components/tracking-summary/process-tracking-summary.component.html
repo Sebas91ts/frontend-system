@@ -3,7 +3,7 @@
     <div>
       <p class="eyebrow">Seguimiento en vivo</p>
       <h1>{{ item.nombreProceso || 'Proceso no identificado' }}</h1>
-      <p class="meta">{{ versionLabel }} · {{ shortInstanceId }}</p>
+      <p class="meta">{{ versionLabel }} · Estado operativo de la instancia</p>
     </div>
     <span [class]="stateClass(item.estado)">{{ formatState(item.estado) }}</span>
   </div>
