@@ -18,6 +18,11 @@ interface WorkMetric {
   tone: 'primary' | 'success' | 'warning';
 }
 
+interface StartableProcessCard {
+  id: string;
+  processKey: string;
+}
+
 @Component({
   selector: 'app-user-dashboard',
   standalone: true,
@@ -157,6 +162,10 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
     void this.router.navigate(['/tasks'], { queryParams: { mode: 'area' } });
   }
 
+  protected goToStartableProcesses(): void {
+    void this.router.navigate(['/user/processes']);
+  }
+
   protected openTask(task: TareaInstancia): void {
     if (this.isAssignedToMe(task)) {
       void this.router.navigate(['/tasks'], { queryParams: { mode: 'mine' } });
@@ -201,6 +210,10 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
 
   protected trackTask(_: number, task: TareaInstancia): string {
     return task.id || `${task.processInstanceId}-${task.taskDefinitionKey}`;
+  }
+
+  protected trackProcess(_: number, process: StartableProcessCard): string {
+    return process.id || process.processKey;
   }
 
   private loadWorkspace(): void {

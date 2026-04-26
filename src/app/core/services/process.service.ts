@@ -53,6 +53,23 @@ export class ProcessService {
     );
   }
 
+  listarProcesosPublicados(): Observable<ApiResponse<Proceso[]>> {
+    console.info('[ProcessService] GET /api/procesos/publicados -> start', {
+      apiUrl: this.apiUrl,
+    });
+
+    return this.http.get<ApiResponse<Proceso[]>>(`${this.apiUrl}/procesos/publicados`).pipe(
+      tap({
+        next: (response) => {
+          console.info('[ProcessService] GET /api/procesos/publicados -> success', response);
+        },
+        error: (error) => {
+          console.error('[ProcessService] GET /api/procesos/publicados -> error', error);
+        },
+      }),
+    );
+  }
+
   obtenerProceso(id: string): Observable<ApiResponse<Proceso>> {
     console.info('[ProcessService] GET /api/procesos/{id} -> start', {
       id,

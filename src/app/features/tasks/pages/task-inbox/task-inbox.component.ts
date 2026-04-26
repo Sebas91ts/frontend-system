@@ -63,8 +63,9 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
     this.subscribeRealtimeTopics();
     this.queryParamsSubscription = this.route.queryParamMap.subscribe((params) => {
       const mode = params.get('mode');
+      const instanceId = params.get('instanceId');
       this.viewMode = mode === 'area' ? 'area' : mode === 'all' ? 'all' : 'mine';
-      void this.loadTasks();
+      void this.loadTasks(instanceId || undefined);
     });
   }
 
@@ -563,7 +564,7 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
       });
   }
 
-  private async loadTasks(): Promise<void> {
+  private async loadTasks(autoOpenInstanceId?: string): Promise<void> {
     this.isLoading = true;
     this.errorMessage = '';
     this.cdr.detectChanges();
@@ -589,11 +590,15 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (result) => {
           const tasks = result.current?.data ?? [];
+          const areaTasks = result.area?.data ?? [];
           this.tasks = tasks;
           this.myTasksCount = result.mine?.data?.length ?? 0;
-          this.myAreaTasksCount = result.area?.data?.length ?? 0;
+          this.myAreaTasksCount = areaTasks.length;
           this.allTasksCount = this.showAllTab ? (result.all?.data?.length ?? 0) : 0;
           this.showFeedback(`Se cargaron ${tasks.length} tareas activas de Camunda.`, 'success');
+          if (autoOpenInstanceId) {
+            void this.openInstanceTask(autoOpenInstanceId, tasks, areaTasks);
+          }
           this.cdr.detectChanges();
         },
         error: (error: any) => {
@@ -605,6 +610,37 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
           this.cdr.detectChanges();
         },
       });
+  }
+
+  private async openInstanceTask(
+    instanceId: string,
+    currentTasks: TareaInstancia[],
+    areaTasks: TareaInstancia[],
+  ): Promise<void> {
+    const matchingTask =
+      currentTasks.find((task) => task.processInstanceId === instanceId) ||
+      areaTasks.find((task) => task.processInstanceId === instanceId);
+
+    if (!matchingTask) {
+      this.showFeedback('La instancia se inició, pero todavía no aparece la primera tarea.', 'success');
+      return;
+    }
+
+    const currentUser = this.authService.currentUser();
+    if (!matchingTask.assignee && currentUser?.areaId && matchingTask.areaId?.trim()?.toLowerCase() === currentUser.areaId.trim().toLowerCase()) {
+      try {
+        await firstValueFrom(this.taskService.tomarTarea(matchingTask.id));
+      } catch (error: any) {
+        this.showFeedback(error?.error?.message || 'No se pudo tomar automáticamente la primera tarea.', 'error');
+        return;
+      }
+    }
+
+    this.openQuickWork({
+      ...matchingTask,
+      assignee: currentUser?.email || matchingTask.assignee || null,
+      assignedTo: currentUser?.email || matchingTask.assignedTo || null,
+    });
   }
 
   protected getTaskName(task: TareaInstancia): string {

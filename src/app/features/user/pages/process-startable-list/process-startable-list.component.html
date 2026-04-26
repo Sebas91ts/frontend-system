@@ -1,0 +1,67 @@
+<section class="startable-shell">
+  <header class="startable-hero">
+    <div>
+      <p class="eyebrow">Procesos disponibles</p>
+      <h1>Procesos que puedes iniciar</h1>
+      <p>Solo verás procesos publicados cuya primera tarea corresponde al área de tu usuario.</p>
+    </div>
+    <button type="button" class="ghost-button" (click)="goBack()">Volver</button>
+  </header>
+
+  <div class="status-banner error" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="status-banner info" *ngIf="isLoading && !errorMessage">Cargando procesos disponibles...</div>
+
+  <section class="process-grid" *ngIf="processes.length">
+    <article class="process-card" *ngFor="let process of processes; trackBy: trackProcess">
+      <div class="process-card__meta">
+        <span>{{ process.areaLabel }}</span>
+        <small>v{{ process.version }} · {{ process.processKey }}</small>
+      </div>
+      <h2>{{ process.name }}</h2>
+      <button
+        type="button"
+        class="primary-button"
+        (click)="openStartConfirm(process)"
+        [disabled]="startingId === process.id"
+      >
+        {{ startingId === process.id ? 'Iniciando...' : 'Iniciar instancia' }}
+      </button>
+    </article>
+  </section>
+
+  <div class="empty-state" *ngIf="!isLoading && !processes.length">
+    <strong>No tienes procesos habilitados para iniciar</strong>
+    <p>Cuando exista un proceso publicado cuya primera tarea sea de tu área, aparecerá aquí.</p>
+  </div>
+
+  <ng-container *ngIf="confirmProcess">
+    <div class="modal-backdrop modal-backdrop--strong" (click)="closeStartConfirm()"></div>
+    <section class="ai-modal" role="dialog" aria-modal="true" aria-labelledby="start-process-title">
+      <div class="ai-modal__header">
+        <span class="ai-modal__eyebrow">Confirmar inicio</span>
+        <h3 id="start-process-title">¿Seguro que quieres iniciar este proceso?</h3>
+        <p>
+          Se abrirá la primera tarea de <strong>{{ confirmProcess?.name }}</strong> en tu bandeja para que completes el formulario.
+        </p>
+      </div>
+
+      <div class="ai-modal__preview">
+        <div class="ai-modal__preview-label">Área habilitada</div>
+        <div class="ai-modal__preview-text">{{ confirmProcess?.areaLabel }} · v{{ confirmProcess?.version }} · {{ confirmProcess?.processKey }}</div>
+      </div>
+
+      <div class="ai-modal__note">
+        Solo se iniciará si el flujo corresponde a tu área. Luego serás redirigido directamente a la primera tarea disponible.
+      </div>
+
+      <div class="ai-modal__actions">
+        <button type="button" class="toolbar-button" (click)="closeStartConfirm()" [disabled]="startingId === confirmProcess?.id">
+          Cancelar
+        </button>
+        <button type="button" class="toolbar-button accent" (click)="confirmAndStartProcess()" [disabled]="startingId === confirmProcess?.id">
+          {{ startingId === confirmProcess?.id ? 'Iniciando...' : 'Sí, iniciar' }}
+        </button>
+      </div>
+    </section>
+  </ng-container>
+</section>

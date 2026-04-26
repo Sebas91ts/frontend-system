@@ -62,6 +62,13 @@ export const routes: Routes = [
     canActivate: [authGuard, roleGuard],
     data: { roles: ['ROLE_USER', 'ROLE_ADMIN'] }
   },
+  {
+    path: 'user/processes',
+    loadComponent: () => import('./features/user/pages/process-startable-list/process-startable-list.component')
+      .then(m => m.ProcessStartableListComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_USER', 'ROLE_ADMIN'] }
+  },
 
   // Diseñador de procesos BPMN
   {

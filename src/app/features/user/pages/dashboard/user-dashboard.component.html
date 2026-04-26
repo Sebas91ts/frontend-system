@@ -11,6 +11,9 @@
 
     <div class="workspace-hero__actions">
       <app-notification-bell />
+      <button type="button" class="ghost-button" (click)="goToStartableProcesses()">
+        Procesos iniciables
+      </button>
       <button type="button" class="ghost-button" (click)="refresh()" [disabled]="isLoading">
         {{ isLoading ? t('user.updating') : t('user.refresh') }}
       </button>
