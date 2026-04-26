@@ -1,0 +1,152 @@
+<section class="family-shell">
+  <header class="family-topbar">
+    <button type="button" class="toolbar-button ghost" (click)="goBack()">
+      {{ t('processes.familyBack') }}
+    </button>
+
+    <div class="family-topbar__meta">
+      <span class="family-topbar__eyebrow">{{ t('processes.familyTitle') }}</span>
+      <span class="family-topbar__hint">{{ familyName || familyKey }}</span>
+    </div>
+
+    <button type="button" class="toolbar-button accent" (click)="resetFilters()" [disabled]="!hasFiltersApplied">
+      {{ t('processes.clearFilters') }}
+    </button>
+  </header>
+
+  <section class="family-hero">
+    <div>
+      <p class="eyebrow">{{ familyKey }}</p>
+      <h1>{{ familyName || t('processes.familyMissing') }}</h1>
+      <p class="subtitle">{{ t('processes.familySubtitle') }}</p>
+    </div>
+
+    <div class="summary-grid">
+      <article class="summary-card" *ngFor="let card of summaryCards">
+        <span class="summary-card__label">{{ card.label }}</span>
+        <strong class="summary-card__value">{{ card.value }}</strong>
+      </article>
+    </div>
+  </section>
+
+  <section class="filters-card">
+    <div class="filters-card__field">
+      <label>{{ t('processes.searchLabel') }}</label>
+      <input
+        type="search"
+        [value]="searchQuery"
+        (input)="searchQuery = ($any($event.target).value || '')"
+        [placeholder]="t('processes.searchPlaceholder')"
+      />
+    </div>
+
+    <div class="filters-card__field">
+      <label>{{ t('processes.statusLabel') }}</label>
+      <select [(ngModel)]="statusFilter">
+        <option value="all">{{ t('processes.statusAll') }}</option>
+        <option value="BORRADOR">{{ t('processes.statusDraft') }}</option>
+        <option value="PUBLICADO">{{ t('processes.statusPublished') }}</option>
+        <option value="HISTORICO">{{ t('processes.statusHistoric') }}</option>
+      </select>
+    </div>
+
+    <div class="filters-card__field">
+      <label>{{ t('processes.orderLabel') }}</label>
+      <select [(ngModel)]="sortMode">
+        <option value="recent">{{ t('processes.sortRecent') }}</option>
+        <option value="name">{{ t('processes.sortName') }}</option>
+        <option value="version">{{ t('processes.sortVersion') }}</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="status-banner success" *ngIf="successMessage">{{ successMessage }}</div>
+  <div class="status-banner error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+  <section class="versions-section">
+    <div class="versions-section__header">
+      <div>
+        <p class="eyebrow eyebrow--small">{{ t('processes.versions') }}</p>
+        <h2>{{ filteredProcesos.length }} {{ t('processes.versions') }}</h2>
+      </div>
+    </div>
+
+    <div class="versions-empty" *ngIf="!isLoading && !filteredProcesos.length">
+      <strong>{{ t('processes.familyEmpty') }}</strong>
+    </div>
+
+    <div class="versions-grid" *ngIf="filteredProcesos.length">
+      <article class="version-card" *ngFor="let proceso of filteredProcesos">
+        <div class="version-card__header">
+          <div>
+            <span class="version-card__eyebrow">{{ t('processes.version') }} {{ proceso.version }}</span>
+            <h3>{{ proceso.nombre }}</h3>
+          </div>
+          <span
+            class="pill"
+            [class.pill--published]="proceso.estado === 'PUBLICADO'"
+            [class.pill--draft]="proceso.estado === 'BORRADOR'"
+            [class.pill--historic]="proceso.estado === 'HISTORICO'"
+          >
+            {{
+              proceso.estado === 'PUBLICADO'
+                ? t('processes.published')
+                : proceso.estado === 'HISTORICO'
+                  ? t('processes.historic')
+                  : t('processes.draft')
+            }}
+          </span>
+        </div>
+
+        <div class="version-card__meta">
+          <span>{{ t('processes.lastActivity') }} {{ proceso.updatedAt || proceso.createdAt }}</span>
+          <span>{{ t('processes.visibleCount') }}: {{ proceso.version }}</span>
+        </div>
+
+        <div class="version-card__actions">
+          <button type="button" class="action-btn" (click)="openProcess(proceso)">
+            {{ proceso.estado === 'BORRADOR' ? t('processes.edit') : t('processes.viewDetails') }}
+          </button>
+
+          <button
+            type="button"
+            class="action-btn success"
+            *ngIf="proceso.estado === 'BORRADOR'"
+            [disabled]="publishingId === proceso.id"
+            (click)="publishProceso(proceso)"
+          >
+            {{ publishingId === proceso.id ? t('processes.publishing') : t('processes.publish') }}
+          </button>
+
+          <button
+            type="button"
+            class="action-btn primary"
+            [disabled]="versioningId === proceso.id"
+            (click)="versionProceso(proceso)"
+          >
+            {{ versioningId === proceso.id ? t('processes.versioning') : t('processes.createVersion') }}
+          </button>
+
+          <button
+            type="button"
+            class="action-btn"
+            *ngIf="proceso.estado === 'PUBLICADO'"
+            [disabled]="startingId === proceso.id"
+            (click)="startProceso(proceso)"
+          >
+            {{ startingId === proceso.id ? t('processes.starting') : t('processes.startProcess') }}
+          </button>
+
+          <button
+            type="button"
+            class="action-btn tertiary"
+            *ngIf="proceso.estado === 'PUBLICADO'"
+            (click)="openMonitoring(proceso)"
+          >
+            {{ t('processes.monitorCycle') }}
+          </button>
+        </div>
+      </article>
+    </div>
+  </section>
+</section>

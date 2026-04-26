@@ -1,17 +1,15 @@
 <section class="task-inbox-shell">
   <header class="task-inbox-hero">
     <div>
-      <p class="task-inbox-eyebrow">Bandeja de tareas</p>
+      <p class="task-inbox-eyebrow">{{ t('tasks.realtime') }}</p>
       <h1>{{ filterSummary }}</h1>
-      <p class="task-inbox-copy">
-        Consulta tareas activas reales de Camunda y completa las que tengas disponibles desde la app.
-      </p>
+      <p class="task-inbox-copy">{{ t('tasks.inboxSubtitle') }}</p>
     </div>
 
     <div class="task-inbox-actions">
-      <button type="button" class="toolbar-button" (click)="goBack()" [disabled]="isLoading">Volver</button>
+      <button type="button" class="toolbar-button" (click)="goBack()" [disabled]="isLoading">{{ t('tasks.back') }}</button>
       <button type="button" class="toolbar-button accent" (click)="refreshTasks()" [disabled]="isLoading">
-        {{ isLoading ? 'Cargando...' : 'Refrescar' }}
+        {{ isLoading ? t('tasks.loading') : t('tasks.refresh') }}
       </button>
       <button
         type="button"
@@ -51,38 +49,38 @@
     <article class="task-card" *ngFor="let task of tasks">
       <div class="task-card__header">
         <div>
-          <p class="task-card__tag">{{ task.assignee ? 'Asignada' : 'Pendiente' }}</p>
+          <p class="task-card__tag">{{ task.assignee ? t('tasks.assigned') : t('tasks.pending') }}</p>
           <h2>{{ getTaskLabel(task) }}</h2>
           <p class="task-card__instance">{{ getProcessLabel(task) }}</p>
         </div>
-        <span class="task-pill">{{ task.assignee ? 'Asignada' : 'Disponible' }}</span>
+        <span class="task-pill">{{ task.assignee ? t('tasks.assigned') : t('tasks.available') }}</span>
       </div>
 
       <dl class="task-card__meta">
         <div>
-          <dt>Proceso</dt>
+          <dt>{{ t('tasks.process') }}</dt>
           <dd>{{ getProcessLabel(task) }}</dd>
         </div>
         <div>
-          <dt>Creada</dt>
+          <dt>{{ t('tasks.created') }}</dt>
           <dd>{{ formatDate(task.created) }}</dd>
         </div>
         <div>
-          <dt>Referencia</dt>
+          <dt>{{ t('tasks.reference') }}</dt>
           <dd>{{ getProcessLabel(task) }}</dd>
         </div>
         <div>
-          <dt>Asignación</dt>
+          <dt>{{ t('tasks.assignment') }}</dt>
           <dd>{{ getAssigneeLabel(task) }}</dd>
         </div>
         <div>
-          <dt>Area</dt>
+          <dt>{{ t('tasks.area') }}</dt>
           <dd>{{ getAreaLabel(task) }}</dd>
         </div>
       </dl>
 
       <div class="task-card__footer">
-        <span class="task-state active">ACTIVA</span>
+        <span class="task-state active">{{ t('tracking.activeState') }}</span>
         <button
           type="button"
           class="toolbar-button accent task-action"
@@ -90,10 +88,10 @@
           (click)="openQuickWork(task)"
         >
           <span class="action-icon action-icon--work"></span>
-          Trabajar ahora
+          {{ t('tasks.directWork') }}
         </button>
         <span class="task-card__hint" *ngIf="!canWorkNow(task)">
-          Primero debes tomar la tarea para poder trabajarla.
+          {{ t('tasks.workingNow') }}
         </span>
 
         <ng-container *ngIf="viewMode === 'area' && !task.assignee">
@@ -104,7 +102,7 @@
             (click)="takeTask(task)"
           >
             <span class="action-icon action-icon--claim"></span>
-            Tomar tarea
+            {{ t('tasks.takeTask') }}
           </button>
           <span class="task-card__hint" *ngIf="!task.assignee">{{ getClaimHint(task) }}</span>
         </ng-container>
@@ -116,10 +114,10 @@
     </article>
 
     <div class="task-empty" *ngIf="!isLoading && tasks.length === 0">
-      <div class="task-empty__title">No hay tareas para mostrar</div>
-      <div *ngIf="viewMode === 'mine'">Aun no tienes tareas asignadas.</div>
-      <div *ngIf="viewMode === 'area'">No hay tareas disponibles para tomar en tu area.</div>
-      <div *ngIf="viewMode === 'all'">No hay tareas activas en Camunda.</div>
+      <div class="task-empty__title">{{ t('tasks.noTasks') }}</div>
+      <div *ngIf="viewMode === 'mine'">{{ t('tasks.noMine') }}</div>
+      <div *ngIf="viewMode === 'area'">{{ t('tasks.noArea') }}</div>
+      <div *ngIf="viewMode === 'all'">{{ t('tasks.noAll') }}</div>
     </div>
   </section>
 </section>
@@ -129,39 +127,39 @@
   <div class="quick-work__panel">
     <header class="quick-work__header">
       <div>
-        <p class="task-inbox-eyebrow">Trabajo rápido</p>
+        <p class="task-inbox-eyebrow">{{ t('tasks.quickWork') }}</p>
         <h2>{{ getTaskName(quickWorkTask) }}</h2>
         <p>{{ quickWorkProcessLabel }} · {{ quickWorkAreaLabel }}</p>
       </div>
-      <button type="button" class="toolbar-button" (click)="closeQuickWork()" [disabled]="quickWorkSaving">Cerrar</button>
+      <button type="button" class="toolbar-button" (click)="closeQuickWork()" [disabled]="quickWorkSaving">{{ t('tasks.close') }}</button>
     </header>
 
     <div class="task-inbox-banner success" *ngIf="quickWorkSuccess">{{ quickWorkSuccess }}</div>
     <div class="task-inbox-banner error" *ngIf="quickWorkError">{{ quickWorkError }}</div>
-    <div class="task-inbox-banner success" *ngIf="quickWorkLoading">Cargando tarea...</div>
+    <div class="task-inbox-banner success" *ngIf="quickWorkLoading">{{ t('tasks.loadingTask') }}</div>
 
     <section class="quick-work__body" *ngIf="!quickWorkLoading">
       <div class="task-card__meta quick-work__meta">
         <div>
-          <dt>Asignada a</dt>
+          <dt>{{ t('tasks.assignedTo') }}</dt>
           <dd>{{ getAssigneeLabel(quickWorkTask) }}</dd>
         </div>
         <div>
-          <dt>Proceso</dt>
+          <dt>{{ t('tasks.process') }}</dt>
           <dd>{{ quickWorkProcessLabel }}</dd>
         </div>
         <div>
-          <dt>Area</dt>
+          <dt>{{ t('tasks.area') }}</dt>
           <dd>{{ getAreaLabel(quickWorkTask) }}</dd>
         </div>
       </div>
 
       <div class="quick-work__form" *ngIf="quickWorkHasForm; else noFormMessage">
-        <h3>{{ quickWorkForm?.title || 'Formulario de tarea' }}</h3>
+        <h3>{{ quickWorkForm?.title || t('tasks.formTitle') }}</h3>
         <div class="quick-work__field" *ngFor="let field of quickWorkForm?.fields || []">
           <label>
             <span>
-              {{ field.label || field.name || 'Campo sin nombre' }}
+              {{ field.label || field.name || t('tasks.taskTitle') }}
               <strong *ngIf="field.required">*</strong>
             </span>
 
@@ -199,7 +197,7 @@
                 (ngModelChange)="setQuickWorkFieldValue(field.name, $event)"
                 [ngModelOptions]="{ standalone: true }"
               >
-                <option value="">Selecciona una opcion</option>
+                <option value="">{{ t('tasks.selectOption') }}</option>
                 <option *ngFor="let option of getQuickWorkFieldOptions(field)" [value]="option.value">{{ option.label }}</option>
               </select>
               <label *ngSwitchCase="'checkbox'" class="quick-work__choice">
@@ -208,7 +206,7 @@
                   [checked]="getQuickWorkFieldValue(field) === true"
                   (change)="setQuickWorkFieldValue(field.name, $any($event.target).checked)"
                 />
-                <span>{{ field.helpText || 'Marca esta opcion si corresponde.' }}</span>
+                <span>{{ field.helpText || t('tasks.checkboxHint') }}</span>
               </label>
               <div *ngSwitchCase="'checklist'" class="quick-work__checklist">
                 <label class="quick-work__choice" *ngFor="let option of getQuickWorkFieldOptions(field)">
@@ -223,10 +221,10 @@
               <div *ngSwitchCase="'file'" class="quick-work__file">
                 <input type="file" (change)="onQuickWorkFileSelected(field, $event)" />
                 <div class="quick-work__file-state" *ngIf="getQuickWorkSelectedFile(field.name)">
-                  Archivo seleccionado: {{ getQuickWorkFileLabel(field.name) }}
+                  {{ t('tasks.fileSelected') }} {{ getQuickWorkFileLabel(field.name) }}
                 </div>
                 <div class="quick-work__file-state" *ngIf="!getQuickWorkSelectedFile(field.name)">
-                  El archivo se validará al seleccionarlo y se enviará con el formulario.
+                  {{ t('tasks.fileValidation') }}
                 </div>
                 <div class="quick-work__file-state error" *ngIf="getQuickWorkFileError(field.name)">
                   {{ getQuickWorkFileError(field.name) }}
@@ -236,7 +234,7 @@
 
             <small *ngIf="field.helpText">{{ field.helpText }}</small>
             <small class="task-detail-form__error" *ngIf="isQuickWorkFieldMissing(field)">
-              Este campo es obligatorio.
+              {{ t('tasks.formRequired') }}
             </small>
           </label>
         </div>
@@ -244,14 +242,14 @@
 
       <ng-template #noFormMessage>
         <div class="quick-work__empty">
-          Esta tarea no tiene formulario configurado. Puedes completar directamente cuando corresponda.
+          {{ t('tasks.noForm') }}
         </div>
       </ng-template>
     </section>
 
     <footer class="quick-work__footer">
       <button type="button" class="toolbar-button accent" (click)="completeQuickWork()" [disabled]="quickWorkSaving || quickWorkLoading || (quickWorkHasForm && !quickWorkIsFormValid)">
-        {{ quickWorkSaving ? 'Enviando...' : 'Enviar formulario y completar' }}
+        {{ quickWorkSaving ? t('tasks.saving') : t('tasks.submit') }}
       </button>
     </footer>
   </div>

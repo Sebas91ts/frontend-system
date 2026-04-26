@@ -1,14 +1,14 @@
 <section class="timeline-card">
   <div class="timeline-head">
     <div>
-      <p class="eyebrow">Historial</p>
-      <h2>Timeline de ejecucion</h2>
+      <p class="eyebrow">{{ t('tracking.timeline') }}</p>
+      <h2>{{ t('tracking.timeline') }}</h2>
     </div>
     <span class="count">{{ history.length }} evento(s)</span>
   </div>
 
   <div class="timeline-empty" *ngIf="!history.length">
-    Aun no hay tareas completadas en esta instancia.
+    {{ t('tracking.noTracking') }}
   </div>
 
   <div class="timeline-list" *ngIf="history.length">
@@ -20,7 +20,7 @@
         <div class="timeline-top">
           <div>
             <h3>{{ taskLabel(entry) }}</h3>
-            <p>{{ actorLabel(entry) }} · {{ entry.areaNombre || 'Area no identificada' }}</p>
+            <p>{{ actorLabel(entry) }} · {{ entry.areaNombre || t('tasks.areaUnknown') }}</p>
           </div>
           <span>{{ formatDate(entry.completedAt || entry.createdAt) }}</span>
         </div>

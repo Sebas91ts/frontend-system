@@ -7,9 +7,11 @@ import {
   OnChanges,
   OnDestroy,
   SimpleChanges,
+  inject,
   ViewChild,
 } from '@angular/core';
 import NavigatedViewer from 'bpmn-js/lib/NavigatedViewer';
+import { TranslationKey, UiPreferencesService } from '../../../../core/services/ui-preferences.service';
 
 @Component({
   selector: 'app-process-tracking-viewer',
@@ -20,6 +22,7 @@ import NavigatedViewer from 'bpmn-js/lib/NavigatedViewer';
 })
 export class ProcessTrackingViewerComponent implements AfterViewInit, OnChanges, OnDestroy {
   @ViewChild('canvasHost', { static: true }) private readonly canvasHost?: ElementRef<HTMLDivElement>;
+  private readonly preferences = inject(UiPreferencesService);
 
   @Input() xml = '';
   @Input() completedTaskKeys: string[] = [];
@@ -29,6 +32,10 @@ export class ProcessTrackingViewerComponent implements AfterViewInit, OnChanges,
 
   protected loading = false;
   protected errorMessage = '';
+
+  protected t(key: TranslationKey): string {
+    return this.preferences.translate(key);
+  }
 
   private viewer: NavigatedViewer | null = null;
   private rendered = false;
@@ -64,7 +71,7 @@ export class ProcessTrackingViewerComponent implements AfterViewInit, OnChanges,
     }
 
     if (!this.xml?.trim()) {
-      this.errorMessage = 'No hay BPMN disponible para esta instancia.';
+      this.errorMessage = this.t('tracking.noTracking');
       this.clearMarkers();
       return;
     }
@@ -86,7 +93,7 @@ export class ProcessTrackingViewerComponent implements AfterViewInit, OnChanges,
     } catch (error) {
       console.error('[ProcessTrackingViewer] No se pudo renderizar el BPMN', error);
       this.clearMarkers();
-      this.errorMessage = 'No se pudo renderizar el diagrama BPMN.';
+      this.errorMessage = this.t('tracking.noTracking');
     } finally {
       this.loading = false;
     }

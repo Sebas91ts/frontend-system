@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { Proceso } from '../../../../core/models/process.models';
+import { TranslationKey, UiPreferencesService } from '../../../../core/services/ui-preferences.service';
 
-type ProcessGroup = {
+type ProcessFamilyCard = {
   processKey: string;
   procesos: Proceso[];
-  expanded: boolean;
+  latest: Proceso;
 };
 
 @Component({
@@ -16,12 +17,12 @@ type ProcessGroup = {
   styleUrl: './process-list-panel.component.css',
 })
 export class ProcessListPanelComponent {
+  private readonly preferences = inject(UiPreferencesService);
   private _procesos: Proceso[] = [];
 
   @Input()
   set procesos(value: Proceso[]) {
     this._procesos = value ?? [];
-    this.expandedKeys = new Set(this._procesos.map((proceso) => proceso.processKey || 'sin_clave'));
   }
 
   get procesos(): Proceso[] {
@@ -29,19 +30,14 @@ export class ProcessListPanelComponent {
   }
 
   @Input() loading = false;
-  @Input() publishingId: string | null = null;
-  @Input() versioningId: string | null = null;
-  @Input() startingId: string | null = null;
 
-  @Output() processSelected = new EventEmitter<Proceso>();
-  @Output() publishProcess = new EventEmitter<Proceso>();
-  @Output() versionProcess = new EventEmitter<Proceso>();
-  @Output() startProcess = new EventEmitter<Proceso>();
-  @Output() monitorProcess = new EventEmitter<Proceso>();
+  @Output() familySelected = new EventEmitter<string>();
 
-  private expandedKeys = new Set<string>();
+  t(key: TranslationKey): string {
+    return this.preferences.translate(key);
+  }
 
-  get groupedProcesses(): ProcessGroup[] {
+  get groupedFamilies(): ProcessFamilyCard[] {
     const groups = new Map<string, Proceso[]>();
 
     for (const proceso of this._procesos) {
@@ -52,24 +48,23 @@ export class ProcessListPanelComponent {
     }
 
     return Array.from(groups.entries())
-      .map(([processKey, procesos]) => ({
-        processKey,
-        procesos: procesos.sort((a, b) => (b.version ?? 0) - (a.version ?? 0)),
-        expanded: this.expandedKeys.has(processKey),
-      }))
-      .sort((a, b) => a.processKey.localeCompare(b.processKey));
+      .map(([processKey, procesos]) => {
+        const sortedByVersion = [...procesos].sort((a, b) => (b.version ?? 0) - (a.version ?? 0));
+        const latest = [...procesos].sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))[0] ?? sortedByVersion[0];
+        return {
+          processKey,
+          procesos: sortedByVersion,
+          latest,
+        };
+      })
+      .sort((a, b) => (b.latest?.createdAt ?? '').localeCompare(a.latest?.createdAt ?? ''));
   }
 
-  toggleGroup(processKey: string): void {
-    if (this.expandedKeys.has(processKey)) {
-      this.expandedKeys.delete(processKey);
-      return;
-    }
-
-    this.expandedKeys.add(processKey);
+  openFamily(processKey: string): void {
+    this.familySelected.emit(processKey);
   }
 
-  isGroupExpanded(processKey: string): boolean {
-    return this.expandedKeys.has(processKey);
+  protected countByState(procesos: Proceso[], state: 'BORRADOR' | 'PUBLICADO' | 'HISTORICO'): number {
+    return procesos.filter((proceso) => proceso.estado === state).length;
   }
 }

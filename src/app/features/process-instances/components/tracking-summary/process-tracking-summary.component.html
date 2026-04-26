@@ -1,46 +1,46 @@
 <section class="summary-card" *ngIf="tracking as item">
   <div class="summary-head">
     <div>
-      <p class="eyebrow">Seguimiento en vivo</p>
-      <h1>{{ item.nombreProceso || 'Proceso no identificado' }}</h1>
-      <p class="meta">{{ versionLabel }} · Estado operativo de la instancia</p>
+      <p class="eyebrow">{{ t('tracking.sync') }}</p>
+      <h1>{{ item.nombreProceso || t('tracking.processUnknown') }}</h1>
+      <p class="meta">{{ versionLabel }} · {{ t('tracking.summary') }}</p>
     </div>
     <span [class]="stateClass(item.estado)">{{ formatState(item.estado) }}</span>
   </div>
 
   <div class="summary-grid">
     <article class="info-tile emphasis">
-      <span class="label">Tarea actual</span>
-      <strong>{{ item.currentTaskName || 'Sin tarea activa' }}</strong>
-      <small>{{ item.currentAreaNombre || 'Area pendiente' }}</small>
+      <span class="label">{{ t('tasks.directWork') }}</span>
+      <strong>{{ item.currentTaskName || t('tasks.noTasks') }}</strong>
+      <small>{{ item.currentAreaNombre || t('tasks.areaUnknown') }}</small>
     </article>
 
     <article class="info-tile">
-      <span class="label">Responsable actual</span>
-      <strong>{{ item.currentAssignedTo || 'Sin asignar' }}</strong>
-      <small>{{ item.activeTasks.length }} tarea(s) activa(s)</small>
+      <span class="label">{{ t('tasks.assignedTo') }}</span>
+      <strong>{{ item.currentAssignedTo || t('tasks.noAssignment') }}</strong>
+      <small>{{ item.activeTasks.length }} {{ t('tracking.activeTasks') }}</small>
     </article>
 
     <article class="info-tile">
-      <span class="label">Completadas</span>
+      <span class="label">{{ t('tracking.completedTasks') }}</span>
       <strong>{{ item.completedTaskKeys.length }}</strong>
-      <small>registradas en historial</small>
+      <small>{{ t('tracking.timeline') }}</small>
     </article>
 
     <article class="info-tile">
-      <span class="label">Pendientes</span>
+      <span class="label">{{ t('tracking.pendingTasks') }}</span>
       <strong>{{ item.pendingTaskKeys.length }}</strong>
-      <small>segun el BPMN publicado</small>
+      <small>{{ t('tracking.viewerHint') }}</small>
     </article>
   </div>
 
   <div class="active-list" *ngIf="item.activeTasks.length">
-    <p class="section-title">Tareas activas</p>
+    <p class="section-title">{{ t('tracking.activeTasks') }}</p>
     <div class="task-chip-list">
       <div class="task-chip" *ngFor="let task of item.activeTasks">
-        <strong>{{ task.taskName || task.taskDefinitionKey || 'Tarea' }}</strong>
-        <span>{{ task.areaNombre || 'Area no identificada' }}</span>
-        <small>{{ task.assignedTo || 'Sin asignar' }}</small>
+        <strong>{{ task.taskName || task.taskDefinitionKey || t('tasks.taskTitle') }}</strong>
+        <span>{{ task.areaNombre || t('tasks.areaUnknown') }}</span>
+        <small>{{ task.assignedTo || t('tasks.noAssignment') }}</small>
       </div>
     </div>
   </div>

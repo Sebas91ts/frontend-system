@@ -1,30 +1,28 @@
 <div class="tracking-page">
   <section class="tracking-hero">
     <div class="tracking-hero__copy">
-      <p class="eyebrow">Seguimiento de instancia</p>
-      <h1>{{ tracking?.nombreProceso || 'Proceso en seguimiento' }}</h1>
-      <p class="hero-copy">
-        Revisa el avance real del proceso, el estado visual del BPMN y la trazabilidad de ejecucion desde una sola vista.
-      </p>
+      <p class="eyebrow">{{ t('tracking.title') }}</p>
+      <h1>{{ tracking?.nombreProceso || t('tracking.process') }}</h1>
+      <p class="hero-copy">{{ t('tracking.subtitle') }}</p>
 
       <div class="sync-strip">
         <span class="sync-badge">
           <i></i>
-          Sincronizacion en vivo
+          {{ t('tracking.sync') }}
         </span>
-        <span class="sync-text">Ultima actualizacion: {{ formatLastUpdate() }}</span>
+        <span class="sync-text">{{ t('tracking.lastUpdate') }} {{ formatLastUpdate() }}</span>
       </div>
     </div>
 
     <div class="tracking-toolbar">
-      <button type="button" class="ghost-btn" (click)="goBack()">Volver a tareas</button>
+      <button type="button" class="ghost-btn" (click)="goBack()">{{ t('tracking.back') }}</button>
       <button type="button" class="primary-btn" (click)="refresh()">
-        {{ refreshInProgress ? 'Actualizando...' : 'Actualizar' }}
+        {{ refreshInProgress ? t('user.updating') : t('tracking.refresh') }}
       </button>
     </div>
   </section>
 
-  <div class="status-card" *ngIf="loading && !tracking">Cargando seguimiento de la instancia...</div>
+  <div class="status-card" *ngIf="loading && !tracking">{{ t('tracking.loading') }}</div>
   <div class="status-card error" *ngIf="errorMessage">{{ errorMessage }}</div>
 
   <ng-container *ngIf="tracking as item">

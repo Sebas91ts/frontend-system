@@ -2,11 +2,11 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnDestroy, OnInit, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
-import { Usuario } from '../../../../core/models/auth.models';
 import { TareaInstancia } from '../../../../core/models/task-instance.models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { RealtimeService } from '../../../../core/services/realtime.service';
 import { TaskInstanceService } from '../../../../core/services/task-instance.service';
+import { TranslationKey, UiPreferencesService } from '../../../../core/services/ui-preferences.service';
 import { NotificationBellComponent } from '../../../../shared/components/notification-bell/notification-bell.component';
 
 type WorkloadStatus = 'healthy' | 'attention' | 'empty';
@@ -29,6 +29,7 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly taskService = inject(TaskInstanceService);
   private readonly realtimeService = inject(RealtimeService);
+  protected readonly preferences = inject(UiPreferencesService);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -68,7 +69,7 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
   }
 
   protected get areaLabel(): string {
-    return this.user()?.areaNombre || 'Área no asignada';
+    return this.user()?.areaNombre || this.t('user.unassignedArea');
   }
 
   protected get workloadStatus(): WorkloadStatus {
@@ -81,46 +82,46 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
 
   protected get workloadTitle(): string {
     if (this.workloadStatus === 'attention') {
-      return 'Tienes trabajo asignado';
+      return this.t('user.workloadAttentionTitle');
     }
 
     if (this.workloadStatus === 'healthy') {
-      return 'Tu bandeja personal está despejada';
+      return this.t('user.workloadHealthyTitle');
     }
 
-    return 'Sin tareas pendientes por ahora';
+    return this.t('user.workloadEmptyTitle');
   }
 
   protected get workloadDescription(): string {
     if (this.workloadStatus === 'attention') {
-      return 'Prioriza tus tareas asignadas antes de tomar nuevas solicitudes del área.';
+      return this.t('user.workloadAttentionDescription');
     }
 
     if (this.workloadStatus === 'healthy') {
-      return 'Puedes apoyar tomando tareas disponibles para tu área.';
+      return this.t('user.workloadHealthyDescription');
     }
 
-    return 'Cuando Camunda genere nuevas tareas, aparecerán aquí automáticamente.';
+    return this.t('user.workloadEmptyDescription');
   }
 
   protected get metrics(): WorkMetric[] {
     return [
       {
-        label: 'Mis tareas',
+        label: this.t('user.mine'),
         value: this.myTasks.length,
-        hint: 'Asignadas directamente a ti',
+        hint: this.t('user.metricMineHint'),
         tone: 'primary',
       },
       {
-        label: 'Disponibles en mi área',
+        label: this.t('user.areaTasks'),
         value: this.areaTasks.length,
-        hint: 'Pendientes para tomar',
+        hint: this.t('user.metricAreaHint'),
         tone: 'success',
       },
       {
-        label: 'Total operativo',
+        label: this.t('user.total'),
         value: this.myTasks.length + this.areaTasks.length,
-        hint: 'Trabajo visible para tu rol',
+        hint: this.t('user.metricTotalHint'),
         tone: 'warning',
       },
     ];
@@ -133,7 +134,11 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
   }
 
   protected get lastUpdatedLabel(): string {
-    return this.lastUpdatedAt ? this.lastUpdatedAt.toLocaleTimeString() : 'Aún no actualizado';
+    return this.lastUpdatedAt ? this.lastUpdatedAt.toLocaleTimeString() : this.t('user.notUpdated');
+  }
+
+  protected t(key: TranslationKey): string {
+    return this.preferences.translate(key);
   }
 
   protected refresh(): void {
@@ -179,7 +184,7 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
   }
 
   protected getTaskBadge(task: TareaInstancia): string {
-    return this.isAssignedToMe(task) ? 'Asignada a mí' : 'Disponible';
+    return this.isAssignedToMe(task) ? 'Asignada a mi' : 'Disponible';
   }
 
   protected getTaskBadgeClass(task: TareaInstancia): string {

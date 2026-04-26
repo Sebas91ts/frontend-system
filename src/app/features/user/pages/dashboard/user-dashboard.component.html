@@ -3,54 +3,52 @@
     <div class="workspace-hero__identity">
       <div class="avatar" aria-hidden="true">{{ userInitials }}</div>
       <div>
-        <p class="eyebrow">Centro de trabajo BPM</p>
-        <h1>Hola, {{ displayName }}</h1>
-        <p class="hero-copy">
-          Gestiona tus tareas asignadas, toma solicitudes disponibles de {{ areaLabel }} y mantén tu flujo al día.
-        </p>
+        <p class="eyebrow">{{ t('user.center') }}</p>
+        <h1>{{ t('user.greeting') }}, {{ displayName }}</h1>
+        <p class="hero-copy">{{ t('user.hero') }}</p>
       </div>
     </div>
 
     <div class="workspace-hero__actions">
       <app-notification-bell />
       <button type="button" class="ghost-button" (click)="refresh()" [disabled]="isLoading">
-        {{ isLoading ? 'Actualizando...' : 'Actualizar' }}
+        {{ isLoading ? t('user.updating') : t('user.refresh') }}
       </button>
-      <button type="button" class="danger-button" (click)="logout()">Cerrar sesión</button>
+      <button type="button" class="danger-button" (click)="logout()">{{ t('user.logout') }}</button>
     </div>
   </header>
 
   <section class="profile-strip">
     <article class="profile-card">
-      <span class="profile-card__label">Rol</span>
+      <span class="profile-card__label">{{ t('user.role') }}</span>
       <strong>{{ roleLabel }}</strong>
     </article>
     <article class="profile-card">
-      <span class="profile-card__label">Área</span>
+      <span class="profile-card__label">{{ t('user.area') }}</span>
       <strong>{{ areaLabel }}</strong>
     </article>
     <article class="profile-card">
-      <span class="profile-card__label">Correo institucional</span>
+      <span class="profile-card__label">{{ t('user.email') }}</span>
       <strong>{{ user()?.email || 'Sin correo' }}</strong>
     </article>
     <article class="profile-card">
-      <span class="profile-card__label">Sincronización</span>
+      <span class="profile-card__label">{{ t('user.sync') }}</span>
       <strong>{{ lastUpdatedLabel }}</strong>
     </article>
   </section>
 
   <div class="workspace-alert error" *ngIf="errorMessage">{{ errorMessage }}</div>
-  <div class="workspace-alert info" *ngIf="isLoading && !errorMessage">Cargando tu espacio de trabajo...</div>
+  <div class="workspace-alert info" *ngIf="isLoading && !errorMessage">{{ t('user.loading') }}</div>
 
   <section class="workload-card" [class.workload-card--attention]="workloadStatus === 'attention'">
     <div>
-      <p class="eyebrow">Estado operativo</p>
+      <p class="eyebrow">{{ t('user.workload') }}</p>
       <h2>{{ workloadTitle }}</h2>
       <p>{{ workloadDescription }}</p>
     </div>
     <div class="workload-card__actions">
-      <button type="button" class="primary-button" (click)="goToMyTasks()">Ver mis tareas</button>
-      <button type="button" class="secondary-button" (click)="goToAreaTasks()">Ver tareas de mi área</button>
+      <button type="button" class="primary-button" (click)="goToMyTasks()">{{ t('user.viewMine') }}</button>
+      <button type="button" class="secondary-button" (click)="goToAreaTasks()">{{ t('user.viewArea') }}</button>
     </div>
   </section>
 
@@ -66,15 +64,15 @@
     <article class="panel-card task-preview">
       <div class="panel-card__head">
         <div>
-          <p class="eyebrow">Prioridad del día</p>
-          <h2>Tareas que requieren atención</h2>
+          <p class="eyebrow">{{ t('user.priority') }}</p>
+          <h2>{{ t('user.priorityTitle') }}</h2>
         </div>
         <span class="count-badge">{{ priorityTasks.length }}</span>
       </div>
 
       <div class="empty-state" *ngIf="!isLoading && priorityTasks.length === 0">
-        <strong>Todo despejado</strong>
-        <p>No hay tareas asignadas ni disponibles para tu área en este momento.</p>
+        <strong>{{ t('user.emptyTitle') }}</strong>
+        <p>{{ t('user.emptyDescription') }}</p>
       </div>
 
       <div class="task-list" *ngIf="priorityTasks.length">
@@ -82,7 +80,7 @@
           <span class="task-row__icon" aria-hidden="true"></span>
           <span class="task-row__main">
             <strong>{{ getTaskName(task) }}</strong>
-            <small>{{ getProcessName(task) }} · {{ task.areaNombre || areaLabel }}</small>
+            <small>{{ getProcessName(task) }} - {{ task.areaNombre || areaLabel }}</small>
           </span>
           <span [class]="getTaskBadgeClass(task)">{{ getTaskBadge(task) }}</span>
           <time>{{ formatDate(task.created) }}</time>
@@ -91,14 +89,16 @@
     </article>
 
     <aside class="panel-card guidance-card">
-      <p class="eyebrow">Cómo avanzar</p>
-      <h2>Flujo de trabajo recomendado</h2>
+      <p class="eyebrow">{{ t('user.recommendation') }}</p>
+      <h2>{{ t('user.guidanceTitle') }}</h2>
       <ol>
-        <li>Completa primero las tareas ya asignadas a tu usuario.</li>
-        <li>Si tu bandeja está vacía, toma tareas disponibles de tu área.</li>
-        <li>Revisa el seguimiento cuando necesites contexto del proceso.</li>
+        <li>{{ t('user.guidanceStepOne') }}</li>
+        <li>{{ t('user.guidanceStepTwo') }}</li>
+        <li>{{ t('user.guidanceStepThree') }}</li>
       </ol>
-      <button type="button" class="secondary-button full-width" (click)="goToAreaTasks()">Tomar una tarea disponible</button>
+      <button type="button" class="secondary-button full-width" (click)="goToAreaTasks()">
+        {{ t('user.claimAvailable') }}
+      </button>
     </aside>
   </section>
 </section>

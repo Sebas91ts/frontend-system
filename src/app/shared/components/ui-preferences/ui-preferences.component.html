@@ -1,0 +1,58 @@
+<button
+  type="button"
+  class="settings-launcher"
+  (click)="togglePanel()"
+  [attr.aria-label]="t('settings.open')"
+  [attr.aria-expanded]="isOpen"
+>
+  <span class="settings-launcher__icon" aria-hidden="true"></span>
+  <span>{{ t('settings.title') }}</span>
+</button>
+
+<button
+  *ngIf="isOpen"
+  type="button"
+  class="settings-backdrop"
+  (click)="closePanel()"
+  [attr.aria-label]="t('settings.close')"
+></button>
+
+<aside class="settings-panel" *ngIf="isOpen" aria-label="Ajustes de interfaz">
+  <header class="settings-panel__header">
+    <div>
+      <p class="settings-panel__eyebrow">{{ t('settings.title') }}</p>
+      <h2>{{ t('settings.subtitle') }}</h2>
+    </div>
+    <button type="button" class="settings-panel__close" (click)="closePanel()">
+      {{ t('settings.close') }}
+    </button>
+  </header>
+
+  <section class="settings-section">
+    <div>
+      <strong>{{ t('settings.theme') }}</strong>
+      <span>{{ themeLabel }}</span>
+    </div>
+    <div class="theme-options" role="group" [attr.aria-label]="t('settings.theme')">
+      <button type="button" [class.active]="!preferences.isDarkMode()" (click)="preferences.setTheme('light')">
+        {{ t('settings.light') }}
+      </button>
+      <button type="button" [class.active]="preferences.isDarkMode()" (click)="preferences.setTheme('dark')">
+        {{ t('settings.dark') }}
+      </button>
+    </div>
+  </section>
+
+  <section class="settings-section">
+    <label class="language-field">
+      <span>{{ t('settings.language') }}</span>
+      <select [ngModel]="preferences.language()" (ngModelChange)="onLanguageChange($event)">
+        <option value="es">Espanol</option>
+        <option value="en">English</option>
+        <option value="pt">Portugues</option>
+      </select>
+    </label>
+  </section>
+
+  <p class="settings-panel__note">{{ t('settings.preview') }}</p>
+</aside>

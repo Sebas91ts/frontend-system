@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core';
+import { Component, Input, inject } from '@angular/core';
 import { UploadedFileMetadata } from '../../../../core/models/form.models';
 import { TaskExecutionLog } from '../../../../core/models/task-history.models';
+import { TranslationKey, UiPreferencesService } from '../../../../core/services/ui-preferences.service';
 
 interface TimelineField {
   label: string;
@@ -19,20 +20,25 @@ interface TimelineField {
 })
 export class ProcessTrackingTimelineComponent {
   @Input() history: TaskExecutionLog[] = [];
+  private readonly preferences = inject(UiPreferencesService);
+
+  protected t(key: TranslationKey): string {
+    return this.preferences.translate(key);
+  }
 
   protected formatDate(value?: string | null): string {
     if (!value) {
-      return 'Sin fecha';
+      return this.t('admin.noDate');
     }
     return new Date(value).toLocaleString();
   }
 
   protected taskLabel(entry: TaskExecutionLog): string {
-    return entry.taskName?.trim() || entry.taskDefinitionKey?.trim() || 'Tarea sin nombre';
+    return entry.taskName?.trim() || entry.taskDefinitionKey?.trim() || this.t('tasks.taskTitle');
   }
 
   protected actorLabel(entry: TaskExecutionLog): string {
-    return entry.completedBy?.trim() || entry.assignedTo?.trim() || 'Usuario no identificado';
+    return entry.completedBy?.trim() || entry.assignedTo?.trim() || this.t('admin.unknownUser');
   }
 
   protected fields(entry: TaskExecutionLog): TimelineField[] {
@@ -50,7 +56,7 @@ export class ProcessTrackingTimelineComponent {
     if (file) {
       return {
         label: this.prettyLabel(key),
-        value: file.fileName || 'Archivo adjunto',
+        value: file.fileName || this.t('tasks.fileSelected'),
         isFile: true,
         file,
       };

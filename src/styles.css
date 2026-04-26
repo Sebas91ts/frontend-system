@@ -34,6 +34,41 @@
   --bpm-shadow-sm: 0 10px 24px rgba(15, 23, 42, 0.07);
   --bpm-shadow-md: 0 20px 48px rgba(15, 23, 42, 0.11);
   --bpm-shadow-lg: 0 30px 70px rgba(15, 23, 42, 0.16);
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --bpm-primary-50: #172554;
+  --bpm-primary-100: #1e3a8a;
+  --bpm-primary-500: #60a5fa;
+  --bpm-primary-600: #93c5fd;
+  --bpm-primary-700: #bfdbfe;
+  --bpm-success-50: #052e23;
+  --bpm-success-100: #064e3b;
+  --bpm-success-500: #34d399;
+  --bpm-success-700: #a7f3d0;
+  --bpm-warning-50: #422006;
+  --bpm-warning-100: #713f12;
+  --bpm-warning-500: #fbbf24;
+  --bpm-warning-700: #fde68a;
+  --bpm-danger-50: #450a0a;
+  --bpm-danger-100: #7f1d1d;
+  --bpm-danger-500: #f87171;
+  --bpm-danger-700: #fecaca;
+  --bpm-neutral-0: #0b1220;
+  --bpm-neutral-50: #111827;
+  --bpm-neutral-100: #172033;
+  --bpm-neutral-200: #243044;
+  --bpm-neutral-300: #3b4a60;
+  --bpm-neutral-500: #cbd5e1;
+  --bpm-neutral-700: #e2e8f0;
+  --bpm-neutral-900: #f8fafc;
+  --bpm-surface: rgba(15, 23, 42, 0.9);
+  --bpm-border: rgba(148, 163, 184, 0.22);
+  --bpm-shadow-sm: 0 10px 24px rgba(0, 0, 0, 0.25);
+  --bpm-shadow-md: 0 20px 48px rgba(0, 0, 0, 0.34);
+  --bpm-shadow-lg: 0 30px 70px rgba(0, 0, 0, 0.42);
+  color-scheme: dark;
 }
 
 * {
@@ -48,6 +83,13 @@ body {
     radial-gradient(circle at 90% 6%, rgba(16, 185, 129, 0.1), transparent 24%),
     linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+:root[data-theme='dark'] body {
+  background:
+    radial-gradient(circle at 10% 8%, rgba(37, 99, 235, 0.2), transparent 28%),
+    radial-gradient(circle at 90% 6%, rgba(16, 185, 129, 0.16), transparent 26%),
+    linear-gradient(180deg, #020617 0%, #0f172a 48%, #111827 100%);
 }
 
 button,
@@ -174,6 +216,537 @@ select {
   font-weight: 900;
 }
 
+:root[data-theme='dark'] :is(
+  .employee-shell,
+  .admin-shell,
+  .dashboard-shell,
+  .task-inbox-shell,
+  .task-detail-shell,
+  .processes-shell,
+  .tracking-page,
+  .designer-shell
+) {
+  color: var(--bpm-neutral-900);
+}
+
+:root[data-theme='dark'] :is(
+  .workspace-hero,
+  .workload-card,
+  .panel-card,
+  .profile-card,
+  .metric-card,
+  .task-inbox-hero,
+  .task-detail-hero,
+  .header,
+  .list-card,
+  .summary-card,
+  .timeline-card,
+  .viewer-card,
+  .tracking-hero,
+  .task-card,
+  .task-detail-card,
+  .process-group,
+  .process-list__item,
+  .settings-panel,
+  .settings-section,
+  .collaboration-bar,
+  .properties-sidebar,
+  .quick-work__panel
+) {
+  background:
+    radial-gradient(circle at top right, rgba(96, 165, 250, 0.1), transparent 32%),
+    linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(17, 24, 39, 0.94)) !important;
+  border-color: var(--bpm-border) !important;
+  color: var(--bpm-neutral-900) !important;
+}
+
+:root[data-theme='dark'] :is(
+  h1,
+  h2,
+  h3,
+  .task-card h2,
+  .task-detail-row strong,
+  .task-row__main strong,
+  .recent-item__main strong,
+  .metric-row strong,
+  .profile-card strong,
+  .metric-card strong,
+  .metric-card span,
+  .process-list__item strong,
+  .panel-header h3,
+  .panel-card__head h2,
+  .guidance-card h2,
+  .properties-header h3,
+  .info-tile strong,
+  .task-chip strong,
+  .timeline-top h3,
+  .field-card strong,
+  .field-card a,
+  .settings-launcher,
+  .settings-section strong,
+  .language-field span
+) {
+  color: var(--bpm-neutral-900) !important;
+}
+
+:root[data-theme='dark'] :is(
+  p,
+  small,
+  .hero-copy,
+  .subtitle,
+  .task-inbox-copy,
+  .task-detail-copy,
+  .process-list__item span,
+  .task-card__instance,
+  .task-card__hint,
+  .timeline-top p,
+  .timeline-top span,
+  .profile-card__label,
+  .settings-panel__note,
+  .settings-section span,
+  .task-row small,
+  .metric-card p,
+  .panel-header p,
+  .properties-header p,
+  .meta
+) {
+  color: var(--bpm-neutral-500) !important;
+}
+
+:root[data-theme='dark'] :is(
+  .admin-shell,
+  .admin-shell .hero__copy,
+  .admin-shell .hero__profile,
+  .admin-shell .panel-card,
+  .admin-shell .summary-card,
+  .admin-shell .feedback-card,
+  .admin-shell .tracking-spotlight__intro,
+  .admin-shell .tracking-card,
+  .process-designer-shell,
+  .process-dialogs-shell,
+  .save-modal,
+  .task-form-modal,
+  .task-inbox-shell,
+  .task-detail-shell,
+  .tracking-page
+) {
+  background:
+    radial-gradient(circle at top right, rgba(96, 165, 250, 0.1), transparent 32%),
+    linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(17, 24, 39, 0.94)) !important;
+  border-color: var(--bpm-border) !important;
+  color: var(--bpm-neutral-900) !important;
+}
+
+:root[data-theme='light'] :is(
+  .admin-shell,
+  .admin-shell .hero__copy,
+  .admin-shell .hero__profile,
+  .admin-shell .panel-card,
+  .admin-shell .summary-card,
+  .admin-shell .feedback-card,
+  .admin-shell .tracking-spotlight__intro,
+  .admin-shell .tracking-card
+) {
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.1), transparent 32%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 255, 0.94)) !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  color: var(--bpm-neutral-900) !important;
+}
+
+:root[data-theme='dark'] :is(
+  .admin-shell .hero h1,
+  .admin-shell .hero__profile strong,
+  .admin-shell .panel-card__header h2,
+  .admin-shell .tracking-spotlight__intro h2,
+  .admin-shell .summary-card strong,
+  .admin-shell .tracking-card h3,
+  .admin-shell .metric-row strong,
+  .admin-shell .recent-item__main strong,
+  .save-modal__header h3,
+  .save-modal__field,
+  .save-modal__context,
+  .save-modal__field input,
+  .panel-header h3,
+  .panel-header p,
+  .toolbar-button.accent,
+  .action-button.accent,
+  .toolbar-button,
+  .process-list__publish,
+  .process-list__start
+) {
+  color: #f8fafc !important;
+}
+
+:root[data-theme='light'] :is(
+  .admin-shell .hero h1,
+  .admin-shell .hero__profile strong,
+  .admin-shell .panel-card__header h2,
+  .admin-shell .tracking-spotlight__intro h2,
+  .admin-shell .summary-card strong,
+  .admin-shell .tracking-card h3,
+  .admin-shell .metric-row strong,
+  .admin-shell .recent-item__main strong,
+  .save-modal__header h3,
+  .save-modal__field,
+  .save-modal__context,
+  .save-modal__field input,
+  .panel-header h3,
+  .panel-header p
+) {
+  color: var(--bpm-neutral-900) !important;
+}
+
+:root[data-theme='dark'] :is(
+  .admin-shell .hero__text,
+  .admin-shell .hero__profile p,
+  .admin-shell .hero__profile small,
+  .admin-shell .summary-card p,
+  .admin-shell .tracking-spotlight__intro p:last-child,
+  .admin-shell .tracking-card__meta,
+  .admin-shell .metric-row span,
+  .admin-shell .recent-item__main p,
+  .admin-shell .recent-item__meta span,
+  .admin-shell .recent-item__meta small,
+  .admin-shell .empty-state,
+  .admin-shell .feature-card__tag,
+  .admin-shell .eyebrow,
+  .save-modal__header p,
+  .save-modal__field span,
+  .save-modal__status,
+  .panel-header p,
+  .process-chip__meta
+) {
+  color: #cbd5e1 !important;
+}
+
+:root[data-theme='light'] :is(
+  .admin-shell .hero__text,
+  .admin-shell .hero__profile p,
+  .admin-shell .hero__profile small,
+  .admin-shell .summary-card p,
+  .admin-shell .tracking-spotlight__intro p:last-child,
+  .admin-shell .tracking-card__meta,
+  .admin-shell .metric-row span,
+  .admin-shell .recent-item__main p,
+  .admin-shell .recent-item__meta span,
+  .admin-shell .recent-item__meta small,
+  .admin-shell .empty-state,
+  .admin-shell .feature-card__tag,
+  .admin-shell .eyebrow,
+  .save-modal__header p,
+  .save-modal__field span,
+  .save-modal__status,
+  .panel-header p,
+  .process-chip__meta
+) {
+  color: #5f6c80 !important;
+}
+
+:root[data-theme='dark'] .admin-shell .action-button {
+  background: rgba(30, 41, 59, 0.9) !important;
+  color: #e2e8f0 !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+}
+
+:root[data-theme='light'] .admin-shell .action-button {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+  border-color: rgba(148, 163, 184, 0.24) !important;
+}
+
+:root[data-theme='dark'] .admin-shell .action-button.accent,
+:root[data-theme='dark'] .toolbar-button.accent,
+:root[data-theme='dark'] .action-button.accent {
+  background: linear-gradient(135deg, #22c55e, #4ade80) !important;
+  color: #06210f !important;
+}
+
+:root[data-theme='light'] .admin-shell .action-button.accent {
+  background: linear-gradient(135deg, #0f766e, #14b8a6) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme='dark'] .admin-shell .action-button.tracking {
+  background: linear-gradient(135deg, #f8fafc, #dbeafe) !important;
+  color: #102a43 !important;
+}
+
+:root[data-theme='light'] .admin-shell .action-button.tracking {
+  background: linear-gradient(135deg, #e2e8f0, #f8fafc) !important;
+  color: #102a43 !important;
+}
+
+:root[data-theme='dark'] .admin-shell .profile-badge {
+  background: rgba(34, 197, 94, 0.14) !important;
+  color: #86efac !important;
+}
+
+:root[data-theme='light'] .admin-shell .profile-badge {
+  background: rgba(34, 197, 94, 0.1) !important;
+  color: #047857 !important;
+}
+
+:root[data-theme='dark'] .admin-shell .logout-link,
+:root[data-theme='dark'] .save-modal__status.success {
+  color: #93c5fd !important;
+}
+
+:root[data-theme='light'] .admin-shell .logout-link,
+:root[data-theme='light'] .save-modal__status.success {
+  color: #2563eb !important;
+}
+
+:root[data-theme='dark'] .admin-shell .metric-row,
+:root[data-theme='dark'] .admin-shell .recent-item,
+:root[data-theme='dark'] .save-modal,
+:root[data-theme='dark'] .process-dialogs-shell,
+:root[data-theme='dark'] .task-form-modal {
+  background: rgba(30, 41, 59, 0.7) !important;
+  border-color: rgba(148, 163, 184, 0.14) !important;
+}
+
+:root[data-theme='light'] .admin-shell .metric-row,
+:root[data-theme='light'] .admin-shell .recent-item,
+:root[data-theme='light'] .save-modal,
+:root[data-theme='light'] .process-dialogs-shell,
+:root[data-theme='light'] .task-form-modal {
+  background: #ffffff !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+}
+
+:root[data-theme='dark'] :is(
+  .task-inbox-shell,
+  .task-inbox-shell .task-inbox-hero,
+  .task-inbox-shell .task-card,
+  .task-inbox-shell .task-filter,
+  .task-inbox-shell .quick-work__panel,
+  .task-inbox-shell .quick-work__choice,
+  .task-inbox-shell .quick-work__empty,
+  .task-inbox-shell .task-empty,
+  .tracking-page,
+  .tracking-page .tracking-hero,
+  .tracking-page .status-card,
+  .tracking-page .sync-badge,
+  .tracking-page .ghost-btn,
+  .tracking-page .primary-btn
+) {
+  background:
+    radial-gradient(circle at top right, rgba(96, 165, 250, 0.1), transparent 32%),
+    linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(17, 24, 39, 0.94)) !important;
+  border-color: var(--bpm-border) !important;
+  color: #e5e7eb !important;
+}
+
+:root[data-theme='light'] :is(
+  .task-inbox-shell,
+  .task-inbox-shell .task-inbox-hero,
+  .task-inbox-shell .task-card,
+  .task-inbox-shell .task-filter,
+  .task-inbox-shell .quick-work__panel,
+  .task-inbox-shell .quick-work__choice,
+  .task-inbox-shell .quick-work__empty,
+  .task-inbox-shell .task-empty,
+  .tracking-page,
+  .tracking-page .tracking-hero,
+  .tracking-page .status-card,
+  .tracking-page .sync-badge,
+  .tracking-page .ghost-btn,
+  .tracking-page .primary-btn
+) {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+  color: #0f172a !important;
+}
+
+:root[data-theme='dark'] :is(
+  .task-inbox-shell h1,
+  .task-inbox-shell h2,
+  .task-inbox-shell h3,
+  .task-inbox-shell .task-card__header h2,
+  .task-inbox-shell .task-empty__title,
+  .task-inbox-shell .quick-work__header h2,
+  .task-inbox-shell .quick-work__form h3,
+  .tracking-page h1,
+  .tracking-page .tracking-hero h1,
+  .tracking-page .status-card,
+  .tracking-page .sync-text
+) {
+  color: #f8fafc !important;
+}
+
+:root[data-theme='light'] :is(
+  .task-inbox-shell h1,
+  .task-inbox-shell h2,
+  .task-inbox-shell h3,
+  .task-inbox-shell .task-card__header h2,
+  .task-inbox-shell .task-empty__title,
+  .task-inbox-shell .quick-work__header h2,
+  .task-inbox-shell .quick-work__form h3,
+  .tracking-page h1,
+  .tracking-page .tracking-hero h1,
+  .tracking-page .status-card,
+  .tracking-page .sync-text
+) {
+  color: #0f172a !important;
+}
+
+:root[data-theme='dark'] :is(
+  .task-inbox-shell p,
+  .task-inbox-shell small,
+  .task-inbox-shell dt,
+  .task-inbox-shell dd,
+  .task-inbox-shell .task-card__instance,
+  .task-inbox-shell .task-card__hint,
+  .task-inbox-shell .task-inbox-copy,
+  .task-inbox-shell .quick-work__header p,
+  .task-inbox-shell .quick-work__file-state,
+  .task-inbox-shell .task-empty,
+  .tracking-page .hero-copy,
+  .tracking-page .sync-text,
+  .tracking-page .eyebrow
+) {
+  color: #cbd5e1 !important;
+}
+
+:root[data-theme='light'] :is(
+  .task-inbox-shell p,
+  .task-inbox-shell small,
+  .task-inbox-shell dt,
+  .task-inbox-shell dd,
+  .task-inbox-shell .task-card__instance,
+  .task-inbox-shell .task-card__hint,
+  .task-inbox-shell .task-inbox-copy,
+  .task-inbox-shell .quick-work__header p,
+  .task-inbox-shell .quick-work__file-state,
+  .task-inbox-shell .task-empty,
+  .tracking-page .hero-copy,
+  .tracking-page .sync-text,
+  .tracking-page .eyebrow
+) {
+  color: #5f6c80 !important;
+}
+
+:root[data-theme='dark'] :is(
+  .task-inbox-shell .toolbar-button,
+  .task-inbox-shell .task-filter input,
+  .task-inbox-shell .task-card__meta div,
+  .task-inbox-shell .quick-work__field input,
+  .task-inbox-shell .quick-work__field textarea,
+  .task-inbox-shell .quick-work__field select,
+  .task-inbox-shell .quick-work__choice,
+  .tracking-page .ghost-btn,
+  .tracking-page .primary-btn
+) {
+  background: var(--bpm-neutral-100) !important;
+  color: #e5e7eb !important;
+  border-color: var(--bpm-border) !important;
+}
+
+:root[data-theme='light'] :is(
+  .task-inbox-shell .toolbar-button,
+  .task-inbox-shell .task-filter input,
+  .task-inbox-shell .task-card__meta div,
+  .task-inbox-shell .quick-work__field input,
+  .task-inbox-shell .quick-work__field textarea,
+  .task-inbox-shell .quick-work__field select,
+  .task-inbox-shell .quick-work__choice,
+  .tracking-page .ghost-btn,
+  .tracking-page .primary-btn
+) {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+}
+
+:root[data-theme='dark'] :is(
+  .toolbar-button,
+  .ghost-button,
+  .secondary-button,
+  .ghost-btn,
+  .danger-button,
+  .settings-launcher,
+  .settings-panel__close,
+  .theme-options,
+  .theme-options button,
+  .process-list__open,
+  .task-card__meta div,
+  .task-detail-row,
+  .field-card,
+  .timeline-body,
+  .task-history__content,
+  .task-history__field,
+  .info-tile,
+  .task-chip,
+  .status-card,
+  .task-detail-form-message,
+  input,
+  textarea,
+  select
+) {
+  background: var(--bpm-neutral-100) !important;
+  border-color: var(--bpm-border) !important;
+  color: var(--bpm-neutral-900) !important;
+}
+
+:root[data-theme='dark'] :is(
+  .primary-button,
+  .toolbar-button.accent,
+  .action-button.accent,
+  .primary-btn,
+  .save-now-button,
+  .theme-options button.active
+) {
+  color: #ffffff !important;
+}
+
+:root[data-theme='dark'] :is(
+  .process-list__publish,
+  .process-list__start,
+  .task-badge--success,
+  .badge-active,
+  .pill--published
+) {
+  color: #d1fae5 !important;
+}
+
+:root[data-theme='dark'] :is(
+  .workspace-alert.info,
+  .workspace-alert.error,
+  .empty-state,
+  .task-row,
+  .metric-card,
+  .profile-card
+) {
+  background: var(--bpm-neutral-100) !important;
+  border-color: var(--bpm-border) !important;
+}
+
+:root[data-theme='dark'] ::placeholder {
+  color: var(--bpm-neutral-500);
+  opacity: 0.9;
+}
+
+:root[data-theme='dark'] a {
+  color: var(--bpm-primary-600);
+}
+
+:root[data-theme='dark'] :is(
+  .task-inbox-hero,
+  .task-detail-hero,
+  .workspace-hero,
+  .tracking-hero,
+  .header
+) {
+  box-shadow: var(--bpm-shadow-lg);
+}
+
+:root[data-theme='dark'] :is(.canvas-wrapper, .canvas-shell) {
+  background:
+    radial-gradient(circle at top left, rgba(96, 165, 250, 0.12), transparent 28%),
+    linear-gradient(180deg, #0f172a, #111827) !important;
+}
+
 .djs-palette {
   background: #ffffff !important;
   border-right: 1px solid #e5e7eb !important;
@@ -261,6 +834,35 @@ input.djs-direct-editing-content {
 .djs-container {
   background: white !important;
   border-radius: 8px;
+}
+
+:root[data-theme='dark'] .djs-container {
+  background: #0f172a !important;
+}
+
+:root[data-theme='dark'] .djs-palette,
+:root[data-theme='dark'] .djs-context-pad,
+:root[data-theme='dark'] .djs-popup,
+:root[data-theme='dark'] .djs-popup-body {
+  background: #111827 !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+}
+
+:root[data-theme='dark'] .djs-palette .entry,
+:root[data-theme='dark'] .djs-context-pad .entry,
+:root[data-theme='dark'] .djs-context-pad .entry:before,
+:root[data-theme='dark'] .djs-popup .entry,
+:root[data-theme='dark'] .djs-popup .entry:before,
+:root[data-theme='dark'] .djs-label,
+:root[data-theme='dark'] .djs-element .djs-label {
+  color: #e5e7eb !important;
+  fill: #e5e7eb !important;
+}
+
+:root[data-theme='dark'] .djs-palette .entry:hover,
+:root[data-theme='dark'] .djs-context-pad .entry:hover,
+:root[data-theme='dark'] .djs-popup .entry:hover {
+  background: #1e293b !important;
 }
 
 @media (max-width: 640px) {

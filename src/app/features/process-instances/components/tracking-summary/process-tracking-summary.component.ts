@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core';
+import { Component, Input, inject } from '@angular/core';
 import { ProcessInstanceTracking } from '../../../../core/models/process-tracking.models';
+import { TranslationKey, UiPreferencesService } from '../../../../core/services/ui-preferences.service';
 
 @Component({
   selector: 'app-process-tracking-summary',
@@ -11,16 +12,21 @@ import { ProcessInstanceTracking } from '../../../../core/models/process-trackin
 })
 export class ProcessTrackingSummaryComponent {
   @Input({ required: true }) tracking: ProcessInstanceTracking | null = null;
+  private readonly preferences = inject(UiPreferencesService);
+
+  protected t(key: TranslationKey): string {
+    return this.preferences.translate(key);
+  }
 
   protected formatState(value?: string | null): string {
     const normalized = value?.trim().toUpperCase() || 'SIN_DATOS';
     if (normalized === 'ACTIVA') {
-      return 'Activa';
+      return this.t('tracking.activeState');
     }
     if (normalized === 'FINALIZADA') {
-      return 'Finalizada';
+      return this.t('tracking.finishedState');
     }
-    return 'Sin datos';
+    return this.t('tracking.noData');
   }
 
   protected stateClass(value?: string | null): string {
@@ -35,14 +41,14 @@ export class ProcessTrackingSummaryComponent {
   }
 
   protected get versionLabel(): string {
-    return this.tracking?.processVersion ? `v${this.tracking.processVersion}` : 'Sin version';
+    return this.tracking?.processVersion ? `v${this.tracking.processVersion}` : this.t('tracking.noData');
   }
 
   protected get shortInstanceId(): string {
     const raw = this.tracking?.processInstanceId?.trim();
     if (!raw) {
-      return 'Instancia no identificada';
+      return this.t('tracking.instanceUnknown');
     }
-    return `Instancia #${raw.slice(-6)}`;
+    return `${this.t('tracking.instance')} #${raw.slice(-6)}`;
   }
 }

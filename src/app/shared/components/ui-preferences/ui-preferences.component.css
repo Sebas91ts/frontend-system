@@ -1,0 +1,191 @@
+:host {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 90;
+}
+
+.settings-launcher,
+.settings-panel__close,
+.theme-options button {
+  border: 1px solid var(--bpm-border);
+  cursor: pointer;
+  font-weight: 900;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.settings-launcher {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  border-radius: 999px;
+  padding: 0.72rem 1rem;
+  color: var(--bpm-neutral-900);
+  background: color-mix(in srgb, var(--bpm-neutral-0) 92%, transparent);
+  box-shadow: var(--bpm-shadow-lg);
+  backdrop-filter: blur(18px);
+}
+
+.settings-launcher:hover,
+.settings-panel__close:hover,
+.theme-options button:hover {
+  transform: translateY(-1px);
+}
+
+.settings-launcher__icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at center, var(--bpm-neutral-0) 0 28%, transparent 30%),
+    conic-gradient(
+      from 20deg,
+      var(--bpm-primary-500),
+      var(--bpm-success-500),
+      var(--bpm-warning-500),
+      var(--bpm-primary-500)
+    );
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--bpm-primary-500) 16%, transparent);
+}
+
+.settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  border: 0;
+  background: rgba(15, 23, 42, 0.22);
+  backdrop-filter: blur(3px);
+  cursor: default;
+}
+
+.settings-panel {
+  position: fixed;
+  right: 18px;
+  bottom: 78px;
+  width: min(420px, calc(100vw - 32px));
+  border: 1px solid var(--bpm-border);
+  border-radius: 30px;
+  padding: 18px;
+  display: grid;
+  gap: 16px;
+  color: var(--bpm-neutral-900);
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--bpm-primary-500) 18%, transparent), transparent 36%),
+    color-mix(in srgb, var(--bpm-neutral-0) 94%, transparent);
+  box-shadow: var(--bpm-shadow-lg);
+  backdrop-filter: blur(22px);
+}
+
+.settings-panel__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.settings-panel__eyebrow,
+.settings-panel h2,
+.settings-panel__note,
+.settings-section strong,
+.settings-section span {
+  margin: 0;
+}
+
+.settings-panel__eyebrow {
+  color: var(--bpm-primary-600);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.settings-panel h2 {
+  margin-top: 0.35rem;
+  color: var(--bpm-neutral-900);
+  font-size: 1.15rem;
+  line-height: 1.35;
+}
+
+.settings-panel__close {
+  border-radius: 999px;
+  padding: 0.55rem 0.78rem;
+  color: var(--bpm-neutral-700);
+  background: var(--bpm-neutral-50);
+}
+
+.settings-section {
+  border: 1px solid var(--bpm-border);
+  border-radius: 22px;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+  background: color-mix(in srgb, var(--bpm-neutral-50) 86%, transparent);
+}
+
+.settings-section > div:first-child,
+.language-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.settings-section strong,
+.language-field span {
+  color: var(--bpm-neutral-900);
+  font-size: 0.92rem;
+  font-weight: 900;
+}
+
+.settings-section span,
+.settings-panel__note {
+  color: var(--bpm-neutral-500);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.theme-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 5px;
+  border-radius: 999px;
+  background: var(--bpm-neutral-100);
+}
+
+.theme-options button {
+  border-radius: 999px;
+  padding: 0.68rem 0.8rem;
+  color: var(--bpm-neutral-700);
+  background: transparent;
+}
+
+.theme-options button.active {
+  color: #ffffff;
+  border-color: color-mix(in srgb, var(--bpm-primary-500) 45%, transparent);
+  background: linear-gradient(135deg, var(--bpm-primary-600), var(--bpm-primary-500));
+  box-shadow: 0 12px 22px color-mix(in srgb, var(--bpm-primary-500) 24%, transparent);
+}
+
+.language-field select {
+  min-height: 44px;
+  border: 1px solid var(--bpm-border);
+  border-radius: 16px;
+  padding: 0 0.9rem;
+  color: var(--bpm-neutral-900);
+  background: var(--bpm-neutral-0);
+  font-weight: 850;
+  outline: none;
+}
+
+@media (max-width: 640px) {
+  :host {
+    right: 10px;
+    bottom: 10px;
+  }
+
+  .settings-panel {
+    right: 10px;
+    bottom: 68px;
+    width: calc(100vw - 20px);
+  }
+}

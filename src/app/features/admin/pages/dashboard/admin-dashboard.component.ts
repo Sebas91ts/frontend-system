@@ -5,6 +5,7 @@ import { finalize, timeout } from 'rxjs';
 import { DashboardMetricItem, DashboardRecentTask, DashboardSummary } from '../../../../core/models/dashboard.models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { DashboardService } from '../../../../core/services/dashboard.service';
+import { TranslationKey, UiPreferencesService } from '../../../../core/services/ui-preferences.service';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -17,6 +18,7 @@ export class AdminDashboardComponent implements OnInit {
   authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly dashboardService = inject(DashboardService);
+  private readonly preferences = inject(UiPreferencesService);
   private readonly cdr = inject(ChangeDetectorRef);
 
   protected isLoading = true;
@@ -24,32 +26,19 @@ export class AdminDashboardComponent implements OnInit {
   protected summary: DashboardSummary | null = null;
 
   ngOnInit(): void {
-    console.info('[AdminDashboard] ngOnInit');
     this.cargarResumen();
+  }
+
+  protected t(key: TranslationKey): string {
+    return this.preferences.translate(key);
   }
 
   protected get summaryCards(): Array<{ label: string; value: number; tone: string }> {
     return [
-      {
-        label: 'Procesos publicados',
-        value: this.summary?.totalProcesosPublicados ?? 0,
-        tone: 'green',
-      },
-      {
-        label: 'Instancias activas',
-        value: this.summary?.totalInstanciasActivas ?? 0,
-        tone: 'blue',
-      },
-      {
-        label: 'Tareas pendientes',
-        value: this.summary?.totalTareasPendientes ?? 0,
-        tone: 'amber',
-      },
-      {
-        label: 'Tareas completadas',
-        value: this.summary?.totalTareasCompletadas ?? 0,
-        tone: 'slate',
-      },
+      { label: this.t('admin.openProcesses'), value: this.summary?.totalProcesosPublicados ?? 0, tone: 'green' },
+      { label: this.t('admin.openInstances'), value: this.summary?.totalInstanciasActivas ?? 0, tone: 'blue' },
+      { label: this.t('admin.openTasks'), value: this.summary?.totalTareasPendientes ?? 0, tone: 'amber' },
+      { label: this.t('admin.recentTitle'), value: this.summary?.totalTareasCompletadas ?? 0, tone: 'slate' },
     ];
   }
 
@@ -67,15 +56,17 @@ export class AdminDashboardComponent implements OnInit {
 
   protected get trackingDestacados(): DashboardRecentTask[] {
     const seen = new Set<string>();
-    return this.ultimasTareas.filter((item) => {
-      const instanceId = item.processInstanceId?.trim();
-      if (!instanceId || seen.has(instanceId)) {
-        return false;
-      }
+    return this.ultimasTareas
+      .filter((item) => {
+        const instanceId = item.processInstanceId?.trim();
+        if (!instanceId || seen.has(instanceId)) {
+          return false;
+        }
 
-      seen.add(instanceId);
-      return true;
-    }).slice(0, 3);
+        seen.add(instanceId);
+        return true;
+      })
+      .slice(0, 3);
   }
 
   protected get totalInstanciasMonitoreables(): number {
@@ -84,7 +75,7 @@ export class AdminDashboardComponent implements OnInit {
 
   protected formatDate(value?: string | null): string {
     if (!value) {
-      return 'Sin fecha';
+      return this.t('admin.noDate');
     }
 
     return new Date(value).toLocaleString();
@@ -93,7 +84,7 @@ export class AdminDashboardComponent implements OnInit {
   protected getProcessLabel(task: DashboardRecentTask): string {
     const key = task.processKey?.trim();
     if (!key) {
-      return 'Proceso no identificado';
+      return this.t('admin.unknownProcess');
     }
 
     const version = task.processVersion ?? null;
@@ -142,7 +133,7 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   protected getTrackingLabel(item: DashboardRecentTask): string {
-    const taskName = item.taskName?.trim() || 'Instancia';
+    const taskName = item.taskName?.trim() || this.t('admin.recentTitle');
     const area = item.areaNombre?.trim();
     return area ? `${taskName} · ${area}` : taskName;
   }
@@ -154,7 +145,6 @@ export class AdminDashboardComponent implements OnInit {
   private cargarResumen(): void {
     this.isLoading = true;
     this.errorMessage = '';
-    console.info('[AdminDashboard] cargarResumen -> start');
     this.cdr.detectChanges();
 
     this.dashboardService
@@ -163,24 +153,17 @@ export class AdminDashboardComponent implements OnInit {
         timeout(12000),
         finalize(() => {
           this.isLoading = false;
-          console.info('[AdminDashboard] cargarResumen -> finalize', {
-            isLoading: this.isLoading,
-            hasSummary: !!this.summary,
-            errorMessage: this.errorMessage,
-          });
           this.cdr.detectChanges();
         }),
       )
       .subscribe({
         next: (response) => {
           this.summary = response.data ?? null;
-          console.info('[AdminDashboard] cargarResumen -> success', response);
           this.cdr.detectChanges();
         },
         error: (error) => {
           this.summary = null;
           this.errorMessage = error?.error?.message || 'No se pudo cargar el dashboard.';
-          console.error('[AdminDashboard] cargarResumen -> error', error);
           this.cdr.detectChanges();
         },
       });

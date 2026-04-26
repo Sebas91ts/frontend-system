@@ -72,6 +72,13 @@ export const routes: Routes = [
     data: { roles: ['ROLE_ADMIN'] }
   },
   {
+    path: 'processes/families/:processKey',
+    loadComponent: () => import('./features/processes/pages/family/process-family-detail.component')
+      .then(m => m.ProcessFamilyDetailComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_ADMIN'] }
+  },
+  {
     path: 'processes/designer',
     redirectTo: 'processes',
     pathMatch: 'full'

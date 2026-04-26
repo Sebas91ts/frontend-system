@@ -1,39 +1,107 @@
 <section class="processes-shell">
-  <header class="header">
-    <div>
-      <p class="eyebrow">Administracion BPM</p>
-      <h1>Procesos</h1>
-      <p class="subtitle">
-        Selecciona una familia de proceso, crea nuevas versiones o publica un borrador.
-      </p>
+  <header class="page-topbar">
+    <button type="button" class="toolbar-button ghost" (click)="goBack()">
+      {{ t('processes.back') }}
+    </button>
+
+    <div class="page-topbar__meta">
+      <span class="page-topbar__eyebrow">{{ t('admin.center') }}</span>
+      <span class="page-topbar__hint">{{ t('processes.pageSubtitle') }}</span>
     </div>
 
-    <div class="header-actions">
-      <button type="button" class="toolbar-button accent" (click)="openNewProcessDialog()">
-        Nuevo proceso
-      </button>
-      <button type="button" class="toolbar-button" (click)="loadProcessList()" [disabled]="isLoadingProcessList">
-        Refrescar
-      </button>
-    </div>
+    <button type="button" class="toolbar-button accent" (click)="openNewProcessDialog()">
+      {{ t('processes.create') }}
+    </button>
   </header>
 
-  <div class="content">
+  <section class="hero-card">
+    <div class="hero-card__content">
+      <div>
+        <p class="eyebrow">{{ t('processes.pageTitle') }}</p>
+        <h1>{{ t('processes.pageTitle') }}</h1>
+        <p class="subtitle">{{ t('processes.pageSubtitle') }}</p>
+      </div>
+
+      <div class="hero-card__actions">
+        <span class="hero-card__count">
+          {{ t('processes.visibleCount') }}: <strong>{{ filteredProcesos.length }}</strong>
+        </span>
+        <button type="button" class="toolbar-button" (click)="resetFilters()" [disabled]="!hasFiltersApplied">
+          {{ t('processes.clearFilters') }}
+        </button>
+        <button type="button" class="toolbar-button accent" (click)="loadProcessList()" [disabled]="isLoadingProcessList">
+          {{ t('processes.refresh') }}
+        </button>
+      </div>
+    </div>
+
+    <div class="summary-grid">
+      <article class="summary-card" [ngClass]="'summary-card--' + card.tone" *ngFor="let card of summaryCards">
+        <span class="summary-card__label">{{ card.label }}</span>
+        <strong class="summary-card__value">{{ card.value }}</strong>
+      </article>
+    </div>
+  </section>
+
+  <section class="filters-card">
+    <div class="filters-card__header">
+      <div>
+        <p class="eyebrow eyebrow--small">{{ t('processes.filtersTitle') }}</p>
+        <p class="filters-card__hint">{{ t('processes.filtersHint') }}</p>
+      </div>
+    </div>
+
+    <div class="filters-card__field">
+      <label>{{ t('processes.searchLabel') }}</label>
+      <input
+        type="search"
+        [value]="searchQuery"
+        (input)="searchQuery = ($any($event.target).value || '')"
+        [placeholder]="t('processes.searchPlaceholder')"
+      />
+    </div>
+
+    <div class="filters-card__field">
+      <label>{{ t('processes.statusLabel') }}</label>
+      <select [(ngModel)]="statusFilter">
+        <option value="all">{{ t('processes.statusAll') }}</option>
+        <option value="BORRADOR">{{ t('processes.statusDraft') }}</option>
+        <option value="PUBLICADO">{{ t('processes.statusPublished') }}</option>
+        <option value="HISTORICO">{{ t('processes.statusHistoric') }}</option>
+      </select>
+    </div>
+
+    <div class="filters-card__field">
+      <label>{{ t('processes.orderLabel') }}</label>
+      <select [(ngModel)]="sortMode">
+        <option value="recent">{{ t('processes.sortRecent') }}</option>
+        <option value="name">{{ t('processes.sortName') }}</option>
+        <option value="version">{{ t('processes.version') }}</option>
+      </select>
+    </div>
+
+    <div class="filters-card__actions">
+      <button type="button" class="toolbar-button" (click)="resetFilters()" [disabled]="!hasFiltersApplied">
+        {{ t('processes.clearFilters') }}
+      </button>
+      <button type="button" class="toolbar-button accent" (click)="loadProcessList()" [disabled]="isLoadingProcessList">
+        {{ isLoadingProcessList ? t('processes.loading') : t('processes.refresh') }}
+      </button>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="status-banner success" *ngIf="successMessage">{{ successMessage }}</div>
+    <div class="status-banner error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
     <section class="list-card">
       <app-process-list-panel
-        [procesos]="procesosGuardados"
+        [procesos]="filteredProcesos"
         [loading]="isLoadingProcessList"
-        [publishingId]="publishingId"
-        [versioningId]="versioningId"
-        [startingId]="startingId"
-        (processSelected)="openProcess($event)"
-        (publishProcess)="publishProceso($event)"
-        (versionProcess)="versionProceso($event)"
-        (startProcess)="startProceso($event)"
-        (monitorProcess)="openMonitoring($event)"
+        (familySelected)="openFamily($event)"
       />
     </section>
-  </div>
+  </section>
 
   <app-process-dialogs
     [saveDialogOpen]="false"

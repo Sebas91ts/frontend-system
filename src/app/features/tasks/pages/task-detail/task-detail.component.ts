@@ -16,6 +16,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { FileUploadService } from '../../../../core/services/file-upload.service';
 import { FormService } from '../../../../core/services/form.service';
 import { TaskInstanceService } from '../../../../core/services/task-instance.service';
+import { TranslationKey, UiPreferencesService } from '../../../../core/services/ui-preferences.service';
 
 @Component({
   selector: 'app-task-detail',
@@ -33,6 +34,7 @@ export class TaskDetailComponent implements OnInit {
   private readonly formService = inject(FormService);
   private readonly fileUploadService = inject(FileUploadService);
   private readonly authService = inject(AuthService);
+  private readonly preferences = inject(UiPreferencesService);
   private readonly cdr = inject(ChangeDetectorRef);
 
   protected task: TareaInstancia | null = null;
@@ -51,6 +53,10 @@ export class TaskDetailComponent implements OnInit {
   protected historyMessage = '';
   private loadingTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
+  t(key: TranslationKey): string {
+    return this.preferences.translate(key);
+  }
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     const navigationTask = history.state?.task as TareaInstancia | undefined;
@@ -62,7 +68,7 @@ export class TaskDetailComponent implements OnInit {
     }
 
     if (!id) {
-      this.errorMessage = 'No se recibio el identificador de la tarea.';
+      this.errorMessage = this.t('taskDetail.noId');
       return;
     }
 
@@ -84,7 +90,7 @@ export class TaskDetailComponent implements OnInit {
 
   protected formatDate(value?: string | null): string {
     if (!value) {
-      return 'Sin fecha';
+      return this.t('taskDetail.noDate');
     }
 
     return new Date(value).toLocaleString();
@@ -98,24 +104,24 @@ export class TaskDetailComponent implements OnInit {
 
     const processId = this.task?.processDefinitionId?.trim();
     if (!processId) {
-      return 'Proceso no identificado';
+      return this.t('taskDetail.noProcess');
     }
 
     const [key] = processId.split(':');
-    return key?.trim() || 'Proceso no identificado';
+    return key?.trim() || this.t('taskDetail.noProcess');
   }
 
   protected getInstanceShortLabel(): string {
     const instanceId = this.task?.processInstanceId?.trim();
     if (!instanceId) {
-      return 'Instancia no identificada';
+      return this.t('taskDetail.noInstance');
     }
 
-    return `Instancia #${instanceId.slice(-6)}`;
+    return `${this.t('taskDetail.instancePrefix')}${instanceId.slice(-6)}`;
   }
 
   protected getAreaLabel(): string {
-    return this.task?.areaNombre?.trim() || 'Area no identificada';
+    return this.task?.areaNombre?.trim() || this.t('taskDetail.noArea');
   }
 
   protected get historyAvailable(): boolean {
@@ -159,18 +165,18 @@ export class TaskDetailComponent implements OnInit {
     }
 
     if (!this.task.assignee) {
-      return 'Primero debes tomar la tarea para poder completar el formulario.';
+      return this.t('taskDetail.waitTake');
     }
 
     if (!this.isTaskTakenByCurrentUser()) {
-      return `La tarea fue tomada por ${this.task.assignee}.`;
+      return `${this.t('taskDetail.takenBy')} ${this.task.assignee}.`;
     }
 
     if (this.hasForm && !this.isFormValid) {
-      return 'Completa los campos obligatorios antes de finalizar la tarea.';
+      return this.t('taskDetail.completeHint');
     }
 
-    return 'Puedes enviar el formulario y completar la tarea.';
+    return this.t('taskDetail.actionSend');
   }
 
   protected get isFormValid(): boolean {
@@ -330,11 +336,11 @@ export class TaskDetailComponent implements OnInit {
   }
 
   protected getHistoryTaskLabel(entry: TaskExecutionLog): string {
-    return entry.taskName?.trim() || entry.taskDefinitionKey?.trim() || 'Tarea sin nombre';
+    return entry.taskName?.trim() || entry.taskDefinitionKey?.trim() || this.t('taskDetail.noTaskName');
   }
 
   protected getHistoryUserLabel(entry: TaskExecutionLog): string {
-    return entry.completedBy?.trim() || entry.assignedTo?.trim() || 'Usuario no identificado';
+    return entry.completedBy?.trim() || entry.assignedTo?.trim() || this.t('taskDetail.noUser');
   }
 
   protected getHistoryFields(entry: TaskExecutionLog): HistoryDisplayField[] {
@@ -352,7 +358,7 @@ export class TaskDetailComponent implements OnInit {
     }
 
     if (file.size > TaskDetailComponent.MAX_UPLOAD_BYTES) {
-      this.fileUploadState[field.name] = { error: 'El archivo supera el limite de 10 MB.' };
+      this.fileUploadState[field.name] = { error: this.t('taskDetail.fileTooLarge') };
       this.cdr.detectChanges();
       if (input) {
         input.value = '';
@@ -374,7 +380,7 @@ export class TaskDetailComponent implements OnInit {
     this.loadingTimeoutId = setTimeout(() => {
       if (!this.task && this.isLoading) {
         this.isLoading = false;
-        this.errorMessage = 'La carga del detalle tardo demasiado. Intenta refrescar la pagina.';
+        this.errorMessage = this.t('taskDetail.loadTooLong');
         this.cdr.detectChanges();
       }
     }, 15000);
@@ -398,7 +404,7 @@ export class TaskDetailComponent implements OnInit {
           this.cdr.detectChanges();
         },
         error: (error: any) => {
-          this.errorMessage = error?.error?.message || 'No se pudo cargar el detalle de la tarea.';
+          this.errorMessage = error?.error?.message || this.t('taskDetail.loadError');
           this.cdr.detectChanges();
         },
       });
@@ -411,14 +417,14 @@ export class TaskDetailComponent implements OnInit {
 
     if (!this.isTaskTakenByCurrentUser()) {
       this.errorMessage = this.task?.assignee
-        ? `La tarea fue tomada por ${this.task.assignee}.`
-        : 'Primero debes tomar la tarea para poder completar el formulario.';
+        ? `${this.t('taskDetail.takenBy')} ${this.task.assignee}.`
+        : this.t('taskDetail.waitTake');
       this.cdr.detectChanges();
       return;
     }
 
     if (this.formDefinition && !this.isFormValid) {
-      this.errorMessage = 'Completa los campos obligatorios del formulario antes de finalizar la tarea.';
+      this.errorMessage = this.t('taskDetail.completeHint');
       this.cdr.detectChanges();
       return;
     }
@@ -432,12 +438,12 @@ export class TaskDetailComponent implements OnInit {
       const variables = this.formDefinition ? await this.buildVariablesPayload() : {};
 
       await firstValueFrom(this.taskService.completarTareaConVariables(this.task.id, variables));
-      this.successMessage = 'La tarea se completo correctamente.';
+      this.successMessage = this.t('taskDetail.completeSuccess');
       this.prependCurrentExecutionToHistory(variables);
       this.cdr.detectChanges();
       setTimeout(() => void this.router.navigate(['/tasks']), 900);
     } catch (error: any) {
-      this.errorMessage = error?.error?.message || 'No se pudo completar la tarea.';
+      this.errorMessage = error?.error?.message || this.t('taskDetail.completeError');
       this.cdr.detectChanges();
     } finally {
       this.isCompleting = false;
@@ -449,7 +455,7 @@ export class TaskDetailComponent implements OnInit {
     const processKey = this.extractProcessKey(task.processDefinitionId);
     if (!processKey) {
       this.formDefinition = null;
-      this.formMessage = 'Esta tarea no tiene formulario configurado.';
+      this.formMessage = this.t('taskDetail.formMissing');
       this.cdr.detectChanges();
       return;
     }
@@ -472,14 +478,14 @@ export class TaskDetailComponent implements OnInit {
           this.formValues = {};
           this.fileUploadState = {};
           if (!this.formDefinition) {
-            this.formMessage = 'Esta tarea no tiene formulario configurado.';
+            this.formMessage = this.t('taskDetail.formMissing');
           }
           this.cdr.detectChanges();
         },
         error: () => {
           this.formDefinition = null;
           this.fileUploadState = {};
-          this.formMessage = 'Esta tarea no tiene formulario configurado.';
+          this.formMessage = this.t('taskDetail.formMissing');
           this.cdr.detectChanges();
         },
       });
@@ -488,7 +494,7 @@ export class TaskDetailComponent implements OnInit {
   private loadHistory(processInstanceId: string): void {
     if (!processInstanceId) {
       this.historyEntries = [];
-      this.historyMessage = 'Esta tarea todavia no tiene historial disponible.';
+      this.historyMessage = this.t('taskDetail.historyMissing');
       this.cdr.detectChanges();
       return;
     }
@@ -510,12 +516,12 @@ export class TaskDetailComponent implements OnInit {
           this.historyEntries = response.data ?? [];
           this.historyMessage = this.historyEntries.length
             ? ''
-            : 'Aun no hay tareas completadas en esta instancia.';
+            : this.t('taskDetail.noHistory');
           this.cdr.detectChanges();
         },
         error: () => {
           this.historyEntries = [];
-          this.historyMessage = 'No se pudo cargar el historial de la instancia.';
+          this.historyMessage = this.t('taskDetail.loadError');
           this.cdr.detectChanges();
         },
       });
@@ -609,7 +615,7 @@ export class TaskDetailComponent implements OnInit {
       return {
         key,
         label: this.formatFieldLabel(key),
-        value: file.fileName || 'Archivo adjunto',
+        value: file.fileName || this.t('taskDetail.fileAttached'),
         isFile: true,
         file,
       };
@@ -634,7 +640,7 @@ export class TaskDetailComponent implements OnInit {
     }
 
     return {
-      fileName: candidate.fileName || 'Archivo',
+      fileName: candidate.fileName || this.t('taskDetail.fileAttached'),
       secureUrl: candidate.secureUrl || '',
       publicId: candidate.publicId || '',
       mimeType: candidate.mimeType || null,
@@ -654,7 +660,7 @@ export class TaskDetailComponent implements OnInit {
 
   private formatHistoryValue(value: unknown): string {
     if (typeof value === 'boolean') {
-      return value ? 'Si' : 'No';
+      return this.t(value ? 'common.yes' : 'common.no');
     }
 
     if (typeof value === 'number') {

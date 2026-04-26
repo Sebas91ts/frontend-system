@@ -6,6 +6,10 @@ import { ProcessInstanceTracking } from '../../../../core/models/process-trackin
 import { RealtimeEvent } from '../../../../core/models/realtime.models';
 import { ProcessTrackingService } from '../../../../core/services/process-tracking.service';
 import { RealtimeService } from '../../../../core/services/realtime.service';
+import {
+  TranslationKey,
+  UiPreferencesService,
+} from '../../../../core/services/ui-preferences.service';
 import { ProcessTrackingSummaryComponent } from '../../components/tracking-summary/process-tracking-summary.component';
 import { ProcessTrackingTimelineComponent } from '../../components/tracking-timeline/process-tracking-timeline.component';
 import { ProcessTrackingViewerComponent } from '../../components/tracking-viewer/process-tracking-viewer.component';
@@ -28,6 +32,7 @@ export class ProcessInstanceTrackingComponent implements OnInit, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly processTrackingService = inject(ProcessTrackingService);
   private readonly realtimeService = inject(RealtimeService);
+  private readonly preferences = inject(UiPreferencesService);
 
   protected tracking: ProcessInstanceTracking | null = null;
   protected loading = false;
@@ -67,10 +72,14 @@ export class ProcessInstanceTrackingComponent implements OnInit, OnDestroy {
 
   protected formatLastUpdate(): string {
     if (!this.lastUpdatedAt) {
-      return 'Sincronizacion inicial';
+      return this.t('tracking.initialSync');
     }
 
     return this.lastUpdatedAt.toLocaleTimeString();
+  }
+
+  t(key: TranslationKey): string {
+    return this.preferences.translate(key);
   }
 
   private subscribeToRealtime(): void {
@@ -121,29 +130,32 @@ export class ProcessInstanceTrackingComponent implements OnInit, OnDestroy {
     this.errorMessage = '';
     this.cdr.detectChanges();
 
-    this.processTrackingService.obtenerTracking(this.processInstanceId).pipe(
-      finalize(() => {
-        this.loading = false;
-        this.refreshInProgress = false;
+    this.processTrackingService
+      .obtenerTracking(this.processInstanceId)
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+          this.refreshInProgress = false;
 
-        if (this.pendingRealtimeRefresh) {
-          this.pendingRealtimeRefresh = false;
-          this.loadTracking(true);
-          return;
-        }
+          if (this.pendingRealtimeRefresh) {
+            this.pendingRealtimeRefresh = false;
+            this.loadTracking(true);
+            return;
+          }
 
-        this.cdr.detectChanges();
-      }),
-    ).subscribe({
-      next: (response) => {
-        this.tracking = response.data ?? null;
-        this.lastUpdatedAt = new Date();
-        this.cdr.detectChanges();
-      },
-      error: (error: any) => {
-        this.errorMessage = error?.error?.message || 'No se pudo cargar el seguimiento de la instancia.';
-        this.cdr.detectChanges();
-      },
-    });
+          this.cdr.detectChanges();
+        }),
+      )
+      .subscribe({
+        next: (response) => {
+          this.tracking = response.data ?? null;
+          this.lastUpdatedAt = new Date();
+          this.cdr.detectChanges();
+        },
+        error: (error: any) => {
+          this.errorMessage = error?.error?.message || this.t('tracking.noTracking');
+          this.cdr.detectChanges();
+        },
+      });
   }
 }

@@ -1,24 +1,21 @@
 <main class="admin-shell">
   <section class="hero">
     <div class="hero__copy">
-      <p class="eyebrow">Control central</p>
-      <h1>Dashboard BPM</h1>
-      <p class="hero__text">
-        Visualiza el estado operativo del sistema, la carga de trabajo y las ultimas ejecuciones sin
-        salir del panel administrativo.
-      </p>
+      <p class="eyebrow">{{ t('admin.center') }}</p>
+      <h1>{{ t('admin.title') }}</h1>
+      <p class="hero__text">{{ t('admin.subtitle') }}</p>
 
       <div class="hero__actions">
-        <button type="button" class="action-button accent" (click)="goToTasks()">Abrir tareas</button>
-        <button type="button" class="action-button tracking" (click)="goToInstances()">Ver instancias</button>
-        <button type="button" class="action-button" (click)="goToProcesses()">Abrir procesos</button>
-        <button type="button" class="action-button" (click)="goToUsers()">Gestionar usuarios</button>
-        <button type="button" class="action-button" (click)="goToAreas()">Gestionar areas</button>
+        <button type="button" class="action-button accent" (click)="goToTasks()">{{ t('admin.openTasks') }}</button>
+        <button type="button" class="action-button tracking" (click)="goToInstances()">{{ t('admin.openInstances') }}</button>
+        <button type="button" class="action-button" (click)="goToProcesses()">{{ t('admin.openProcesses') }}</button>
+        <button type="button" class="action-button" (click)="goToUsers()">{{ t('admin.manageUsers') }}</button>
+        <button type="button" class="action-button" (click)="goToAreas()">{{ t('admin.manageAreas') }}</button>
       </div>
     </div>
 
     <aside class="hero__profile">
-      <span class="profile-badge">Administrador</span>
+      <span class="profile-badge">{{ t('admin.role') }}</span>
       <strong>{{ authService.currentUser()?.nombre }} {{ authService.currentUser()?.apellido }}</strong>
       <p>{{ authService.currentUser()?.email }}</p>
       <small>{{ authService.currentUser()?.roles?.join(' · ') }}</small>
@@ -27,12 +24,12 @@
   </section>
 
   <section class="feedback-card" *ngIf="isLoading">
-    Cargando metricas del sistema...
+    {{ t('admin.loading') }}
   </section>
 
   <section class="feedback-card feedback-card--error" *ngIf="errorMessage && !isLoading">
     <p>{{ errorMessage }}</p>
-    <button type="button" class="action-button accent" (click)="reintentar()">Reintentar</button>
+    <button type="button" class="action-button accent" (click)="reintentar()">{{ t('admin.retry') }}</button>
   </section>
 
   <ng-container *ngIf="summary && !isLoading">
@@ -45,24 +42,21 @@
 
     <section class="tracking-spotlight">
       <div class="tracking-spotlight__intro">
-        <p class="feature-card__tag">Monitoreo de instancias</p>
-        <h2>Pestana dedicada para seguimiento</h2>
-        <p>
-          Consulta todas las instancias desde un apartado independiente, con filtros por periodo, estado y proceso.
-          Por defecto veras primero las instancias de hoy y desde ahi podras abrir su seguimiento visual.
-        </p>
+        <p class="feature-card__tag">{{ t('admin.trackingTitle') }}</p>
+        <h2>{{ t('admin.trackingTitle') }}</h2>
+        <p>{{ t('admin.trackingSubtitle') }}</p>
         <button type="button" class="action-button action-button--inline tracking" (click)="goToInstances()">
-          Abrir apartado de instancias
+          {{ t('admin.openInstances') }}
         </button>
       </div>
 
       <div class="tracking-spotlight__grid">
         <article class="tracking-card tracking-card--summary">
           <div class="tracking-card__body">
-            <p class="tracking-card__eyebrow">Instancias recientes</p>
-            <h3>{{ totalInstanciasMonitoreables }} destacadas</h3>
+            <p class="tracking-card__eyebrow">{{ t('admin.instancesTitle') }}</p>
+            <h3>{{ totalInstanciasMonitoreables }} {{ t('admin.todayInstances') }}</h3>
             <span class="tracking-card__meta">
-              Se construyen a partir de la actividad mas reciente para que entres rapido al monitoreo operativo.
+              {{ t('admin.instancesSubtitle') }}
             </span>
           </div>
         </article>
@@ -72,15 +66,12 @@
             <p class="tracking-card__eyebrow">{{ getProcessLabel(item) }}</p>
             <h3>{{ getTrackingLabel(item) }}</h3>
             <span class="tracking-card__meta">
-              {{ item.completedBy || 'Usuario no identificado' }} · {{ formatDate(item.completedAt) }}
+              {{ item.completedBy || t('admin.unknownUser') }} · {{ formatDate(item.completedAt) }}
             </span>
           </div>
 
-          <button
-            type="button"
-            class="action-button action-button--inline"
-            (click)="goToTracking(item.processInstanceId)">
-            Ver seguimiento
+          <button type="button" class="action-button action-button--inline" (click)="goToTracking(item.processInstanceId)">
+            {{ t('admin.seeTracking') }}
           </button>
         </article>
       </div>
@@ -90,8 +81,8 @@
       <article class="panel-card">
         <div class="panel-card__header">
           <div>
-            <p class="feature-card__tag">Areas</p>
-            <h2>Tareas completadas por area</h2>
+            <p class="feature-card__tag">{{ t('admin.completedByArea') }}</p>
+            <h2>{{ t('admin.completedByArea') }}</h2>
           </div>
         </div>
 
@@ -103,15 +94,15 @@
         </div>
 
         <ng-template #emptyAreas>
-          <p class="empty-state">Todavia no hay tareas completadas para mostrar por area.</p>
+          <p class="empty-state">{{ t('admin.noAreaData') }}</p>
         </ng-template>
       </article>
 
       <article class="panel-card">
         <div class="panel-card__header">
           <div>
-            <p class="feature-card__tag">Usuarios</p>
-            <h2>Tareas completadas por usuario</h2>
+            <p class="feature-card__tag">{{ t('admin.completedByUser') }}</p>
+            <h2>{{ t('admin.completedByUser') }}</h2>
           </div>
         </div>
 
@@ -123,7 +114,7 @@
         </div>
 
         <ng-template #emptyUsers>
-          <p class="empty-state">Todavia no hay tareas completadas para mostrar por usuario.</p>
+          <p class="empty-state">{{ t('admin.noUserData') }}</p>
         </ng-template>
       </article>
     </section>
@@ -131,8 +122,8 @@
     <section class="panel-card panel-card--full">
       <div class="panel-card__header">
         <div>
-          <p class="feature-card__tag">Actividad reciente</p>
-          <h2>Ultimas tareas completadas</h2>
+          <p class="feature-card__tag">{{ t('admin.recentTitle') }}</p>
+          <h2>{{ t('admin.recentTitle') }}</h2>
         </div>
       </div>
 
@@ -140,25 +131,22 @@
         <article class="recent-item" *ngFor="let item of ultimasTareas; trackBy: trackByTask">
           <div class="recent-item__main">
             <strong>{{ item.taskName }}</strong>
-            <p>{{ getProcessLabel(item) }} · {{ item.areaNombre }}</p>
+            <p>{{ getProcessLabel(item) }} · {{ item.areaNombre || t('admin.unspecifiedArea') }}</p>
           </div>
           <div class="recent-item__meta">
-            <span>{{ item.completedBy || 'Usuario no identificado' }}</span>
+            <span>{{ item.completedBy || t('admin.unknownUser') }}</span>
             <small>{{ formatDate(item.completedAt) }}</small>
           </div>
           <div class="recent-item__actions">
-            <button
-              type="button"
-              class="action-button action-button--inline"
-              (click)="goToTracking(item.processInstanceId)">
-              Seguir instancia
+            <button type="button" class="action-button action-button--inline" (click)="goToTracking(item.processInstanceId)">
+              {{ t('admin.seeTracking') }}
             </button>
           </div>
         </article>
       </div>
 
       <ng-template #emptyRecent>
-        <p class="empty-state">Todavia no hay tareas completadas registradas en el historial.</p>
+        <p class="empty-state">{{ t('admin.noRecentData') }}</p>
       </ng-template>
     </section>
   </ng-container>

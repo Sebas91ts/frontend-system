@@ -16,6 +16,7 @@ import { FormService } from '../../../../core/services/form.service';
 import { FileUploadService } from '../../../../core/services/file-upload.service';
 import { ApiResponse } from '../../../../core/models/auth.models';
 import { RealtimeService } from '../../../../core/services/realtime.service';
+import { TranslationKey, UiPreferencesService } from '../../../../core/services/ui-preferences.service';
 
 @Component({
   selector: 'app-task-inbox',
@@ -35,6 +36,7 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly realtimeService = inject(RealtimeService);
+  private readonly preferences = inject(UiPreferencesService);
 
   protected tasks: TareaInstancia[] = [];
   protected isLoading = false;
@@ -70,6 +72,10 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
     this.queryParamsSubscription?.unsubscribe();
     this.realtimeSubscription?.unsubscribe();
     this.clearFeedbackTimer();
+  }
+
+  protected t(key: TranslationKey): string {
+    return this.preferences.translate(key);
   }
 
   protected async refreshTasks(): Promise<void> {
