@@ -8,6 +8,9 @@
 
     <div class="task-detail-actions">
       <button type="button" class="toolbar-button" (click)="goBack()">Volver</button>
+      <button type="button" class="toolbar-button" (click)="goToTracking()" [disabled]="!task?.processInstanceId">
+        Ver seguimiento
+      </button>
       <button
         type="button"
         class="toolbar-button accent"

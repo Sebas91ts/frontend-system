@@ -1,0 +1,81 @@
+<main class="monitor-shell">
+  <section class="monitor-hero">
+    <div>
+      <p class="eyebrow">Monitoreo operativo</p>
+      <h1>{{ monitoring()?.nombreProceso || 'Proceso en monitoreo' }}</h1>
+      <p class="subtitle">
+        Observa en que tareas se concentran las instancias activas y abre el seguimiento individual cuando necesites
+        revisar un caso especifico.
+      </p>
+    </div>
+
+    <div class="hero-actions">
+      <button type="button" class="ghost-btn" (click)="goBack()">Volver a procesos</button>
+      <button type="button" class="primary-btn" (click)="refresh()">Actualizar</button>
+    </div>
+  </section>
+
+  <section class="feedback-card" *ngIf="isLoading">Cargando monitoreo del proceso...</section>
+  <section class="feedback-card feedback-card--error" *ngIf="errorMessage && !isLoading">{{ errorMessage }}</section>
+
+  <ng-container *ngIf="monitoring() as data">
+    <section class="kpi-grid">
+      <article class="kpi-card">
+        <span>Instancias activas</span>
+        <strong>{{ data.totalActiveInstances }}</strong>
+      </article>
+      <article class="kpi-card">
+        <span>Version</span>
+        <strong>{{ data.processVersion ? ('v' + data.processVersion) : 'Sin version' }}</strong>
+      </article>
+      <article class="kpi-card">
+        <span>Estado</span>
+        <strong>{{ data.estado || 'Sin estado' }}</strong>
+      </article>
+    </section>
+
+    <section class="monitor-card">
+      <app-process-tracking-viewer
+        [xml]="data.xmlBpmn || ''"
+        [completedTaskKeys]="[]"
+        [pendingTaskKeys]="[]"
+        [activeTaskKeys]="activeTaskKeys()"
+        [activityCounts]="activityCounts()">
+      </app-process-tracking-viewer>
+    </section>
+
+    <section class="instances-card">
+      <div class="instances-card__header">
+        <div>
+          <p class="eyebrow">Instancias activas</p>
+          <h2>Resumen por instancia</h2>
+        </div>
+        <span>{{ data.instances.length }} activa(s)</span>
+      </div>
+
+      <div class="instance-list" *ngIf="data.instances.length; else emptyState">
+        <article class="instance-item" *ngFor="let item of data.instances">
+          <div class="instance-item__main">
+            <strong>#{{ item.processInstanceId.slice(-8) }}</strong>
+            <p>{{ item.currentTaskNames.join(' · ') || 'Sin tarea activa' }}</p>
+            <small>{{ item.currentAreas.join(' · ') || 'Area no identificada' }}</small>
+          </div>
+
+          <div class="instance-item__meta">
+            <span>{{ item.activeTaskCount }} tarea(s) activa(s)</span>
+            <span>{{ item.assignedUsers.join(' · ') || 'Sin asignar' }}</span>
+            <small>{{ formatDate(item.startedAt) }}</small>
+          </div>
+
+          <button type="button" class="primary-btn primary-btn--inline" (click)="openTracking(item.processInstanceId)">
+            Ver instancia
+          </button>
+        </article>
+      </div>
+
+      <ng-template #emptyState>
+        <p class="empty-state">No hay instancias activas de esta version del proceso en este momento.</p>
+      </ng-template>
+    </section>
+  </ng-container>
+</main>

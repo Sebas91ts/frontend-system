@@ -12,7 +12,7 @@ export class RealtimeService {
   private connected = false;
   private activeUserId: string | null = null;
   private subscriptionCounter = 0;
-  private extraSubscriptions = new Map<string, string>();
+  private extraSubscriptions = new Map<string, { id: string; count: number }>();
   private pendingSubscriptions: string[] = [];
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly eventSubject = new Subject<RealtimeEvent>();
@@ -63,20 +63,30 @@ export class RealtimeService {
     }
   }
 
-  subscribeToTopic(destination: string): void {
-    if (!destination || this.extraSubscriptions.has(destination)) {
-      return;
+  subscribeToTopic(destination: string): () => void {
+    if (!destination) {
+      return () => undefined;
     }
 
-    const subscriptionId = this.nextSubscriptionId();
-    this.extraSubscriptions.set(destination, subscriptionId);
+    const existing = this.extraSubscriptions.get(destination);
+    if (existing) {
+      existing.count += 1;
+      return () => this.unsubscribeFromTopic(destination);
+    }
+
+    const subscription = {
+      id: this.nextSubscriptionId(),
+      count: 1,
+    };
+    this.extraSubscriptions.set(destination, subscription);
 
     if (this.connected) {
-      this.sendSubscribe(destination, subscriptionId);
-      return;
+      this.sendSubscribe(destination, subscription.id);
+      return () => this.unsubscribeFromTopic(destination);
     }
 
     this.pendingSubscriptions.push(destination);
+    return () => this.unsubscribeFromTopic(destination);
   }
 
   private openSocket(user: Usuario): void {
@@ -152,12 +162,31 @@ export class RealtimeService {
 
   private flushPendingSubscriptions(): void {
     for (const destination of this.pendingSubscriptions) {
-      const subscriptionId = this.extraSubscriptions.get(destination);
-      if (subscriptionId) {
-        this.sendSubscribe(destination, subscriptionId);
+      const subscription = this.extraSubscriptions.get(destination);
+      if (subscription) {
+        this.sendSubscribe(destination, subscription.id);
       }
     }
     this.pendingSubscriptions = [];
+  }
+
+  private unsubscribeFromTopic(destination: string): void {
+    const subscription = this.extraSubscriptions.get(destination);
+    if (!subscription) {
+      return;
+    }
+
+    subscription.count -= 1;
+    if (subscription.count > 0) {
+      return;
+    }
+
+    this.extraSubscriptions.delete(destination);
+    this.pendingSubscriptions = this.pendingSubscriptions.filter((item) => item !== destination);
+
+    if (this.connected) {
+      this.sendFrame(`UNSUBSCRIBE\nid:${subscription.id}\n\n\0`);
+    }
   }
 
   private sendSubscribe(destination: string, subscriptionId: string): void {

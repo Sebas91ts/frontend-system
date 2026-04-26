@@ -73,6 +73,15 @@ export class TaskDetailComponent implements OnInit {
     void this.router.navigate(['/tasks']);
   }
 
+  protected goToTracking(): void {
+    const processInstanceId = this.task?.processInstanceId?.trim();
+    if (!processInstanceId) {
+      return;
+    }
+
+    void this.router.navigate(['/process-instances', processInstanceId, 'tracking']);
+  }
+
   protected formatDate(value?: string | null): string {
     if (!value) {
       return 'Sin fecha';

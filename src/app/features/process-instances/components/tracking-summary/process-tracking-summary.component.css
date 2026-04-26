@@ -1,0 +1,129 @@
+:host {
+  display: block;
+}
+
+.summary-card {
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 26%),
+    linear-gradient(145deg, #fffef9, #f5f8ff);
+  border: 1px solid #dbe4f0;
+  border-radius: 28px;
+  padding: 26px;
+  box-shadow: 0 22px 46px rgba(15, 23, 42, 0.08);
+}
+
+.summary-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  color: #7c8aa5;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.9rem, 3vw, 2.8rem);
+  line-height: 0.98;
+  color: #14213d;
+}
+
+.meta {
+  margin: 10px 0 0;
+  color: #607089;
+}
+
+.summary-grid {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.info-tile {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid #dce6f2;
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.info-tile.emphasis {
+  background: linear-gradient(135deg, #ebfff5, #f7fffd);
+  border-color: #bae6d3;
+}
+
+.label,
+.section-title {
+  display: block;
+  color: #6d7b90;
+  font-size: 0.82rem;
+  margin-bottom: 8px;
+}
+
+.info-tile strong,
+.task-chip strong {
+  display: block;
+  color: #122033;
+  font-size: 1rem;
+}
+
+.info-tile small,
+.task-chip span,
+.task-chip small {
+  display: block;
+  margin-top: 6px;
+  color: #6f7f95;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.badge-active {
+  background: #def7ec;
+  color: #166534;
+}
+
+.badge-finished {
+  background: #e0ecff;
+  color: #1d4ed8;
+}
+
+.badge-muted {
+  background: #eceff4;
+  color: #475569;
+}
+
+.active-list {
+  margin-top: 22px;
+}
+
+.task-chip-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.task-chip {
+  background: #fff;
+  border: 1px solid #dbe5ef;
+  border-radius: 18px;
+  padding: 14px 16px;
+}
+
+@media (max-width: 720px) {
+  .summary-head {
+    flex-direction: column;
+  }
+}

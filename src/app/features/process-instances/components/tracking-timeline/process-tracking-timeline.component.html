@@ -1,0 +1,44 @@
+<section class="timeline-card">
+  <div class="timeline-head">
+    <div>
+      <p class="eyebrow">Historial</p>
+      <h2>Timeline de ejecucion</h2>
+    </div>
+    <span class="count">{{ history.length }} evento(s)</span>
+  </div>
+
+  <div class="timeline-empty" *ngIf="!history.length">
+    Aun no hay tareas completadas en esta instancia.
+  </div>
+
+  <div class="timeline-list" *ngIf="history.length">
+    <article class="timeline-item" *ngFor="let entry of history">
+      <div class="timeline-dot"></div>
+      <div class="timeline-body">
+        <div class="timeline-top">
+          <div>
+            <h3>{{ taskLabel(entry) }}</h3>
+            <p>{{ actorLabel(entry) }} · {{ entry.areaNombre || 'Area no identificada' }}</p>
+          </div>
+          <span>{{ formatDate(entry.completedAt || entry.createdAt) }}</span>
+        </div>
+
+        <div class="field-grid" *ngIf="fields(entry).length">
+          <div class="field-card" *ngFor="let field of fields(entry)">
+            <span>{{ field.label }}</span>
+            <a
+              *ngIf="field.isFile && field.file?.secureUrl; else plainValue"
+              [href]="field.file?.secureUrl || '#'"
+              target="_blank"
+              rel="noopener noreferrer">
+              {{ field.value }}
+            </a>
+            <ng-template #plainValue>
+              <strong>{{ field.value }}</strong>
+            </ng-template>
+          </div>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>

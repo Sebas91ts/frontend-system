@@ -108,6 +108,10 @@ export class ProcessesListComponent implements OnInit, OnDestroy {
     void this.router.navigate(['/processes/designer', proceso.id]);
   }
 
+  protected openMonitoring(proceso: Proceso): void {
+    void this.router.navigate(['/processes', proceso.id, 'monitor']);
+  }
+
   protected openNewProcessDialog(): void {
     this.newProcessName = '';
     this.saveDialogStatus = 'idle';

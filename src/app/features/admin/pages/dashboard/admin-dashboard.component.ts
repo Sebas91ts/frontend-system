@@ -65,6 +65,23 @@ export class AdminDashboardComponent implements OnInit {
     return this.summary?.ultimosLogsTareas ?? [];
   }
 
+  protected get trackingDestacados(): DashboardRecentTask[] {
+    const seen = new Set<string>();
+    return this.ultimasTareas.filter((item) => {
+      const instanceId = item.processInstanceId?.trim();
+      if (!instanceId || seen.has(instanceId)) {
+        return false;
+      }
+
+      seen.add(instanceId);
+      return true;
+    }).slice(0, 3);
+  }
+
+  protected get totalInstanciasMonitoreables(): number {
+    return this.trackingDestacados.length;
+  }
+
   protected formatDate(value?: string | null): string {
     if (!value) {
       return 'Sin fecha';
@@ -109,6 +126,25 @@ export class AdminDashboardComponent implements OnInit {
 
   goToTasks(): void {
     void this.router.navigate(['/tasks']);
+  }
+
+  goToInstances(): void {
+    void this.router.navigate(['/admin/process-instances']);
+  }
+
+  protected goToTracking(processInstanceId?: string | null): void {
+    const normalizedId = processInstanceId?.trim();
+    if (!normalizedId) {
+      return;
+    }
+
+    void this.router.navigate(['/process-instances', normalizedId, 'tracking']);
+  }
+
+  protected getTrackingLabel(item: DashboardRecentTask): string {
+    const taskName = item.taskName?.trim() || 'Instancia';
+    const area = item.areaNombre?.trim();
+    return area ? `${taskName} · ${area}` : taskName;
   }
 
   protected reintentar(): void {

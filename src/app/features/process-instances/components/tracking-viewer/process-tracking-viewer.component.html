@@ -1,0 +1,20 @@
+<section class="viewer-card">
+  <div class="viewer-head">
+    <div>
+      <p class="eyebrow">Mapa del proceso</p>
+      <h2>Estado visual del BPMN</h2>
+    </div>
+    <div class="legend">
+      <span class="legend-item"><i class="swatch active"></i>Activa</span>
+      <span class="legend-item"><i class="swatch completed"></i>Completada</span>
+      <span class="legend-item"><i class="swatch pending"></i>Pendiente</span>
+    </div>
+  </div>
+
+  <div class="viewer-status" *ngIf="loading">Cargando diagrama...</div>
+  <div class="viewer-status error" *ngIf="!loading && errorMessage">{{ errorMessage }}</div>
+
+  <div class="canvas-shell" [class.hidden]="!!errorMessage">
+    <div #canvasHost class="tracking-diagram"></div>
+  </div>
+</section>

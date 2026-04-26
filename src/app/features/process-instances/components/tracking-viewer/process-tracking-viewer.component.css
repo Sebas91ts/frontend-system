@@ -1,0 +1,156 @@
+:host {
+  display: block;
+}
+
+.viewer-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(247, 250, 252, 0.95));
+  border: 1px solid #dbe4ee;
+  border-radius: 28px;
+  padding: 24px;
+  box-shadow: 0 24px 52px rgba(15, 23, 42, 0.09);
+}
+
+.viewer-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  color: #7b8798;
+}
+
+h2 {
+  margin: 0;
+  color: #132238;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #526175;
+  font-size: 0.86rem;
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.swatch.active {
+  background: #22c55e;
+}
+
+.swatch.completed {
+  background: #60a5fa;
+}
+
+.swatch.pending {
+  background: #f59e0b;
+}
+
+.viewer-status {
+  padding: 14px 0;
+  color: #526175;
+}
+
+.viewer-status.error {
+  color: #b91c1c;
+}
+
+.canvas-shell {
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid #d9e3ee;
+  background:
+    radial-gradient(circle at top left, rgba(250, 204, 21, 0.16), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(56, 189, 248, 0.14), transparent 28%),
+    linear-gradient(180deg, #fcfdfd, #f2f7fb);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.canvas-shell.hidden {
+  display: none;
+}
+
+.tracking-diagram {
+  width: 100%;
+  min-height: 540px;
+  display: block;
+}
+
+:host ::ng-deep .tracking-diagram .djs-container,
+:host ::ng-deep .tracking-diagram .djs-container > svg {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 540px;
+  display: block;
+}
+
+:host ::ng-deep .tracking-diagram .viewport {
+  transform-origin: center center;
+}
+
+:host ::ng-deep .tracking-diagram .tracking-activity-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #38bdf8, #60a5fa);
+  color: #082f49;
+  font-weight: 800;
+  font-size: 0.78rem;
+  border: 2px solid #ffffff;
+  box-shadow: 0 8px 18px rgba(59, 130, 246, 0.28);
+}
+
+:host ::ng-deep .tracking-diagram .tracking-active .djs-visual > :nth-child(1) {
+  stroke: #16a34a !important;
+  stroke-width: 4px !important;
+  fill: #dcfce7 !important;
+}
+
+:host ::ng-deep .tracking-diagram .tracking-completed .djs-visual > :nth-child(1) {
+  stroke: #2563eb !important;
+  stroke-width: 3px !important;
+  fill: #dbeafe !important;
+}
+
+:host ::ng-deep .tracking-diagram .tracking-pending .djs-visual > :nth-child(1) {
+  stroke: #f59e0b !important;
+  stroke-width: 2px !important;
+  stroke-dasharray: 6 4;
+}
+
+@media (max-width: 720px) {
+  .viewer-head {
+    flex-direction: column;
+  }
+
+  .tracking-diagram {
+    min-height: 420px;
+  }
+
+  :host ::ng-deep .tracking-diagram .djs-container,
+  :host ::ng-deep .tracking-diagram .djs-container > svg {
+    min-height: 420px;
+  }
+}

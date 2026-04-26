@@ -1,0 +1,47 @@
+<section class="summary-card" *ngIf="tracking as item">
+  <div class="summary-head">
+    <div>
+      <p class="eyebrow">Seguimiento en vivo</p>
+      <h1>{{ item.nombreProceso || 'Proceso no identificado' }}</h1>
+      <p class="meta">{{ versionLabel }} · {{ shortInstanceId }}</p>
+    </div>
+    <span [class]="stateClass(item.estado)">{{ formatState(item.estado) }}</span>
+  </div>
+
+  <div class="summary-grid">
+    <article class="info-tile emphasis">
+      <span class="label">Tarea actual</span>
+      <strong>{{ item.currentTaskName || 'Sin tarea activa' }}</strong>
+      <small>{{ item.currentAreaNombre || 'Area pendiente' }}</small>
+    </article>
+
+    <article class="info-tile">
+      <span class="label">Responsable actual</span>
+      <strong>{{ item.currentAssignedTo || 'Sin asignar' }}</strong>
+      <small>{{ item.activeTasks.length }} tarea(s) activa(s)</small>
+    </article>
+
+    <article class="info-tile">
+      <span class="label">Completadas</span>
+      <strong>{{ item.completedTaskKeys.length }}</strong>
+      <small>registradas en historial</small>
+    </article>
+
+    <article class="info-tile">
+      <span class="label">Pendientes</span>
+      <strong>{{ item.pendingTaskKeys.length }}</strong>
+      <small>segun el BPMN publicado</small>
+    </article>
+  </div>
+
+  <div class="active-list" *ngIf="item.activeTasks.length">
+    <p class="section-title">Tareas activas</p>
+    <div class="task-chip-list">
+      <div class="task-chip" *ngFor="let task of item.activeTasks">
+        <strong>{{ task.taskName || task.taskDefinitionKey || 'Tarea' }}</strong>
+        <span>{{ task.areaNombre || 'Area no identificada' }}</span>
+        <small>{{ task.assignedTo || 'Sin asignar' }}</small>
+      </div>
+    </div>
+  </div>
+</section>

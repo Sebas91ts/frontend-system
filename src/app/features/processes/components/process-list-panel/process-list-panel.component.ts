@@ -37,6 +37,7 @@ export class ProcessListPanelComponent {
   @Output() publishProcess = new EventEmitter<Proceso>();
   @Output() versionProcess = new EventEmitter<Proceso>();
   @Output() startProcess = new EventEmitter<Proceso>();
+  @Output() monitorProcess = new EventEmitter<Proceso>();
 
   private expandedKeys = new Set<string>();
 

@@ -1,0 +1,130 @@
+:host {
+  display: block;
+}
+
+.timeline-card {
+  background: #fff;
+  border: 1px solid #dbe4ee;
+  border-radius: 24px;
+  padding: 22px;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+}
+
+.timeline-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  color: #7b8798;
+}
+
+h2,
+h3 {
+  margin: 0;
+  color: #132238;
+}
+
+.count {
+  color: #607089;
+  font-size: 0.9rem;
+}
+
+.timeline-empty {
+  color: #607089;
+}
+
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.timeline-item {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 14px;
+}
+
+.timeline-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #2563eb;
+  margin-top: 10px;
+  box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.12);
+}
+
+.timeline-body {
+  border: 1px solid #dbe5ef;
+  border-radius: 18px;
+  padding: 16px;
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
+}
+
+.timeline-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.timeline-top p {
+  margin: 6px 0 0;
+  color: #67788e;
+}
+
+.timeline-top span {
+  color: #66758b;
+  white-space: nowrap;
+}
+
+.field-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.field-card {
+  border-radius: 14px;
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  padding: 12px;
+}
+
+.field-card span {
+  display: block;
+  color: #64748b;
+  font-size: 0.8rem;
+  margin-bottom: 6px;
+}
+
+.field-card strong,
+.field-card a {
+  color: #0f172a;
+  font-weight: 600;
+  text-decoration: none;
+  word-break: break-word;
+}
+
+.field-card a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 720px) {
+  .timeline-top {
+    flex-direction: column;
+  }
+
+  .timeline-top span {
+    white-space: normal;
+  }
+}

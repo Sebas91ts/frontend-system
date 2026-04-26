@@ -10,6 +10,7 @@
 
       <div class="hero__actions">
         <button type="button" class="action-button accent" (click)="goToTasks()">Abrir tareas</button>
+        <button type="button" class="action-button tracking" (click)="goToInstances()">Ver instancias</button>
         <button type="button" class="action-button" (click)="goToProcesses()">Abrir procesos</button>
         <button type="button" class="action-button" (click)="goToUsers()">Gestionar usuarios</button>
         <button type="button" class="action-button" (click)="goToAreas()">Gestionar areas</button>
@@ -40,6 +41,49 @@
         <p>{{ card.label }}</p>
         <strong>{{ card.value }}</strong>
       </article>
+    </section>
+
+    <section class="tracking-spotlight">
+      <div class="tracking-spotlight__intro">
+        <p class="feature-card__tag">Monitoreo de instancias</p>
+        <h2>Pestana dedicada para seguimiento</h2>
+        <p>
+          Consulta todas las instancias desde un apartado independiente, con filtros por periodo, estado y proceso.
+          Por defecto veras primero las instancias de hoy y desde ahi podras abrir su seguimiento visual.
+        </p>
+        <button type="button" class="action-button action-button--inline tracking" (click)="goToInstances()">
+          Abrir apartado de instancias
+        </button>
+      </div>
+
+      <div class="tracking-spotlight__grid">
+        <article class="tracking-card tracking-card--summary">
+          <div class="tracking-card__body">
+            <p class="tracking-card__eyebrow">Instancias recientes</p>
+            <h3>{{ totalInstanciasMonitoreables }} destacadas</h3>
+            <span class="tracking-card__meta">
+              Se construyen a partir de la actividad mas reciente para que entres rapido al monitoreo operativo.
+            </span>
+          </div>
+        </article>
+
+        <article class="tracking-card" *ngFor="let item of trackingDestacados; trackBy: trackByTask">
+          <div class="tracking-card__body">
+            <p class="tracking-card__eyebrow">{{ getProcessLabel(item) }}</p>
+            <h3>{{ getTrackingLabel(item) }}</h3>
+            <span class="tracking-card__meta">
+              {{ item.completedBy || 'Usuario no identificado' }} · {{ formatDate(item.completedAt) }}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            class="action-button action-button--inline"
+            (click)="goToTracking(item.processInstanceId)">
+            Ver seguimiento
+          </button>
+        </article>
+      </div>
     </section>
 
     <section class="panel-grid">
@@ -101,6 +145,14 @@
           <div class="recent-item__meta">
             <span>{{ item.completedBy || 'Usuario no identificado' }}</span>
             <small>{{ formatDate(item.completedAt) }}</small>
+          </div>
+          <div class="recent-item__actions">
+            <button
+              type="button"
+              class="action-button action-button--inline"
+              (click)="goToTracking(item.processInstanceId)">
+              Seguir instancia
+            </button>
           </div>
         </article>
       </div>

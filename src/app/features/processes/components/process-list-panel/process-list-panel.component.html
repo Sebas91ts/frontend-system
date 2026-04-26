@@ -81,6 +81,15 @@
                 Ejecutar esta version en Camunda
               </span>
             </button>
+
+            <button
+              type="button"
+              class="process-list__monitor"
+              *ngIf="proceso.estado === 'PUBLICADO'"
+              (click)="$event.stopPropagation(); monitorProcess.emit(proceso)"
+            >
+              Monitorear ciclo
+            </button>
           </div>
         </div>
       </div>

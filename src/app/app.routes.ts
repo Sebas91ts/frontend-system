@@ -46,6 +46,13 @@ export const routes: Routes = [
     canActivate: [authGuard, roleGuard],
     data: { roles: ['ROLE_ADMIN'] }
   },
+  {
+    path: 'admin/process-instances',
+    loadComponent: () => import('./features/process-instances/pages/list/process-instance-list.component')
+      .then(m => m.ProcessInstanceListComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_ADMIN'] }
+  },
 
   // Rutas de Usuario (ROLE_USER o ROLE_ADMIN)
   {
@@ -76,6 +83,13 @@ export const routes: Routes = [
     canActivate: [authGuard, roleGuard],
     data: { roles: ['ROLE_ADMIN'] }
   },
+  {
+    path: 'processes/:id/monitor',
+    loadComponent: () => import('./features/processes/pages/monitor/process-monitoring.component')
+      .then(m => m.ProcessMonitoringComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_ADMIN'] }
+  },
 
   {
     path: 'tasks',
@@ -88,6 +102,13 @@ export const routes: Routes = [
     path: 'tasks/:id',
     loadComponent: () => import('./features/tasks/pages/task-detail/task-detail.component')
       .then(m => m.TaskDetailComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_USER', 'ROLE_ADMIN'] }
+  },
+  {
+    path: 'process-instances/:id/tracking',
+    loadComponent: () => import('./features/process-instances/pages/tracking/process-instance-tracking.component')
+      .then(m => m.ProcessInstanceTrackingComponent),
     canActivate: [authGuard, roleGuard],
     data: { roles: ['ROLE_USER', 'ROLE_ADMIN'] }
   },

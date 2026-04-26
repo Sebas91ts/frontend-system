@@ -1,0 +1,113 @@
+<main class="instances-shell">
+  <section class="instances-hero">
+    <div>
+      <p class="eyebrow">Monitoreo operativo</p>
+      <h1>Instancias de proceso</h1>
+      <p class="hero-copy">
+        Explora todas las instancias del sistema, comenzando por las de hoy, y abre su seguimiento visual
+        cuando necesites revisar el recorrido completo.
+      </p>
+    </div>
+
+    <div class="hero-actions">
+      <button type="button" class="ghost-btn" (click)="goBack()">Volver al dashboard</button>
+    </div>
+  </section>
+
+  <section class="filters-card">
+    <div class="filters-top">
+      <div class="filter-group">
+        <span class="filter-label">Periodo</span>
+        <div class="chip-row">
+          <button
+            type="button"
+            class="chip"
+            [class.active]="dateFilter() === 'today'"
+            (click)="setDateFilter('today')">
+            Hoy
+          </button>
+          <button
+            type="button"
+            class="chip"
+            [class.active]="dateFilter() === 'all'"
+            (click)="setDateFilter('all')">
+            Todas
+          </button>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <span class="filter-label">Estado</span>
+        <div class="chip-row">
+          <button type="button" class="chip" [class.active]="stateFilter() === 'all'" (click)="setStateFilter('all')">Todos</button>
+          <button type="button" class="chip" [class.active]="stateFilter() === 'ACTIVA'" (click)="setStateFilter('ACTIVA')">Activas</button>
+          <button type="button" class="chip" [class.active]="stateFilter() === 'FINALIZADA'" (click)="setStateFilter('FINALIZADA')">Finalizadas</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="filters-grid">
+      <label class="control">
+        <span>Buscar</span>
+        <input
+          type="text"
+          [ngModel]="searchTerm()"
+          (ngModelChange)="updateSearch($event)"
+          placeholder="Proceso, iniciado por o id de instancia" />
+      </label>
+
+      <label class="control">
+        <span>Proceso</span>
+        <select [ngModel]="processFilter()" (ngModelChange)="updateProcessFilter($event)">
+          <option value="all">Todos los procesos</option>
+          <option *ngFor="let option of processOptions()" [value]="option">{{ option }}</option>
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <section class="feedback-card" *ngIf="isLoading">Cargando instancias...</section>
+
+  <section class="feedback-card feedback-card--error" *ngIf="errorMessage && !isLoading">
+    <p>{{ errorMessage }}</p>
+    <button type="button" class="primary-btn" (click)="reintentar()">Reintentar</button>
+  </section>
+
+  <section class="instances-grid" *ngIf="!isLoading && !errorMessage">
+    <article class="instance-card" *ngFor="let item of filteredInstances(); trackBy: trackByInstance">
+      <div class="instance-card__top">
+        <div>
+          <p class="instance-eyebrow">{{ getVersionLabel(item) }}</p>
+          <h2>{{ getProcessLabel(item) }}</h2>
+        </div>
+        <span [class]="getStateClass(item)">{{ getStateLabel(item) }}</span>
+      </div>
+
+      <div class="instance-meta">
+        <div>
+          <span>Instancia</span>
+          <strong>#{{ item.id.slice(-8) }}</strong>
+        </div>
+        <div>
+          <span>Iniciada</span>
+          <strong>{{ formatDate(item.startedAt) }}</strong>
+        </div>
+        <div>
+          <span>Iniciada por</span>
+          <strong>{{ item.iniciadoPor || 'No disponible' }}</strong>
+        </div>
+      </div>
+
+      <div class="instance-actions">
+        <button type="button" class="primary-btn" (click)="goToTracking(item)">
+          Ver seguimiento
+        </button>
+      </div>
+    </article>
+
+    <article class="empty-card" *ngIf="!filteredInstances().length">
+      <h2>Sin resultados</h2>
+      <p>No hay instancias que coincidan con los filtros actuales.</p>
+    </article>
+  </section>
+</main>
