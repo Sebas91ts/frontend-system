@@ -34,6 +34,16 @@
 
       <button
         type="button"
+        class="toolbar-button accent"
+        title="Editar o crear proceso con IA sobre el lienzo actual"
+        (click)="openAiEditGenerator()"
+        [disabled]="isBusy || isSaving || isLoadingProcess || isReadonlyProcess || !currentProcessId"
+      >
+        IA BPMN
+      </button>
+
+      <button
+        type="button"
         class="toolbar-button"
         title="Exportar BPMN"
         (click)="onExportXml()"
@@ -103,8 +113,58 @@
           spellcheck="false"
         ></textarea>
       </section>
+
+      <aside class="overlay-panel ai-overlay" *ngIf="isAiEditPanelOpen">
+        <div class="panel-header">
+          <h3>IA BPMN sobre el lienzo actual</h3>
+          <p>
+            Puedes pedir desde cero o sobre el diagrama actual. Ejemplo: "creame un proceso de compra con ventas,
+            gerencia y facturación" o "agrega una tarea de aprobación en gerencia".
+          </p>
+          <p class="warning-note">La IA siempre trabajará sobre el XML actual del editor y luego podrás cargar la versión resultante.</p>
+        </div>
+
+        <textarea
+          [(ngModel)]="aiEditInstruction"
+          class="xml-input"
+          rows="12"
+          spellcheck="false"
+          placeholder="Ej. agrega una tarea de aprobación en Gerencia"
+        ></textarea>
+
+        <div class="panel-actions">
+          <button type="button" class="toolbar-button" (click)="closeAiEditPanel()" [disabled]="isAiEditing">
+            Cancelar
+          </button>
+          <button type="button" class="toolbar-button accent" (click)="editDiagramWithAi()" [disabled]="isAiEditing">
+            {{ isAiEditing ? 'Procesando...' : 'Aplicar IA' }}
+          </button>
+        </div>
+      </aside>
     </div>
   </div>
+
+  <ng-container *ngIf="isAiEditing">
+    <div class="ai-loading-screen" role="status" aria-live="polite" aria-busy="true">
+      <div class="modal-backdrop modal-backdrop--strong"></div>
+
+      <section class="ai-loading-modal">
+        <div class="ai-loading-modal__spinner"></div>
+        <div class="ai-loading-modal__content">
+          <span class="ai-modal__eyebrow">IA BPMN</span>
+          <h3>Procesando diagrama</h3>
+          <p>{{ aiEditStatusMessage || 'Estamos generando la siguiente versión del BPMN.' }}</p>
+          <p class="ai-loading-modal__attempt">Intento: {{ aiEditAttempt }}/2</p>
+          <p class="ai-loading-modal__hint">
+            Si tardara demasiado, puedes cancelar y volver a intentarlo.
+          </p>
+        </div>
+        <div class="ai-loading-modal__actions">
+          <button type="button" class="toolbar-button" (click)="cancelAiEdit()">Cancelar</button>
+        </div>
+      </section>
+    </div>
+  </ng-container>
 
   <app-process-dialogs
     [saveDialogOpen]="isSaveDialogOpen"
@@ -126,6 +186,42 @@
     (cancelImport)="closeImportConfirm()"
     (confirmImport)="confirmImportOverwrite()"
   />
+
+  <ng-container *ngIf="isAiEditPreviewOpen">
+    <div class="modal-backdrop modal-backdrop--strong" (click)="isAiEditPreviewOpen = false"></div>
+
+    <section
+      class="ai-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ai-edit-confirm-title"
+    >
+      <div class="ai-modal__header">
+        <span class="ai-modal__eyebrow">IA BPMN</span>
+        <h3 id="ai-edit-confirm-title">Confirmar resultado de IA</h3>
+        <p>
+          La IA preparó una nueva versión del XML actual. Si la cargas, reemplazarás el contenido del editor por el
+          resultado generado.
+        </p>
+      </div>
+
+      <div class="ai-modal__preview">
+        <div class="ai-modal__preview-label">Instrucción</div>
+        <div class="ai-modal__preview-text">{{ aiEditInstruction }}</div>
+      </div>
+
+      <div class="ai-modal__note">
+        Revisa que los ids, lanes, formularios y conexiones sigan coherentes antes de continuar.
+      </div>
+
+      <div class="ai-modal__actions">
+        <button type="button" class="toolbar-button" (click)="isAiEditPreviewOpen = false">Cancelar</button>
+        <button type="button" class="toolbar-button accent" (click)="confirmAiEditImport()">
+          Cargar resultado
+        </button>
+      </div>
+    </section>
+  </ng-container>
 </section>
 
 

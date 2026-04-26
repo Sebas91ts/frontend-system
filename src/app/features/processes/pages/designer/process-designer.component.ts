@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { finalize } from 'rxjs';
+import { Subscription, finalize } from 'rxjs';
 import { ProcessService } from '../../../../core/services/process.service';
 import { BpmnEditorComponent } from '../../components/bpmn-editor/bpmn-editor.component';
 import { ProcessDialogsComponent } from '../../components/process-dialogs/process-dialogs.component';
@@ -46,10 +46,26 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
   protected saveDialogMessage = '';
   protected isImportPanelOpen = false;
   protected isExportPanelOpen = false;
+  protected isAiEditing = false;
+  protected aiEditInstruction = '';
+  protected isAiEditPanelOpen = false;
+  protected isAiEditPreviewOpen = false;
+  protected aiEditedXml = '';
+  protected aiEditStatusMessage = '';
+  protected aiEditAttempt = 0;
+  protected aiProcessDescription = '';
+  protected aiGeneratedXml = '';
+  protected aiGeneratedProcessName = '';
+  protected aiGeneratedProcessKey = '';
+  protected isAiDialogOpen = false;
+  protected isAiGenerating = false;
+  protected isAiConfirmOpen = false;
 
   private feedbackTimer: ReturnType<typeof setTimeout> | null = null;
   private routeSubscription?: { unsubscribe: () => void };
   private pendingProcessId: string | null = null;
+  private aiEditRequestSub?: Subscription;
+  private aiEditProgressTimer?: ReturnType<typeof setTimeout>;
 
   constructor(
     private readonly processService: ProcessService,
@@ -85,6 +101,11 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
 
   ngOnDestroy(): void {
     this.routeSubscription?.unsubscribe();
+    this.aiEditRequestSub?.unsubscribe();
+    if (this.aiEditProgressTimer) {
+      clearTimeout(this.aiEditProgressTimer);
+      this.aiEditProgressTimer = undefined;
+    }
     this.clearFeedbackTimer();
   }
 
@@ -320,6 +341,234 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
     }
   }
 
+  protected openAiGenerator(): void {
+    if (this.isReadonlyProcess) {
+      this.showFeedback('Este proceso está en modo solo lectura. Crea una nueva versión para usar IA.', 'error');
+      return;
+    }
+
+    this.aiProcessDescription = '';
+    this.aiGeneratedXml = '';
+    this.aiGeneratedProcessName = '';
+    this.aiGeneratedProcessKey = '';
+    this.isAiDialogOpen = true;
+  }
+
+  protected closeAiGenerator(): void {
+    if (this.isAiGenerating) {
+      return;
+    }
+
+    this.isAiDialogOpen = false;
+  }
+
+  protected async generateDiagramWithAi(): Promise<void> {
+    if (this.isReadonlyProcess) {
+      this.showFeedback('Este proceso está en modo solo lectura. Crea una nueva versión para usar IA.', 'error');
+      return;
+    }
+
+    const description = this.aiProcessDescription.trim();
+    if (!description) {
+      this.showFeedback('Escribe una descripción del proceso antes de generar el diagrama.', 'error');
+      return;
+    }
+
+    this.isAiGenerating = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    this.processService.generarDiagramaIA(description).pipe(
+      finalize(() => {
+        this.isAiGenerating = false;
+        this.cdr.detectChanges();
+      }),
+    ).subscribe({
+      next: (response) => {
+        if (!response.success || !response.data?.xml) {
+          this.showFeedback(response.message || 'No se pudo generar el diagrama con IA.', 'error');
+          return;
+        }
+
+        console.info('XML IA recibido', response.data.xml);
+        this.aiGeneratedXml = response.data.xml;
+        this.aiGeneratedProcessName = response.data.processName;
+        this.aiGeneratedProcessKey = response.data.processKey;
+        this.isAiConfirmOpen = true;
+        this.showFeedback('Se generó una base editable. Confirma para cargarla en el editor.', 'success');
+      },
+      error: (error: any) => {
+        this.showFeedback(error?.error?.message || 'No se pudo generar el diagrama con IA.', 'error');
+      },
+    });
+  }
+
+  protected closeAiConfirm(): void {
+    if (this.isAiGenerating) {
+      return;
+    }
+
+    this.isAiConfirmOpen = false;
+  }
+
+  protected async confirmAiImport(): Promise<void> {
+    if (!this.editorComponent || !this.aiGeneratedXml.trim()) {
+      return;
+    }
+
+    try {
+      console.info('Importando XML IA en bpmn-js');
+      await this.editorComponent.importFromXml(this.aiGeneratedXml);
+      this.editorComponent.resetView();
+      console.info('XML IA importado correctamente');
+      this.currentProcessKey = this.aiGeneratedProcessKey || this.currentProcessKey;
+      this.processName = this.aiGeneratedProcessName || this.processName;
+      this.editorProcessName = this.processName;
+      this.saveDialogName = this.processName;
+      this.isAiConfirmOpen = false;
+      this.isAiDialogOpen = false;
+      this.isImportPanelOpen = false;
+      this.showFeedback('El diagrama generado por IA se cargó correctamente. Ahora puedes editarlo y guardarlo.', 'success');
+    } catch (error) {
+      console.error('Error al importar XML generado por IA', error);
+      console.error('Error importando XML IA');
+      this.showFeedback('No se pudo cargar el diagrama generado por IA.', 'error');
+    }
+  }
+
+  protected openAiEditGenerator(): void {
+    if (this.isReadonlyProcess) {
+      this.showFeedback('Este proceso está en modo solo lectura. Crea una nueva versión para usar IA.', 'error');
+      return;
+    }
+
+    this.aiEditInstruction = '';
+    this.aiEditedXml = '';
+    this.isAiEditPanelOpen = true;
+  }
+
+  protected closeAiEditPanel(): void {
+    if (this.isAiEditing) {
+      return;
+    }
+
+    this.isAiEditPanelOpen = false;
+  }
+
+  protected async editDiagramWithAi(): Promise<void> {
+    const editor = this.editorComponent;
+    if (!editor) {
+      return;
+    }
+
+    const instruction = this.aiEditInstruction.trim();
+    if (!instruction) {
+      this.showFeedback('Escribe una instrucción para editar el diagrama actual.', 'error');
+      return;
+    }
+
+    if (this.isAiEditing) {
+      this.showFeedback('La IA ya está procesando una versión. Puedes esperar o cancelar antes de iniciar otra.', 'error');
+      return;
+    }
+
+    this.isAiEditing = true;
+    this.aiEditAttempt = 1;
+    this.aiEditStatusMessage = 'Procesando cambio con IA...';
+    this.isAiEditPanelOpen = false;
+    this.isAiEditPreviewOpen = false;
+    this.cdr.detectChanges();
+    if (this.aiEditProgressTimer) {
+      clearTimeout(this.aiEditProgressTimer);
+    }
+    this.aiEditProgressTimer = setTimeout(() => {
+      if (this.isAiEditing) {
+        this.aiEditStatusMessage = 'La IA sigue procesando. Puedes cancelar y volver a intentarlo.';
+        this.showFeedback('La IA sigue procesando. Puedes esperar o cancelar.', 'error');
+        this.cdr.detectChanges();
+      }
+    }, 15000);
+    try {
+      const currentXml = await editor.exportToXml();
+      console.info('XML actual preparado para IA', currentXml.length);
+      this.aiEditRequestSub?.unsubscribe();
+      this.aiEditRequestSub = this.processService.editarDiagramaIA(instruction, currentXml).subscribe({
+        next: async (response) => {
+          this.isAiEditing = false;
+          if (this.aiEditProgressTimer) {
+            clearTimeout(this.aiEditProgressTimer);
+            this.aiEditProgressTimer = undefined;
+          }
+          if (!response.success || !response.data?.xml?.trim()) {
+            this.showFeedback(response.message || 'No se pudo editar el diagrama con IA.', 'error');
+            this.aiEditStatusMessage = '';
+            this.cdr.detectChanges();
+            return;
+          }
+
+          this.aiEditedXml = response.data.xml;
+          this.isAiEditPreviewOpen = true;
+          this.aiEditStatusMessage = '';
+          this.showFeedback('La IA generó una edición. Confirma para cargarla en el editor.', 'success');
+          this.cdr.detectChanges();
+        },
+        error: (error: any) => {
+          this.isAiEditing = false;
+          this.aiEditStatusMessage = '';
+          if (this.aiEditProgressTimer) {
+            clearTimeout(this.aiEditProgressTimer);
+            this.aiEditProgressTimer = undefined;
+          }
+          const apiMessage = error?.error?.message || error?.error?.detail || '';
+          this.showFeedback(apiMessage || 'No se pudo editar el diagrama con IA.', 'error');
+          this.cdr.detectChanges();
+        },
+      });
+    } catch (error) {
+      this.isAiEditing = false;
+      this.aiEditStatusMessage = '';
+      if (this.aiEditProgressTimer) {
+        clearTimeout(this.aiEditProgressTimer);
+        this.aiEditProgressTimer = undefined;
+      }
+      this.showFeedback('No se pudo exportar el XML actual del editor.', 'error');
+      this.cdr.detectChanges();
+    }
+  }
+
+  protected cancelAiEdit(): void {
+    if (!this.isAiEditing) {
+      return;
+    }
+
+    this.aiEditRequestSub?.unsubscribe();
+    this.aiEditRequestSub = undefined;
+    this.isAiEditing = false;
+    this.aiEditStatusMessage = 'Proceso cancelado por el usuario.';
+    this.showFeedback('Edición por IA cancelada.', 'error');
+    this.cdr.detectChanges();
+  }
+
+  protected async confirmAiEditImport(): Promise<void> {
+    if (!this.editorComponent || !this.aiEditedXml.trim()) {
+      return;
+    }
+
+    try {
+      console.info('Importando XML IA en bpmn-js');
+      await this.editorComponent.importFromXml(this.aiEditedXml);
+      this.editorComponent.resetView();
+      console.info('XML IA importado correctamente');
+      this.isAiEditPreviewOpen = false;
+      this.isAiDialogOpen = false;
+      this.showFeedback('Diagrama editado correctamente con IA.', 'success');
+    } catch (error) {
+      console.error('Error importando XML IA', error);
+      const message = error instanceof Error ? error.message : 'No se pudo cargar el diagrama editado por IA.';
+      this.showFeedback(message, 'error');
+    }
+  }
+
   protected zoomIn(): void {
     this.editorComponent?.zoomIn();
   }
@@ -428,3 +677,4 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
     }
   }
 }
+

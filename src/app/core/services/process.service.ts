@@ -168,4 +168,39 @@ export class ProcessService {
       }),
     );
   }
+
+  generarDiagramaIA(text: string): Observable<ApiResponse<{ processName: string; processKey: string; xml: string }>> {
+    console.info('[ProcessService] POST /api/ai/generate-diagram -> start', {
+      textLength: text?.length ?? 0,
+      apiUrl: this.apiUrl,
+    });
+
+    return this.http.post<ApiResponse<{ processName: string; processKey: string; xml: string }>>(
+      `${this.apiUrl}/ai/generate-diagram`,
+      { text },
+    ).pipe(
+      tap({
+        next: (response) => console.info('[ProcessService] POST /api/ai/generate-diagram -> success', response),
+        error: (error) => console.error('[ProcessService] POST /api/ai/generate-diagram -> error', error),
+      }),
+    );
+  }
+
+  editarDiagramaIA(instruction: string, currentXml: string): Observable<ApiResponse<{ xml: string; message: string }>> {
+    console.info('[ProcessService] POST /api/ai/edit-diagram -> start', {
+      instructionLength: instruction?.length ?? 0,
+      xmlLength: currentXml?.length ?? 0,
+      apiUrl: this.apiUrl,
+    });
+
+    return this.http.post<ApiResponse<{ xml: string; message: string }>>(
+      `${this.apiUrl}/ai/edit-diagram`,
+      { instruction, currentXml },
+    ).pipe(
+      tap({
+        next: (response) => console.info('[ProcessService] POST /api/ai/edit-diagram -> success', response),
+        error: (error) => console.error('[ProcessService] POST /api/ai/edit-diagram -> error', error),
+      }),
+    );
+  }
 }
