@@ -1,10 +1,11 @@
 import { Component, OnInit, signal, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { AuthService } from './core/services/auth.service';
+import { NotificationBellComponent } from './shared/components/notification-bell/notification-bell.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, NotificationBellComponent],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })

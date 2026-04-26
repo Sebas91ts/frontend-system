@@ -15,6 +15,7 @@ import {
 import { FormService } from '../../../../core/services/form.service';
 import { FileUploadService } from '../../../../core/services/file-upload.service';
 import { ApiResponse } from '../../../../core/models/auth.models';
+import { RealtimeService } from '../../../../core/services/realtime.service';
 
 @Component({
   selector: 'app-task-inbox',
@@ -33,6 +34,7 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly realtimeService = inject(RealtimeService);
 
   protected tasks: TareaInstancia[] = [];
   protected isLoading = false;
@@ -53,8 +55,10 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
 
   private feedbackTimer: ReturnType<typeof setTimeout> | null = null;
   private queryParamsSubscription?: { unsubscribe: () => void };
+  private realtimeSubscription?: { unsubscribe: () => void };
 
   ngOnInit(): void {
+    this.subscribeRealtimeTopics();
     this.queryParamsSubscription = this.route.queryParamMap.subscribe((params) => {
       const mode = params.get('mode');
       this.viewMode = mode === 'area' ? 'area' : mode === 'all' ? 'all' : 'mine';
@@ -64,6 +68,7 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.queryParamsSubscription?.unsubscribe();
+    this.realtimeSubscription?.unsubscribe();
     this.clearFeedbackTimer();
   }
 
@@ -737,5 +742,24 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
       clearTimeout(this.feedbackTimer);
       this.feedbackTimer = null;
     }
+  }
+
+  private subscribeRealtimeTopics(): void {
+    const user = this.authService.currentUser();
+    if (user?.areaId) {
+      this.realtimeService.subscribeToTopic(`/topic/areas/${user.areaId}/tasks`);
+    }
+    this.realtimeService.subscribeToTopic('/topic/tasks');
+
+    this.realtimeSubscription = this.realtimeService.events$.subscribe((event) => {
+      if (
+        event.type === 'TASK_CREATED' ||
+        event.type === 'TASK_AVAILABLE' ||
+        event.type === 'TASK_CLAIMED' ||
+        event.type === 'TASK_COMPLETED'
+      ) {
+        void this.loadTasks();
+      }
+    });
   }
 }

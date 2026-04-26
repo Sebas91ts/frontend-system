@@ -1,0 +1,48 @@
+<div class="notification-bell" *ngIf="isVisible">
+  <button type="button" class="notification-bell__button" (click)="togglePanel()">
+    <span class="notification-bell__icon">🔔</span>
+    <span class="notification-bell__count" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+  </button>
+
+  <section class="notification-bell__panel" *ngIf="isOpen">
+    <header class="notification-bell__header">
+      <div>
+        <p>Notificaciones</p>
+        <strong>{{ unreadCount }} sin leer</strong>
+      </div>
+      <div class="notification-bell__actions">
+        <button type="button" (click)="refresh()">Actualizar</button>
+        <button type="button" (click)="markAllAsRead()" [disabled]="!items.length">Leer todas</button>
+      </div>
+    </header>
+
+    <div class="notification-bell__state" *ngIf="isLoading || isRefreshing">
+      Cargando notificaciones...
+    </div>
+
+    <div class="notification-bell__state notification-bell__state--error" *ngIf="errorMessage">
+      {{ errorMessage }}
+    </div>
+
+    <div class="notification-bell__list" *ngIf="items.length; else emptyNotifications">
+      <article
+        class="notification-bell__item"
+        *ngFor="let item of items; trackBy: trackByNotification"
+        [class.notification-bell__item--unread]="!item.read"
+      >
+        <div class="notification-bell__item-copy">
+          <strong>{{ item.title }}</strong>
+          <p>{{ item.message }}</p>
+          <small>{{ formatDate(item.createdAt) }}</small>
+        </div>
+        <button type="button" class="notification-bell__read" (click)="markAsRead(item)" [disabled]="item.read">
+          {{ item.read ? 'Leida' : 'Marcar leida' }}
+        </button>
+      </article>
+    </div>
+
+    <ng-template #emptyNotifications>
+      <div class="notification-bell__state">No tienes notificaciones por ahora.</div>
+    </ng-template>
+  </section>
+</div>

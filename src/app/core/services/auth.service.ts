@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, tap, catchError, throwError, map, of } from 'rxjs';
 import { Usuario, AuthResponse, LoginRequest, RegisterRequest, ApiResponse } from '../models/auth.models';
 import { API_BASE_URL } from '../config/api.config';
+import { RealtimeService } from './realtime.service';
 
 @Injectable({
   providedIn: 'root'
@@ -19,7 +20,8 @@ export class AuthService {
   constructor(
     private http: HttpClient,
     private router: Router,
-    @Inject(API_BASE_URL) private readonly apiUrl: string
+    @Inject(API_BASE_URL) private readonly apiUrl: string,
+    private realtimeService: RealtimeService,
   ) {}
 
   login(loginRequest: LoginRequest): Observable<ApiResponse<AuthResponse>> {
@@ -31,6 +33,7 @@ export class AuthService {
       tap(response => {
         if (response.success && response.data) {
           this.currentUserSignal.set(response.data.usuario);
+          this.realtimeService.connectForUser(response.data.usuario);
         }
       }),
       catchError(error => {
@@ -61,16 +64,19 @@ export class AuthService {
         if (response.success && response.data) {
           this.currentUserSignal.set(response.data);
           this.sessionCheckedSignal.set(true);
+          this.realtimeService.connectForUser(response.data);
           return true;
         }
 
         this.currentUserSignal.set(null);
         this.sessionCheckedSignal.set(true);
+        this.realtimeService.disconnect();
         return false;
       }),
       catchError(() => {
         this.currentUserSignal.set(null);
         this.sessionCheckedSignal.set(true);
+        this.realtimeService.disconnect();
         return of(false);
       })
     );
@@ -91,6 +97,7 @@ export class AuthService {
       catchError(() => of(null))
     ).subscribe(() => {
       this.currentUserSignal.set(null);
+      this.realtimeService.disconnect();
       this.router.navigate(['/auth/login']);
     });
   }
