@@ -8,6 +8,8 @@ export interface Proceso {
   createdBy?: string;
   createdAt: string;
   updatedAt?: string;
+  lastSavedAt?: string;
+  lastSavedBy?: string;
 }
 
 export interface ProcesoCreateRequest {
@@ -18,4 +20,11 @@ export interface ProcesoCreateRequest {
 export interface ProcesoUpdateRequest {
   nombre: string;
   xml: string;
+  lastSavedBy?: string;
+}
+
+export interface ProcesoAutosaveRequest {
+  nombre?: string;
+  xml: string;
+  lastSavedBy?: string;
 }

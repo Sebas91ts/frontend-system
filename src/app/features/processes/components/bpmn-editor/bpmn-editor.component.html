@@ -1,4 +1,40 @@
-<section class="editor-surface" [class.readonly-mode]="readonlyMode">
+<section class="collaboration-bar" *ngIf="processId">
+  <div class="collaboration-status">
+    <span class="status-pill" [class.connected]="isCollaborationConnected">
+      {{ collaborationStatusLabel }}
+    </span>
+    <span class="status-pill live" [class.readonly]="isEffectiveReadonly">
+      {{ liveModeLabel }}
+    </span>
+    <span class="autosave-state" [class.error]="saveState === 'error'" [class.saving]="saveState === 'saving'">
+      {{ autosaveStatusLabel }}
+    </span>
+  </div>
+
+  <div class="collaboration-users" aria-label="Usuarios conectados">
+    <span
+      *ngFor="let user of collaborationUsers"
+      class="user-presence"
+      [class.readonly]="user.mode === 'lectura'"
+      [title]="user.name + ' · ' + user.email + ' · ' + user.mode"
+    >
+      <span class="user-dot" [style.background]="user.color"></span>
+      <span class="user-name">{{ user.name }}</span>
+      <small>{{ user.mode }}</small>
+    </span>
+  </div>
+
+  <button
+    type="button"
+    class="save-now-button"
+    (click)="manualAutosaveNow()"
+    [disabled]="isEffectiveReadonly || isAutosaving || !processId"
+  >
+    {{ isAutosaving ? 'Guardando...' : 'Guardar ahora' }}
+  </button>
+</section>
+
+<section class="editor-surface" [class.readonly-mode]="isEffectiveReadonly">
   <div class="canvas-wrapper">
     <div #canvasHost class="bpmn-canvas" aria-label="Canvas del modelador BPMN"></div>
   </div>
@@ -14,7 +50,7 @@
       [selectedLaneName]="selectedLaneName"
       [selectedLaneAreaLabel]="selectedLaneAreaLabel"
       [selectedLaneAreaId]="selectedLaneAreaId"
-      [readonlyMode]="readonlyMode"
+      [readonlyMode]="isEffectiveReadonly"
       [isAreasLoading]="isAreasLoading"
       [hasSelectedLane]="!!selectedLaneElement"
       [activeAreas]="activeAreas"
@@ -25,7 +61,7 @@
 
     <app-sequence-flow-technical-panel
       [visible]="!!selectedSequenceFlowElement"
-      [readonlyMode]="readonlyMode"
+      [readonlyMode]="isEffectiveReadonly"
       [technicalState]="selectedSequenceFlowTechnicalState"
       [availableFields]="availableConditionFields"
       [selectedFieldName]="selectedSequenceFlowFieldName"
@@ -50,7 +86,7 @@
       [visible]="!!selectedUserTask"
       [selectedUserTaskLabel]="selectedUserTaskLabel"
       [taskFormContext]="taskFormContext"
-      [readonlyMode]="readonlyMode"
+      [readonlyMode]="isEffectiveReadonly"
       [hasTaskForm]="hasTaskForm"
       (configure)="openTaskFormPanel(selectedUserTask)"
     />

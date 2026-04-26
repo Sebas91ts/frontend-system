@@ -4,10 +4,138 @@
   min-height: 0;
 }
 
+.collaboration-bar {
+  min-height: 64px;
+  padding: 0.7rem 0.9rem;
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(220px, auto) auto;
+  align-items: center;
+  gap: 0.8rem;
+  background:
+    radial-gradient(circle at 10% 20%, rgba(20, 184, 166, 0.12), transparent 30%),
+    linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+  border-bottom: 1px solid #dbe7f3;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  position: relative;
+  z-index: 5;
+}
+
+.collaboration-status,
+.collaboration-users {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.status-pill,
+.autosave-state {
+  border-radius: 999px;
+  padding: 0.38rem 0.72rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #475569;
+  background: #eef4fb;
+  border: 1px solid #dbe7f3;
+}
+
+.status-pill.connected {
+  color: #047857;
+  background: #dffaf0;
+  border-color: #9be6c7;
+}
+
+.status-pill.live {
+  color: #075985;
+  background: #e0f2fe;
+  border-color: #bae6fd;
+}
+
+.status-pill.live.readonly {
+  color: #92400e;
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.autosave-state.saving {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.autosave-state.error {
+  color: #b91c1c;
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+
+.collaboration-users {
+  justify-content: flex-end;
+}
+
+.user-presence {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 180px;
+  border: 1px solid #dbe7f3;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 0.32rem 0.58rem;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.user-presence.readonly {
+  opacity: 0.72;
+}
+
+.user-dot {
+  width: 0.64rem;
+  height: 0.64rem;
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.06);
+}
+
+.user-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #0f172a;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.user-presence small {
+  color: #64748b;
+  font-size: 0.68rem;
+}
+
+.save-now-button {
+  border: none;
+  border-radius: 999px;
+  padding: 0.68rem 0.95rem;
+  color: #ffffff;
+  background: linear-gradient(135deg, #0f9f8f, #0e7490);
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(14, 116, 144, 0.18);
+}
+
+.save-now-button:disabled {
+  cursor: not-allowed;
+  color: #94a3b8;
+  background: #e2e8f0;
+  box-shadow: none;
+}
+
 .editor-surface {
   display: flex;
   height: 100%;
   min-height: 0;
+}
+
+.collaboration-bar + .editor-surface {
+  height: calc(100% - 64px);
 }
 
 .editor-surface.readonly-mode .canvas-wrapper,
@@ -100,6 +228,14 @@
 }
 
 @media (max-width: 768px) {
+  .collaboration-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .collaboration-users {
+    justify-content: flex-start;
+  }
+
   .editor-surface {
     flex-direction: column;
   }

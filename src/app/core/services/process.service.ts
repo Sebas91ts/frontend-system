@@ -2,7 +2,7 @@ import { Injectable, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { ApiResponse } from '../models/auth.models';
-import { Proceso, ProcesoCreateRequest, ProcesoUpdateRequest } from '../models/process.models';
+import { Proceso, ProcesoAutosaveRequest, ProcesoCreateRequest, ProcesoUpdateRequest } from '../models/process.models';
 import { API_BASE_URL } from '../config/api.config';
 
 @Injectable({
@@ -86,6 +86,25 @@ export class ProcessService {
         },
         error: (error) => {
           console.error('[ProcessService] PUT /api/procesos/{id} -> error', error);
+        },
+      }),
+    );
+  }
+
+  autosaveProceso(id: string, request: ProcesoAutosaveRequest): Observable<ApiResponse<Proceso>> {
+    console.info('[ProcessService] PUT /api/procesos/{id}/autosave -> start', {
+      id,
+      xmlLength: request.xml?.length ?? 0,
+      apiUrl: this.apiUrl,
+    });
+
+    return this.http.put<ApiResponse<Proceso>>(`${this.apiUrl}/procesos/${id}/autosave`, request).pipe(
+      tap({
+        next: (response) => {
+          console.info('[ProcessService] PUT /api/procesos/{id}/autosave -> success', response);
+        },
+        error: (error) => {
+          console.error('[ProcessService] PUT /api/procesos/{id}/autosave -> error', error);
         },
       }),
     );

@@ -13,6 +13,8 @@ import {
 import Modeler from 'bpmn-js/lib/Modeler';
 import { BpmnPropertiesPanelModule, BpmnPropertiesProviderModule } from 'bpmn-js-properties-panel';
 import { finalize } from 'rxjs';
+import * as Y from 'yjs';
+import { WebsocketProvider } from 'y-websocket';
 import { Area } from '../../../../core/models/area.models';
 import { ApiResponse } from '../../../../core/models/auth.models';
 import {
@@ -22,7 +24,9 @@ import {
   FormFieldType,
 } from '../../../../core/models/form.models';
 import { AreaService } from '../../../../core/services/area.service';
+import { AuthService } from '../../../../core/services/auth.service';
 import { FormService } from '../../../../core/services/form.service';
+import { ProcessService } from '../../../../core/services/process.service';
 import { EMPTY_BPMN_XML } from '../../shared/bpmn-templates';
 import { validateExclusiveGatewayXml } from '../../shared/bpmn-gateway-validation';
 import { customModdle } from '../../shared/custom-moddle';
@@ -43,6 +47,16 @@ type SaveXmlResult = {
   xml?: string;
 };
 
+type CollaborationUser = {
+  clientId: number;
+  name: string;
+  email: string;
+  color: string;
+  mode: 'editando' | 'lectura';
+};
+
+type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'readonly' | 'offline' | 'error';
+
 @Component({
   selector: 'app-bpmn-editor',
   standalone: true,
@@ -58,6 +72,7 @@ type SaveXmlResult = {
 })
 export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges {
   @Input() processName = '';
+  @Input() processId: string | null = null;
   @Input() processKey = '';
   @Input() processVersion: number | null = null;
   @Input() processState = '';
@@ -76,6 +91,21 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
   private commandStackChangedHandler?: () => void;
   private laneOverlayIds = new Map<string, string>();
   private overlayRefreshFrameId: number | null = null;
+  private ydoc: Y.Doc | null = null;
+  private provider: WebsocketProvider | null = null;
+  private sharedProcessMap: Y.Map<string | number> | null = null;
+  private sharedMapObserver?: (event: Y.YMapEvent<string | number>) => void;
+  private collaborationRoom = '';
+  private currentImportedXml = '';
+  private isApplyingRemoteChange = false;
+  private collaborationSyncTimer: ReturnType<typeof setTimeout> | null = null;
+  private autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastBackendSaveAt = 0;
+  private lastSavedXml = '';
+  private pendingAutosaveXml = '';
+  protected isAutosaving = false;
+  private readonly autosaveDebounceMs = 5000;
+  private readonly backendSaveMinIntervalMs = 10000;
 
   protected selectedLaneElement: any | null = null;
   protected activeAreas: Area[] = [];
@@ -117,6 +147,12 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
   };
 
   readonly sampleXml = EMPTY_BPMN_XML;
+  protected collaborationUsers: CollaborationUser[] = [];
+  protected isCollaborationConnected = false;
+  protected isReadOnlyByCapacity = false;
+  protected saveState: SaveState = 'idle';
+  protected lastSavedAtLabel = '';
+  protected autosaveErrorMessage = '';
   private processFormDefinitions: FormDefinition[] = [];
   private loadedConditionProcessKey = '';
   private sequenceFlowRefreshSnapshot: any | null = null;
@@ -124,6 +160,8 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
   constructor(
     private readonly areaService: AreaService,
     private readonly formService: FormService,
+    private readonly processService: ProcessService,
+    private readonly authService: AuthService,
     private readonly cdr: ChangeDetectorRef,
   ) {}
 
@@ -142,17 +180,36 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
         void this.createNewDiagram();
       }, 0);
     }
+    setTimeout(() => {
+      this.configureCollaboration();
+    }, 0);
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['processKey'] || changes['processName']) {
       this.loadAvailableConditionFields();
     }
+
+    if (
+      changes['processId'] ||
+      changes['processKey'] ||
+      changes['processVersion'] ||
+      changes['processState'] ||
+      changes['readonlyMode']
+    ) {
+      this.refreshCollaborationMode();
+      setTimeout(() => {
+        this.configureCollaboration();
+      }, 0);
+    }
   }
 
   ngOnDestroy(): void {
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
+    this.disconnectCollaboration();
+    this.clearAutosaveTimer();
+    this.clearCollaborationSyncTimer();
     this.laneOverlayIds.clear();
     this.selectionChangedHandler = undefined;
     this.commandStackChangedHandler = undefined;
@@ -180,11 +237,16 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
     }
 
     await this.modeler.importXML(normalizedXml);
+    this.currentImportedXml = this.normalizeExportedXml(normalizedXml);
+    if (!this.lastSavedXml) {
+      this.lastSavedXml = this.currentImportedXml;
+    }
     this.clearLaneSelection();
     this.clearSequenceFlowSelection();
     this.restoreLaneAreaBindings();
     this.refreshLaneAreaOverlays();
     this.scheduleFitViewport();
+    this.seedSharedXmlIfNeeded(this.currentImportedXml);
   }
 
   async exportToXml(): Promise<string> {
@@ -308,7 +370,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
   }
 
   protected onLaneAreaChange(areaId: string): void {
-    if (!this.modeler || !this.selectedLaneElement || this.readonlyMode) {
+    if (!this.modeler || !this.selectedLaneElement || this.isEffectiveReadonly) {
       return;
     }
 
@@ -374,7 +436,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
   }
 
   protected applySequenceFlowTechnicalChanges(): void {
-    if (!this.selectedSequenceFlowElement || this.readonlyMode) {
+    if (!this.selectedSequenceFlowElement || this.isEffectiveReadonly) {
       return;
     }
 
@@ -403,7 +465,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
 
   protected openTaskFormPanel(taskElement?: any): void {
     const userTask = taskElement ?? this.selectedUserTask;
-    if (!userTask || this.readonlyMode) {
+    if (!userTask || this.isEffectiveReadonly) {
       return;
     }
 
@@ -597,8 +659,440 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
     eventBus.on('selection.changed', this.selectionChangedHandler);
     this.commandStackChangedHandler = () => {
       this.scheduleOverlayRefresh();
+      this.handleLocalDiagramChange();
     };
-    eventBus.on('commandStack.changed', this.commandStackChangedHandler);
+    const modelerEvents = this.modeler as unknown as {
+      on?: (eventName: string, callback: () => void) => void;
+    };
+    modelerEvents.on?.('commandStack.changed', this.commandStackChangedHandler);
+  }
+
+  protected get isEffectiveReadonly(): boolean {
+    return this.readonlyMode || !this.isDraftProcess || this.isReadOnlyByCapacity;
+  }
+
+  protected get collaborationStatusLabel(): string {
+    if (!this.processId || !this.collaborationRoom) {
+      return 'Colaboracion pendiente';
+    }
+
+    if (this.isCollaborationConnected) {
+      return 'Conectado';
+    }
+
+    return 'Conectando...';
+  }
+
+  protected get liveModeLabel(): string {
+    if (!this.isDraftProcess || this.readonlyMode) {
+      return 'Modo lectura';
+    }
+
+    if (this.isReadOnlyByCapacity) {
+      return 'Modo lectura: sala llena';
+    }
+
+    return 'Editando en vivo';
+  }
+
+  protected get autosaveStatusLabel(): string {
+    switch (this.saveState) {
+      case 'dirty':
+        return 'Cambios sin guardar';
+      case 'saving':
+        return 'Guardando...';
+      case 'saved':
+        return this.lastSavedAtLabel ? `Guardado automaticamente ${this.lastSavedAtLabel}` : 'Guardado automaticamente';
+      case 'readonly':
+        return 'Solo lectura';
+      case 'offline':
+        return 'Esperando conexion';
+      case 'error':
+        return this.autosaveErrorMessage || 'No se pudo autosguardar';
+      default:
+        return 'Autosave listo';
+    }
+  }
+
+  protected manualAutosaveNow(): void {
+    void this.flushAutosave(true);
+  }
+
+  private configureCollaboration(): void {
+    if (!this.modeler || !this.processId || !this.processKey) {
+      this.refreshCollaborationMode();
+      return;
+    }
+
+    const nextRoom = this.buildCollaborationRoom();
+    if (!nextRoom) {
+      return;
+    }
+
+    if (this.collaborationRoom === nextRoom && this.provider && this.ydoc) {
+      this.refreshAwarenessState();
+      return;
+    }
+
+    this.disconnectCollaboration();
+    this.collaborationRoom = nextRoom;
+    this.ydoc = new Y.Doc();
+    this.sharedProcessMap = this.ydoc.getMap<string | number>('bpmn');
+    this.sharedMapObserver = (event: Y.YMapEvent<string | number>) => {
+      this.handleRemoteSharedXmlChange(event);
+    };
+    this.sharedProcessMap.observe(this.sharedMapObserver);
+
+    const providerUrl = this.resolveYjsServerUrl();
+    this.provider = new WebsocketProvider(providerUrl, nextRoom, this.ydoc);
+    this.provider.on('status', (event: { status: string }) => {
+      this.isCollaborationConnected = event.status === 'connected';
+      if (!this.isCollaborationConnected && this.saveState !== 'saving' && this.saveState !== 'saved') {
+        this.saveState = 'offline';
+      }
+      this.cdr.markForCheck();
+    });
+    this.provider.on('sync', (isSynced: boolean) => {
+      if (!isSynced) {
+        return;
+      }
+
+      const remoteXml = this.readSharedXml();
+      if (remoteXml) {
+        console.debug('[BPMN/Yjs] XML inicial encontrado en Yjs, importando estado colaborativo.');
+        void this.applyRemoteXml(remoteXml);
+      } else if (this.currentImportedXml) {
+        console.debug('[BPMN/Yjs] Yjs no tiene XML, sembrando XML inicial del backend.');
+        this.seedSharedXmlIfNeeded(this.currentImportedXml);
+      }
+    });
+    this.provider.awareness.on('change', () => {
+      this.updateCollaborationUsers();
+    });
+
+    this.refreshAwarenessState();
+    this.updateCollaborationUsers();
+    if (this.isEffectiveReadonly) {
+      this.saveState = 'readonly';
+    }
+    this.cdr.markForCheck();
+  }
+
+  private disconnectCollaboration(): void {
+    if (this.sharedProcessMap && this.sharedMapObserver) {
+      this.sharedProcessMap.unobserve(this.sharedMapObserver);
+    }
+
+    this.provider?.awareness.setLocalState(null);
+    this.provider?.destroy();
+    this.ydoc?.destroy();
+    this.provider = null;
+    this.ydoc = null;
+    this.sharedProcessMap = null;
+    this.sharedMapObserver = undefined;
+    this.collaborationRoom = '';
+    this.collaborationUsers = [];
+    this.isCollaborationConnected = false;
+    this.isReadOnlyByCapacity = false;
+  }
+
+  private refreshCollaborationMode(): void {
+    if (this.isEffectiveReadonly) {
+      this.saveState = 'readonly';
+    } else if (!this.isCollaborationConnected && this.processId) {
+      this.saveState = 'offline';
+    } else if (this.saveState === 'readonly' || this.saveState === 'offline') {
+      this.saveState = 'idle';
+    }
+
+    this.refreshAwarenessState();
+    this.cdr.markForCheck();
+  }
+
+  private refreshAwarenessState(): void {
+    if (!this.provider || !this.ydoc) {
+      return;
+    }
+
+    const user = this.authService.currentUser();
+    const email = user?.email ?? 'usuario@local';
+    const fullName = `${user?.nombre ?? ''} ${user?.apellido ?? ''}`.trim() || email;
+
+    this.provider.awareness.setLocalStateField('user', {
+      name: fullName,
+      email,
+      color: this.pickUserColor(this.ydoc.clientID),
+      mode: this.isEffectiveReadonly ? 'lectura' : 'editando',
+    });
+  }
+
+  private updateCollaborationUsers(): void {
+    if (!this.provider || !this.ydoc) {
+      return;
+    }
+
+    const states = Array.from(this.provider.awareness.getStates().entries()) as Array<[number, any]>;
+    const orderedStates = states
+      .filter(([, state]) => !!state?.user)
+      .sort(([leftClientId], [rightClientId]) => leftClientId - rightClientId);
+    const editableClientIds = this.isDraftProcess
+      ? orderedStates.map(([clientId]) => clientId).slice(0, 3)
+      : [];
+    const nextReadOnlyByCapacity = this.isDraftProcess && !editableClientIds.includes(this.ydoc.clientID);
+
+    if (this.isReadOnlyByCapacity !== nextReadOnlyByCapacity) {
+      this.isReadOnlyByCapacity = nextReadOnlyByCapacity;
+      this.refreshAwarenessState();
+    }
+
+    this.collaborationUsers = orderedStates.map(([clientId, state]) => {
+      const user = state.user ?? {};
+      const mode: 'editando' | 'lectura' =
+        this.isDraftProcess && editableClientIds.includes(clientId) && !this.readonlyMode
+          ? 'editando'
+          : 'lectura';
+
+      return {
+        clientId,
+        name: String(user.name || user.email || 'Usuario'),
+        email: String(user.email || 'Sin correo'),
+        color: String(user.color || this.pickUserColor(clientId)),
+        mode,
+      };
+    });
+
+    this.refreshCollaborationMode();
+  }
+
+  private handleLocalDiagramChange(): void {
+    if (this.isApplyingRemoteChange || this.isEffectiveReadonly) {
+      return;
+    }
+
+    console.debug('[BPMN/Yjs] Cambio BPMN local detectado.');
+    this.clearCollaborationSyncTimer();
+    this.collaborationSyncTimer = setTimeout(() => {
+      void this.publishLocalXmlChange();
+    }, 600);
+  }
+
+  private async publishLocalXmlChange(): Promise<void> {
+    if (!this.sharedProcessMap || !this.ydoc || this.isApplyingRemoteChange || this.isEffectiveReadonly) {
+      return;
+    }
+
+    try {
+      const xml = await this.exportToXml();
+      if (!xml || xml === this.currentImportedXml) {
+        return;
+      }
+
+      this.currentImportedXml = xml;
+      this.writeXmlToYjs(xml);
+      console.debug('[BPMN/Yjs] XML enviado a Yjs.', {
+        room: this.collaborationRoom,
+        xmlLength: xml.length,
+      });
+      this.markXmlPendingAutosave(xml);
+    } catch (error) {
+      console.error('No se pudo sincronizar el cambio BPMN local', error);
+    }
+  }
+
+  private handleRemoteSharedXmlChange(event: Y.YMapEvent<string | number>): void {
+    if (!this.sharedProcessMap || !event.keysChanged.has('xml')) {
+      return;
+    }
+
+    const remoteXml = this.readSharedXml();
+    const updatedBy = this.readSharedString('updatedBy');
+    const updatedClientId = Number(this.sharedProcessMap.get('updatedClientId') ?? -1);
+    if (!remoteXml || remoteXml === this.currentImportedXml) {
+      return;
+    }
+
+    if (this.ydoc && updatedClientId === this.ydoc.clientID) {
+      return;
+    }
+
+    console.debug('[BPMN/Yjs] Cambio BPMN remoto recibido.', {
+      updatedBy,
+      updatedClientId,
+      xmlLength: remoteXml.length,
+    });
+    void this.applyRemoteXml(remoteXml);
+  }
+
+  private async applyRemoteXml(xml: string): Promise<void> {
+    if (!this.modeler || this.isApplyingRemoteChange || !xml.trim()) {
+      return;
+    }
+
+    try {
+      this.isApplyingRemoteChange = true;
+      await this.importFromXml(xml);
+      this.currentImportedXml = xml;
+      console.debug('[BPMN/Yjs] XML remoto importado.');
+      this.markXmlPendingAutosave(xml);
+    } catch (error) {
+      console.error('No se pudo aplicar XML BPMN remoto', error);
+    } finally {
+      this.isApplyingRemoteChange = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  private seedSharedXmlIfNeeded(xml: string): void {
+    if (!this.sharedProcessMap || !xml || this.sharedProcessMap.get('xml')) {
+      return;
+    }
+
+    this.writeXmlToYjs(xml);
+    console.debug('[BPMN/Yjs] XML inicial enviado a Yjs.', {
+      room: this.collaborationRoom,
+      xmlLength: xml.length,
+    });
+  }
+
+  private writeXmlToYjs(xml: string): void {
+    if (!this.sharedProcessMap || !this.ydoc) {
+      return;
+    }
+
+    const currentUserEmail = this.getCurrentUserEmail();
+    this.ydoc.transact(() => {
+      this.sharedProcessMap?.set('xml', xml);
+      this.sharedProcessMap?.set('updatedBy', currentUserEmail);
+      this.sharedProcessMap?.set('updatedAt', new Date().toISOString());
+      this.sharedProcessMap?.set('updatedClientId', this.ydoc?.clientID ?? 0);
+    });
+  }
+
+  private readSharedXml(): string {
+    return this.readSharedString('xml');
+  }
+
+  private readSharedString(key: string): string {
+    const value = this.sharedProcessMap?.get(key);
+    return typeof value === 'string' ? value : '';
+  }
+
+  private getCurrentUserEmail(): string {
+    return this.authService.currentUser()?.email ?? 'usuario@local';
+  }
+
+  private markXmlPendingAutosave(xml: string): void {
+    if (!xml || this.isEffectiveReadonly || !this.processId || xml === this.lastSavedXml) {
+      return;
+    }
+
+    this.pendingAutosaveXml = xml;
+    this.saveState = 'dirty';
+    this.autosaveErrorMessage = '';
+    this.clearAutosaveTimer();
+    this.autosaveTimer = setTimeout(() => {
+      void this.flushAutosave(false);
+    }, this.autosaveDebounceMs);
+    this.cdr.markForCheck();
+  }
+
+  private async flushAutosave(force: boolean): Promise<void> {
+    if (this.isAutosaving || this.isEffectiveReadonly || !this.processId) {
+      return;
+    }
+
+    const xml = this.pendingAutosaveXml || (force ? await this.exportToXml() : '');
+    if (!xml || xml === this.lastSavedXml) {
+      if (force) {
+        this.saveState = 'saved';
+        this.lastSavedAtLabel = 'sin cambios nuevos';
+        this.cdr.markForCheck();
+      }
+      return;
+    }
+
+    const elapsed = Date.now() - this.lastBackendSaveAt;
+    if (!force && elapsed < this.backendSaveMinIntervalMs) {
+      this.clearAutosaveTimer();
+      this.autosaveTimer = setTimeout(() => {
+        void this.flushAutosave(false);
+      }, this.backendSaveMinIntervalMs - elapsed);
+      return;
+    }
+
+    this.isAutosaving = true;
+    this.saveState = 'saving';
+    this.clearAutosaveTimer();
+    this.cdr.markForCheck();
+
+    const user = this.authService.currentUser();
+    const lastSavedBy = user?.email ?? 'usuario@local';
+
+    this.processService
+      .autosaveProceso(this.processId, {
+        nombre: this.processName,
+        xml,
+        lastSavedBy,
+      })
+      .pipe(
+        finalize(() => {
+          this.isAutosaving = false;
+          this.cdr.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: (response) => {
+          if (!response.success) {
+            this.autosaveErrorMessage = response.message || 'No se pudo autosguardar.';
+            this.saveState = 'error';
+            return;
+          }
+
+          this.lastSavedXml = xml;
+          this.pendingAutosaveXml = '';
+          this.lastBackendSaveAt = Date.now();
+          this.lastSavedAtLabel = 'ahora';
+          this.saveState = 'saved';
+        },
+        error: (error: any) => {
+          this.autosaveErrorMessage = error?.error?.message || 'No se pudo autosguardar el BPMN.';
+          this.saveState = 'error';
+        },
+      });
+  }
+
+  private buildCollaborationRoom(): string {
+    const processKey = this.normalizeProcessKey(this.processKey || this.processName);
+    const version = this.processVersion ?? 1;
+    return `bpm-process-${processKey}-v${version}`;
+  }
+
+  private resolveYjsServerUrl(): string {
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    return `${protocol}://${window.location.hostname}:1234`;
+  }
+
+  private pickUserColor(clientId: number): string {
+    const colors = ['#0f9f8f', '#2563eb', '#f97316', '#7c3aed', '#dc2626', '#0891b2'];
+    return colors[Math.abs(clientId) % colors.length];
+  }
+
+  private get isDraftProcess(): boolean {
+    return (this.processState || 'BORRADOR').toUpperCase() === 'BORRADOR';
+  }
+
+  private clearAutosaveTimer(): void {
+    if (this.autosaveTimer) {
+      clearTimeout(this.autosaveTimer);
+      this.autosaveTimer = null;
+    }
+  }
+
+  private clearCollaborationSyncTimer(): void {
+    if (this.collaborationSyncTimer) {
+      clearTimeout(this.collaborationSyncTimer);
+      this.collaborationSyncTimer = null;
+    }
   }
 
   private handleSelectedElement(element: any | null): void {
