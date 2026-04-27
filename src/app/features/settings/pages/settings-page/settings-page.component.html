@@ -1,0 +1,39 @@
+<section class="settings-page">
+  <header class="settings-page__hero">
+    <div>
+      <p class="settings-page__eyebrow">{{ t('settings.title') }}</p>
+      <h1>{{ t('settings.subtitle') }}</h1>
+      <p>{{ t('settings.preview') }}</p>
+    </div>
+
+    <button type="button" class="settings-page__back" (click)="goBack()">Volver</button>
+  </header>
+
+  <section class="settings-page__grid">
+    <article class="settings-card">
+      <span class="settings-card__label">{{ t('settings.theme') }}</span>
+      <strong>{{ themeLabel }}</strong>
+      <div class="theme-options" role="group" [attr.aria-label]="t('settings.theme')">
+        <button type="button" [class.active]="!preferences.isDarkMode()" (click)="preferences.setTheme('light')">
+          {{ t('settings.light') }}
+        </button>
+        <button type="button" [class.active]="preferences.isDarkMode()" (click)="preferences.setTheme('dark')">
+          {{ t('settings.dark') }}
+        </button>
+      </div>
+    </article>
+
+    <article class="settings-card">
+      <span class="settings-card__label">{{ t('settings.language') }}</span>
+      <strong>{{ preferences.language() }}</strong>
+      <label class="language-field">
+        <span>{{ t('settings.language') }}</span>
+        <select [ngModel]="preferences.language()" (ngModelChange)="onLanguageChange($event)">
+          <option value="es">Español</option>
+          <option value="en">English</option>
+          <option value="pt">Português</option>
+        </select>
+      </label>
+    </article>
+  </section>
+</section>

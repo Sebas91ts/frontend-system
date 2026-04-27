@@ -1140,9 +1140,11 @@ export class UiPreferencesService {
   private readonly document = inject(DOCUMENT);
   private readonly themeSignal = signal<ThemePreference>(this.readThemePreference());
   private readonly languageSignal = signal<LanguagePreference>(this.readLanguagePreference());
+  private readonly settingsPanelOpenSignal = signal(false);
 
   readonly theme = this.themeSignal.asReadonly();
   readonly language = this.languageSignal.asReadonly();
+  readonly settingsPanelOpen = this.settingsPanelOpenSignal.asReadonly();
   readonly isDarkMode = computed(() => this.themeSignal() === 'dark');
 
   constructor() {
@@ -1168,6 +1170,18 @@ export class UiPreferencesService {
 
   setLanguage(language: LanguagePreference): void {
     this.languageSignal.set(language);
+  }
+
+  openSettingsPanel(): void {
+    this.settingsPanelOpenSignal.set(true);
+  }
+
+  closeSettingsPanel(): void {
+    this.settingsPanelOpenSignal.set(false);
+  }
+
+  toggleSettingsPanel(): void {
+    this.settingsPanelOpenSignal.update((value) => !value);
   }
 
   translate(key: TranslationKey): string {

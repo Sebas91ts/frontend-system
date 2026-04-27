@@ -1,17 +1,19 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { LanguagePreference, UiPreferencesService } from '../../../core/services/ui-preferences.service';
+import { Router } from '@angular/router';
+import { LanguagePreference, UiPreferencesService } from '../../../../core/services/ui-preferences.service';
 
 @Component({
-  selector: 'app-ui-preferences',
+  selector: 'app-settings-page',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './ui-preferences.component.html',
-  styleUrl: './ui-preferences.component.css',
+  templateUrl: './settings-page.component.html',
+  styleUrl: './settings-page.component.css',
 })
-export class UiPreferencesComponent {
+export class SettingsPageComponent {
   protected readonly preferences = inject(UiPreferencesService);
+  private readonly router = inject(Router);
 
   protected t(key: Parameters<UiPreferencesService['translate']>[0]): string {
     return this.preferences.translate(key);
@@ -25,11 +27,7 @@ export class UiPreferencesComponent {
     this.preferences.setLanguage(language as LanguagePreference);
   }
 
-  protected togglePanel(): void {
-    this.preferences.toggleSettingsPanel();
-  }
-
-  protected closePanel(): void {
-    this.preferences.closeSettingsPanel();
+  protected goBack(): void {
+    void this.router.navigate(['/user']);
   }
 }

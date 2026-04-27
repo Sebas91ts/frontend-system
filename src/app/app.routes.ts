@@ -63,6 +63,13 @@ export const routes: Routes = [
     data: { roles: ['ROLE_USER', 'ROLE_ADMIN'] }
   },
   {
+    path: 'settings',
+    loadComponent: () => import('./features/settings/pages/settings-page/settings-page.component')
+      .then(m => m.SettingsPageComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_USER', 'ROLE_ADMIN'] }
+  },
+  {
     path: 'user/processes',
     loadComponent: () => import('./features/user/pages/process-startable-list/process-startable-list.component')
       .then(m => m.ProcessStartableListComponent),

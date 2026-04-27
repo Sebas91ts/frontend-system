@@ -3,21 +3,19 @@
   class="settings-launcher"
   (click)="togglePanel()"
   [attr.aria-label]="t('settings.open')"
-  [attr.aria-expanded]="isOpen"
+  [attr.aria-expanded]="preferences.settingsPanelOpen()"
 >
-  <span class="settings-launcher__icon" aria-hidden="true"></span>
-  <span>{{ t('settings.title') }}</span>
 </button>
 
 <button
-  *ngIf="isOpen"
+  *ngIf="preferences.settingsPanelOpen()"
   type="button"
   class="settings-backdrop"
   (click)="closePanel()"
   [attr.aria-label]="t('settings.close')"
 ></button>
 
-<aside class="settings-panel" *ngIf="isOpen" aria-label="Ajustes de interfaz">
+<aside class="settings-panel" *ngIf="preferences.settingsPanelOpen()" aria-label="Ajustes de interfaz">
   <header class="settings-panel__header">
     <div>
       <p class="settings-panel__eyebrow">{{ t('settings.title') }}</p>

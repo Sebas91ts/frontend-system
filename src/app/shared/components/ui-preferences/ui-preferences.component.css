@@ -1,8 +1,5 @@
 :host {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  z-index: 90;
+  position: static;
 }
 
 .settings-launcher,
@@ -15,38 +12,12 @@
 }
 
 .settings-launcher {
-  min-height: 48px;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.7rem;
-  border-radius: 999px;
-  padding: 0.72rem 1rem;
-  color: var(--bpm-neutral-900);
-  background: color-mix(in srgb, var(--bpm-neutral-0) 92%, transparent);
-  box-shadow: var(--bpm-shadow-lg);
-  backdrop-filter: blur(18px);
+  display: none;
 }
 
-.settings-launcher:hover,
 .settings-panel__close:hover,
 .theme-options button:hover {
   transform: translateY(-1px);
-}
-
-.settings-launcher__icon {
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at center, var(--bpm-neutral-0) 0 28%, transparent 30%),
-    conic-gradient(
-      from 20deg,
-      var(--bpm-primary-500),
-      var(--bpm-success-500),
-      var(--bpm-warning-500),
-      var(--bpm-primary-500)
-    );
-  box-shadow: 0 0 0 5px color-mix(in srgb, var(--bpm-primary-500) 16%, transparent);
 }
 
 .settings-backdrop {

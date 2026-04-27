@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnDestroy, OnInit, computed, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
 import { TareaInstancia } from '../../../../core/models/task-instance.models';
@@ -8,6 +9,9 @@ import { RealtimeService } from '../../../../core/services/realtime.service';
 import { TaskInstanceService } from '../../../../core/services/task-instance.service';
 import { TranslationKey, UiPreferencesService } from '../../../../core/services/ui-preferences.service';
 import { NotificationBellComponent } from '../../../../shared/components/notification-bell/notification-bell.component';
+import { API_BASE_URL } from '../../../../core/config/api.config';
+import { ApiResponse } from '../../../../core/models/auth.models';
+import { HttpClient } from '@angular/common/http';
 
 type WorkloadStatus = 'healthy' | 'attention' | 'empty';
 
@@ -23,10 +27,15 @@ interface StartableProcessCard {
   processKey: string;
 }
 
+interface AssistantMessage {
+  role: 'user' | 'assistant';
+  text: string;
+}
+
 @Component({
   selector: 'app-user-dashboard',
   standalone: true,
-  imports: [CommonModule, NotificationBellComponent],
+  imports: [CommonModule, FormsModule, NotificationBellComponent],
   templateUrl: './user-dashboard.component.html',
   styleUrl: './user-dashboard.component.css',
 })
@@ -37,6 +46,8 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
   protected readonly preferences = inject(UiPreferencesService);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly http = inject(HttpClient);
+  private readonly apiBaseUrl = inject(API_BASE_URL);
 
   protected readonly user = computed(() => this.authService.currentUser());
   protected myTasks: TareaInstancia[] = [];
@@ -44,6 +55,17 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
   protected isLoading = false;
   protected errorMessage = '';
   protected lastUpdatedAt: Date | null = null;
+  protected isSettingsMenuOpen = false;
+  protected isAssistantOpen = false;
+  protected assistantInput = '';
+  protected assistantLoading = false;
+  protected assistantError = '';
+  protected assistantMessages: AssistantMessage[] = [
+    {
+      role: 'assistant',
+      text: 'Hola, soy tu asistente interno. Pregúntame cómo crear procesos, tomar tareas, ver tracking o usar cualquier parte del sistema.',
+    },
+  ];
 
   private realtimeSubscription?: { unsubscribe: () => void };
 
@@ -150,8 +172,60 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
     this.loadWorkspace();
   }
 
+  protected openAssistant(): void {
+    this.isAssistantOpen = true;
+    this.isSettingsMenuOpen = false;
+  }
+
+  protected closeAssistant(): void {
+    if (this.assistantLoading) {
+      return;
+    }
+
+    this.isAssistantOpen = false;
+  }
+
+  protected toggleSettingsMenu(): void {
+    this.isSettingsMenuOpen = !this.isSettingsMenuOpen;
+  }
+
+  protected closeSettingsMenu(): void {
+    this.isSettingsMenuOpen = false;
+  }
+
+  protected async sendAssistantMessage(): Promise<void> {
+    const text = this.assistantInput.trim();
+    if (!text || this.assistantLoading) {
+      return;
+    }
+
+    this.assistantMessages = [...this.assistantMessages, { role: 'user', text }];
+    this.assistantInput = '';
+    this.assistantLoading = true;
+    this.assistantError = '';
+
+    try {
+      const response = await this.http
+        .post<ApiResponse<{ response: string }>>(`${this.apiBaseUrl}/ai/assistant`, { message: text })
+        .toPromise();
+
+      const answer = response?.data?.response?.trim() || 'No pude generar una respuesta en este momento.';
+      this.assistantMessages = [...this.assistantMessages, { role: 'assistant', text: answer }];
+    } catch (error: any) {
+      this.assistantError = error?.error?.message || 'No se pudo conectar con el asistente.';
+    } finally {
+      this.assistantLoading = false;
+      this.cdr.detectChanges();
+    }
+  }
+
   protected logout(): void {
     this.authService.logout();
+  }
+
+  protected openSettings(): void {
+    void this.router.navigate(['/settings']);
+    this.isSettingsMenuOpen = false;
   }
 
   protected goToMyTasks(): void {

@@ -18,6 +18,17 @@
         {{ isLoading ? t('user.updating') : t('user.refresh') }}
       </button>
       <button type="button" class="danger-button" (click)="logout()">{{ t('user.logout') }}</button>
+      <div class="workspace-hero__more">
+        <button type="button" class="icon-button" (click)="toggleSettingsMenu()" aria-label="Más opciones">⋯</button>
+        <div class="more-menu" *ngIf="isSettingsMenuOpen">
+          <button type="button" class="more-menu__item" (click)="openSettings()">
+            Ajustes
+          </button>
+          <button type="button" class="more-menu__item" (click)="closeSettingsMenu()">
+            Cerrar menú
+          </button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -103,5 +114,53 @@
         {{ t('user.claimAvailable') }}
       </button>
     </aside>
+  </section>
+
+  <button type="button" class="assistant-launcher" (click)="openAssistant()" aria-label="Abrir asistente">
+    <span class="assistant-launcher__icon">?</span>
+    <span class="assistant-launcher__text">Ayuda IA</span>
+  </button>
+
+  <section class="assistant-modal" *ngIf="isAssistantOpen">
+    <div class="assistant-modal__backdrop" (click)="closeAssistant()"></div>
+    <div class="assistant-modal__panel" role="dialog" aria-modal="true" aria-labelledby="assistant-title">
+      <header class="assistant-modal__header">
+        <div>
+          <p class="eyebrow">Asistente interno</p>
+          <h2 id="assistant-title">Consulta tu sistema BPM</h2>
+        </div>
+        <button type="button" class="icon-button" (click)="closeAssistant()" [disabled]="assistantLoading" aria-label="Cerrar asistente">×</button>
+      </header>
+
+      <div class="assistant-modal__messages">
+        <article
+          class="assistant-message"
+          *ngFor="let message of assistantMessages"
+          [class.assistant-message--user]="message.role === 'user'"
+          [class.assistant-message--bot]="message.role === 'assistant'"
+        >
+          {{ message.text }}
+        </article>
+        <div class="assistant-message assistant-message--bot" *ngIf="assistantLoading">
+          Pensando...
+        </div>
+      </div>
+
+      <div class="assistant-modal__error" *ngIf="assistantError">{{ assistantError }}</div>
+
+      <footer class="assistant-modal__footer">
+        <input
+          type="text"
+          [(ngModel)]="assistantInput"
+          [ngModelOptions]="{ standalone: true }"
+          placeholder="Escribe una duda sobre el sistema..."
+          (keydown.enter)="sendAssistantMessage()"
+          [disabled]="assistantLoading"
+        />
+        <button type="button" class="primary-button" (click)="sendAssistantMessage()" [disabled]="assistantLoading || !assistantInput.trim()">
+          {{ assistantLoading ? 'Consultando...' : 'Preguntar' }}
+        </button>
+      </footer>
+    </div>
   </section>
 </section>
