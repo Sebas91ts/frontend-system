@@ -54,6 +54,11 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
   protected quickWorkForm: FormDefinition | null = null;
   protected quickWorkValues: Record<string, unknown> = {};
   protected quickWorkFileState: Record<string, { uploading: boolean; error: string }> = {};
+  protected searchTerm = '';
+  protected selectedProcess = '';
+  protected selectedInstance = '';
+  protected selectedStatus: 'all' | 'assigned' | 'available' = 'all';
+  protected groupBy: 'none' | 'area' | 'process' = 'none';
 
   private feedbackTimer: ReturnType<typeof setTimeout> | null = null;
   private queryParamsSubscription?: { unsubscribe: () => void };
@@ -215,12 +220,21 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
     return `Todas${this.allTasksCount > 0 ? ` (${this.allTasksCount})` : ''}`;
   }
 
-  protected get processOptions(): string[] {
-    const values = this.tasks
-      .map((task) => task.processDefinitionId?.trim())
-      .filter((value): value is string => !!value);
+  protected get processOptions(): Array<{ value: string; label: string }> {
+    const seen = new Map<string, string>();
 
-    return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
+    for (const task of this.tasks) {
+      const value = task.processDefinitionId?.trim();
+      if (!value || seen.has(value)) {
+        continue;
+      }
+
+      seen.set(value, this.getProcessLabel(task));
+    }
+
+    return Array.from(seen.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   }
 
   protected get instanceOptions(): TareaInstancia[] {
@@ -234,6 +248,37 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
       seen.add(id);
       return true;
     });
+  }
+
+  protected get filteredTasks(): TareaInstancia[] {
+    return this.tasks.filter((task) => this.matchesTaskFilters(task));
+  }
+
+  protected get groupedTasks(): Array<{ key: string; label: string; tasks: TareaInstancia[] }> {
+    const source = this.filteredTasks;
+    if (this.groupBy === 'none') {
+      return [
+        {
+          key: 'all',
+          label: '',
+          tasks: source,
+        },
+      ];
+    }
+
+    const groups = new Map<string, TareaInstancia[]>();
+    for (const task of source) {
+      const key = this.groupBy === 'area' ? (task.areaId ?? task.areaNombre ?? 'sin-area') : this.getProcessLabel(task);
+      const current = groups.get(key) ?? [];
+      current.push(task);
+      groups.set(key, current);
+    }
+
+    return Array.from(groups.entries()).map(([key, tasks]) => ({
+      key,
+      label: this.groupBy === 'area' ? this.getAreaLabel(tasks[0]) : this.getProcessLabel(tasks[0]),
+      tasks,
+    }));
   }
 
   protected getInstanceLabel(task: TareaInstancia): string {
@@ -537,6 +582,10 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
     return task.processInstanceId ?? task.id;
   }
 
+  protected trackByGroup(_: number, group: { key: string }): string {
+    return group.key;
+  }
+
   protected async completeTask(task: TareaInstancia): Promise<void> {
     if (!task.id) {
       return;
@@ -610,6 +659,45 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
           this.cdr.detectChanges();
         },
       });
+  }
+
+  protected clearFilters(): void {
+    this.searchTerm = '';
+    this.selectedProcess = '';
+    this.selectedInstance = '';
+    this.selectedStatus = 'all';
+    this.groupBy = 'none';
+  }
+
+  protected get groupSummary(): string {
+    if (this.groupBy === 'area') {
+      return 'Agrupadas por area';
+    }
+
+    if (this.groupBy === 'process') {
+      return 'Agrupadas por proceso';
+    }
+
+    return 'Vista sin agrupacion';
+  }
+
+  private matchesTaskFilters(task: TareaInstancia): boolean {
+    const text = this.searchTerm.trim().toLowerCase();
+    const matchesText =
+      !text ||
+      [this.getTaskLabel(task), this.getProcessLabel(task), this.getAreaLabel(task), this.getAssigneeLabel(task)]
+        .join(' ')
+        .toLowerCase()
+        .includes(text);
+
+    const matchesProcess = !this.selectedProcess || (task.processDefinitionId ?? '').trim() === this.selectedProcess;
+    const matchesInstance = !this.selectedInstance || (task.processInstanceId ?? '').trim() === this.selectedInstance;
+    const matchesStatus =
+      this.selectedStatus === 'all' ||
+      (this.selectedStatus === 'assigned' && !!task.assignee) ||
+      (this.selectedStatus === 'available' && !task.assignee);
+
+    return matchesText && matchesProcess && matchesInstance && matchesStatus;
   }
 
   private async openInstanceTask(

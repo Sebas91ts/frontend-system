@@ -41,13 +41,13 @@
         <span class="ai-modal__eyebrow">Confirmar inicio</span>
         <h3 id="start-process-title">¿Seguro que quieres iniciar este proceso?</h3>
         <p>
-          Se abrirá la primera tarea de <strong>{{ confirmProcess?.name }}</strong> en tu bandeja para que completes el formulario.
+          Se abrirá la primera tarea de <strong>{{ confirmProcess.name }}</strong> en tu bandeja para que completes el formulario.
         </p>
       </div>
 
       <div class="ai-modal__preview">
         <div class="ai-modal__preview-label">Área habilitada</div>
-        <div class="ai-modal__preview-text">{{ confirmProcess?.areaLabel }} · v{{ confirmProcess?.version }} · {{ confirmProcess?.processKey }}</div>
+        <div class="ai-modal__preview-text">{{ confirmProcess.areaLabel }} · v{{ confirmProcess.version }} · {{ confirmProcess.processKey }}</div>
       </div>
 
       <div class="ai-modal__note">
@@ -55,11 +55,11 @@
       </div>
 
       <div class="ai-modal__actions">
-        <button type="button" class="toolbar-button" (click)="closeStartConfirm()" [disabled]="startingId === confirmProcess?.id">
+        <button type="button" class="toolbar-button" (click)="closeStartConfirm()" [disabled]="startingId === confirmProcess.id">
           Cancelar
         </button>
-        <button type="button" class="toolbar-button accent" (click)="confirmAndStartProcess()" [disabled]="startingId === confirmProcess?.id">
-          {{ startingId === confirmProcess?.id ? 'Iniciando...' : 'Sí, iniciar' }}
+        <button type="button" class="toolbar-button accent" (click)="confirmAndStartProcess()" [disabled]="startingId === confirmProcess.id">
+          {{ startingId === confirmProcess.id ? 'Iniciando...' : 'Sí, iniciar' }}
         </button>
       </div>
     </section>

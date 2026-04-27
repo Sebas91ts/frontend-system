@@ -1,9 +1,23 @@
 <section class="task-inbox-shell">
   <header class="task-inbox-hero">
-    <div>
+    <div class="task-inbox-hero__copy">
       <p class="task-inbox-eyebrow">{{ t('tasks.realtime') }}</p>
       <h1>{{ filterSummary }}</h1>
       <p class="task-inbox-copy">{{ t('tasks.inboxSubtitle') }}</p>
+      <div class="task-inbox-hero__stats">
+        <div class="hero-stat">
+          <span class="hero-stat__label">{{ t('tasks.myTasks') }}</span>
+          <strong class="hero-stat__value">{{ myTasksCount }}</strong>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat__label">{{ t('tasks.area') }}</span>
+          <strong class="hero-stat__value">{{ myAreaTasksCount }}</strong>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat__label">{{ t('tracking.activeState') }}</span>
+          <strong class="hero-stat__value">{{ tasks.length }}</strong>
+        </div>
+      </div>
     </div>
 
     <div class="task-inbox-actions">
@@ -45,80 +59,142 @@
   <div class="task-inbox-banner success" *ngIf="successMessage">{{ successMessage }}</div>
   <div class="task-inbox-banner error" *ngIf="errorMessage">{{ errorMessage }}</div>
 
-  <section class="task-inbox-grid">
-    <article class="task-card" *ngFor="let task of tasks">
-      <div class="task-card__header">
-        <div>
-          <p class="task-card__tag">{{ task.assignee ? t('tasks.assigned') : t('tasks.pending') }}</p>
-          <h2>{{ getTaskLabel(task) }}</h2>
-          <p class="task-card__instance">{{ getProcessLabel(task) }}</p>
-        </div>
-        <span class="task-pill">{{ task.assignee ? t('tasks.assigned') : t('tasks.available') }}</span>
+  <section class="task-filters">
+    <div class="task-filter">
+      <label>Buscar</label>
+      <input type="text" [(ngModel)]="searchTerm" [ngModelOptions]="{ standalone: true }" placeholder="Buscar" />
+    </div>
+
+    <div class="task-filter">
+      <label>Proceso</label>
+      <select [(ngModel)]="selectedProcess" [ngModelOptions]="{ standalone: true }">
+        <option value="">Todos</option>
+        <option *ngFor="let process of processOptions" [value]="process.value">{{ process.label }}</option>
+      </select>
+    </div>
+
+    <div class="task-filter">
+      <label>Instancia</label>
+      <select [(ngModel)]="selectedInstance" [ngModelOptions]="{ standalone: true }">
+        <option value="">Todas</option>
+        <option *ngFor="let instance of instanceOptions" [value]="instance.processInstanceId">{{ getInstanceLabel(instance) }}</option>
+      </select>
+    </div>
+
+    <div class="task-filter">
+      <label>Estado</label>
+      <select [(ngModel)]="selectedStatus" [ngModelOptions]="{ standalone: true }">
+        <option value="all">Todas</option>
+        <option value="assigned">Asignadas</option>
+        <option value="available">Disponibles</option>
+      </select>
+    </div>
+
+    <div class="task-filter">
+      <label>Grupo</label>
+      <select [(ngModel)]="groupBy" [ngModelOptions]="{ standalone: true }">
+        <option value="none">Sin agrupar</option>
+        <option value="area">Por área</option>
+        <option value="process">Por proceso</option>
+      </select>
+    </div>
+
+    <div class="task-filter task-filter--actions">
+      <label>&nbsp;</label>
+      <button type="button" class="toolbar-button" (click)="clearFilters()">Limpiar filtros</button>
+    </div>
+  </section>
+
+  <div class="task-inbox-legend">
+    <span class="task-inbox-legend__pill">{{ groupSummary }}</span>
+    <span class="task-inbox-legend__count">{{ filteredTasks.length }} tareas visibles</span>
+  </div>
+
+  <section class="task-group" *ngFor="let group of groupedTasks; trackBy: trackByGroup">
+    <header class="task-group__header" *ngIf="groupBy !== 'none'">
+      <div>
+        <p class="task-group__eyebrow">{{ groupBy === 'area' ? 'Area' : 'Proceso' }}</p>
+        <h2>{{ group.label }}</h2>
       </div>
+      <span class="task-group__count">{{ group.tasks.length }}</span>
+    </header>
 
-      <dl class="task-card__meta">
-        <div>
-          <dt>{{ t('tasks.process') }}</dt>
-          <dd>{{ getProcessLabel(task) }}</dd>
+    <section class="task-inbox-grid">
+      <article class="task-card" *ngFor="let task of group.tasks">
+        <div class="task-card__accent" [class.assigned]="!!task.assignee"></div>
+        <div class="task-card__header">
+          <div>
+            <p class="task-card__tag">{{ task.assignee ? t('tasks.assigned') : t('tasks.pending') }}</p>
+            <h2>{{ getTaskLabel(task) }}</h2>
+            <p class="task-card__instance">{{ getProcessLabel(task) }}</p>
+          </div>
+          <span class="task-pill">{{ task.assignee ? t('tasks.assigned') : t('tasks.available') }}</span>
         </div>
-        <div>
-          <dt>{{ t('tasks.created') }}</dt>
-          <dd>{{ formatDate(task.created) }}</dd>
-        </div>
-        <div>
-          <dt>{{ t('tasks.reference') }}</dt>
-          <dd>{{ getProcessLabel(task) }}</dd>
-        </div>
-        <div>
-          <dt>{{ t('tasks.assignment') }}</dt>
-          <dd>{{ getAssigneeLabel(task) }}</dd>
-        </div>
-        <div>
-          <dt>{{ t('tasks.area') }}</dt>
-          <dd>{{ getAreaLabel(task) }}</dd>
-        </div>
-      </dl>
 
-      <div class="task-card__footer">
-        <span class="task-state active">{{ t('tracking.activeState') }}</span>
-        <button
-          type="button"
-          class="toolbar-button accent task-action"
-          *ngIf="canWorkNow(task)"
-          (click)="openQuickWork(task)"
-        >
-          <span class="action-icon action-icon--work"></span>
-          {{ t('tasks.directWork') }}
-        </button>
-        <span class="task-card__hint" *ngIf="!canWorkNow(task)">
-          {{ t('tasks.workingNow') }}
-        </span>
+        <dl class="task-card__meta">
+          <div>
+            <dt>{{ t('tasks.process') }}</dt>
+            <dd>{{ getProcessLabel(task) }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('tasks.created') }}</dt>
+            <dd>{{ formatDate(task.created) }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('tasks.reference') }}</dt>
+            <dd>{{ getProcessLabel(task) }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('tasks.assignment') }}</dt>
+            <dd>{{ getAssigneeLabel(task) }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('tasks.area') }}</dt>
+            <dd>{{ getAreaLabel(task) }}</dd>
+          </div>
+        </dl>
 
-        <ng-container *ngIf="viewMode === 'area' && !task.assignee">
+        <div class="task-card__footer">
+          <span class="task-state active">{{ t('tracking.activeState') }}</span>
           <button
             type="button"
-            class="toolbar-button task-action"
-            [disabled]="isLoading || !canClaimTask(task)"
-            (click)="takeTask(task)"
+            class="toolbar-button accent task-action"
+            *ngIf="canWorkNow(task)"
+            (click)="openQuickWork(task)"
           >
-            <span class="action-icon action-icon--claim"></span>
-            {{ t('tasks.takeTask') }}
+            <span class="action-icon action-icon--work"></span>
+            {{ t('tasks.directWork') }}
           </button>
-          <span class="task-card__hint" *ngIf="!task.assignee">{{ getClaimHint(task) }}</span>
-        </ng-container>
+          <span class="task-card__hint" *ngIf="!canWorkNow(task)">
+            {{ t('tasks.workingNow') }}
+          </span>
 
-        <ng-container *ngIf="viewMode === 'all' && task.assignee">
-          <span class="task-card__hint">{{ getClaimHint(task) }}</span>
-        </ng-container>
+          <ng-container *ngIf="viewMode === 'area' && !task.assignee">
+            <button
+              type="button"
+              class="toolbar-button task-action"
+              [disabled]="isLoading || !canClaimTask(task)"
+              (click)="takeTask(task)"
+            >
+              <span class="action-icon action-icon--claim"></span>
+              {{ t('tasks.takeTask') }}
+            </button>
+            <span class="task-card__hint" *ngIf="!task.assignee">{{ getClaimHint(task) }}</span>
+          </ng-container>
+
+          <ng-container *ngIf="viewMode === 'all' && task.assignee">
+            <span class="task-card__hint">{{ getClaimHint(task) }}</span>
+          </ng-container>
+        </div>
+      </article>
+
+      <div class="task-empty" *ngIf="!isLoading && group.tasks.length === 0">
+        <div class="task-empty__title">{{ t('tasks.noTasks') }}</div>
+        <div *ngIf="viewMode === 'mine'">{{ t('tasks.noMine') }}</div>
+        <div *ngIf="viewMode === 'area'">{{ t('tasks.noArea') }}</div>
+        <div *ngIf="viewMode === 'all'">{{ t('tasks.noAll') }}</div>
       </div>
-    </article>
-
-    <div class="task-empty" *ngIf="!isLoading && tasks.length === 0">
-      <div class="task-empty__title">{{ t('tasks.noTasks') }}</div>
-      <div *ngIf="viewMode === 'mine'">{{ t('tasks.noMine') }}</div>
-      <div *ngIf="viewMode === 'area'">{{ t('tasks.noArea') }}</div>
-      <div *ngIf="viewMode === 'all'">{{ t('tasks.noAll') }}</div>
-    </div>
+    </section>
   </section>
 </section>
 
@@ -131,7 +207,16 @@
         <h2>{{ getTaskName(quickWorkTask) }}</h2>
         <p>{{ quickWorkProcessLabel }} · {{ quickWorkAreaLabel }}</p>
       </div>
-      <button type="button" class="toolbar-button" (click)="closeQuickWork()" [disabled]="quickWorkSaving">{{ t('tasks.close') }}</button>
+      <button
+        type="button"
+        class="quick-work__close"
+        (click)="closeQuickWork()"
+        [disabled]="quickWorkSaving"
+        aria-label="Cerrar formulario"
+        title="Cerrar formulario"
+      >
+        <span aria-hidden="true">×</span>
+      </button>
     </header>
 
     <div class="task-inbox-banner success" *ngIf="quickWorkSuccess">{{ quickWorkSuccess }}</div>
