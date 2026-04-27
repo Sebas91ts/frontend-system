@@ -96,6 +96,13 @@
   color: var(--bpm-neutral-900);
 }
 
+.process-family-card__description {
+  margin: 0.45rem 0 0;
+  color: var(--bpm-neutral-500);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
 .process-family-card__meta {
   display: flex;
   flex-direction: column;

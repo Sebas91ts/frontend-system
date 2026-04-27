@@ -36,12 +36,13 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
   protected isDeleteModalOpen = false;
   protected userToDelete: Usuario | null = null;
 
-  protected form: RegisterRequest = {
+  protected form: RegisterRequest & { role: string } = {
     nombre: '',
     apellido: '',
     email: '',
     password: '',
     areaId: '',
+    role: 'ROLE_USER',
   };
 
   ngOnInit(): void {
@@ -116,7 +117,7 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
 
   openCreate(): void {
     this.editingUserId = null;
-    this.form = { nombre: '', apellido: '', email: '', password: '', areaId: '' };
+    this.form = { nombre: '', apellido: '', email: '', password: '', areaId: '', role: 'ROLE_USER' };
     this.isFormOpen = true;
   }
 
@@ -128,6 +129,7 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
       email: usuario.email,
       password: '',
       areaId: usuario.areaId || '',
+      role: usuario.roles?.[0] || 'ROLE_USER',
     };
     this.isFormOpen = true;
   }
@@ -145,7 +147,8 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const payload: any = { ...this.form };
+    const payload: any = { ...this.form, roles: [this.form.role] };
+    delete payload.role;
     if (!payload.password) {
       delete payload.password;
     }

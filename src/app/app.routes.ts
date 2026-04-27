@@ -61,6 +61,13 @@ export const routes: Routes = [
     data: { roles: ['ROLE_ADMIN'] }
   },
 
+  {
+    path: 'dashboard',
+    loadComponent: () => import('./features/client/components/role-landing-redirect/role-landing-redirect.component')
+      .then(m => m.RoleLandingRedirectComponent),
+    canActivate: [authGuard]
+  },
+
   // Rutas de Usuario (ROLE_USER o ROLE_ADMIN)
   {
     path: 'user',
@@ -74,7 +81,7 @@ export const routes: Routes = [
     loadComponent: () => import('./features/settings/pages/settings-page/settings-page.component')
       .then(m => m.SettingsPageComponent),
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['ROLE_USER', 'ROLE_ADMIN'] }
+    data: { roles: ['ROLE_USER', 'ROLE_CLIENT', 'ROLE_ADMIN'] }
   },
   {
     path: 'user/processes',
@@ -82,6 +89,13 @@ export const routes: Routes = [
       .then(m => m.ProcessStartableListComponent),
     canActivate: [authGuard, roleGuard],
     data: { roles: ['ROLE_USER', 'ROLE_ADMIN'] }
+  },
+
+  {
+    path: 'designer',
+    loadComponent: () => import('./features/client/components/role-landing-redirect/role-landing-redirect.component')
+      .then(m => m.RoleLandingRedirectComponent),
+    canActivate: [authGuard]
   },
 
   // Diseñador de procesos BPMN
@@ -119,6 +133,38 @@ export const routes: Routes = [
     data: { roles: ['ROLE_ADMIN'] }
   },
 
+  // Portal de cliente
+  {
+    path: 'client',
+    loadComponent: () => import('./features/client/pages/client-shell/client-shell.component')
+      .then(m => m.ClientShellComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_CLIENT'] },
+    children: [
+      { path: '', redirectTo: 'home', pathMatch: 'full' },
+      {
+        path: 'home',
+        loadComponent: () => import('./features/client/pages/home/client-home.component')
+          .then(m => m.ClientHomeComponent)
+      },
+      {
+        path: 'processes',
+        loadComponent: () => import('./features/client/pages/processes/client-processes.component')
+          .then(m => m.ClientProcessesComponent)
+      },
+      {
+        path: 'instances',
+        loadComponent: () => import('./features/client/pages/instances/client-instances.component')
+          .then(m => m.ClientInstancesComponent)
+      },
+      {
+        path: 'notifications',
+        loadComponent: () => import('./features/client/pages/notifications/client-notifications.component')
+          .then(m => m.ClientNotificationsComponent)
+      }
+    ]
+  },
+
   {
     path: 'tasks',
     loadComponent: () => import('./features/tasks/pages/task-inbox/task-inbox.component')
@@ -138,7 +184,7 @@ export const routes: Routes = [
     loadComponent: () => import('./features/process-instances/pages/tracking/process-instance-tracking.component')
       .then(m => m.ProcessInstanceTrackingComponent),
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['ROLE_USER', 'ROLE_ADMIN'] }
+    data: { roles: ['ROLE_USER', 'ROLE_CLIENT', 'ROLE_ADMIN'] }
   },
 
   // Ruta comodín - redirigir al dashboard correspondiente

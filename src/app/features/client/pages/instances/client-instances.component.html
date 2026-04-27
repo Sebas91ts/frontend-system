@@ -1,0 +1,53 @@
+<section class="client-instances">
+  <header class="client-instances__header">
+    <div>
+      <p class="client-instances__eyebrow">Instancias</p>
+      <h2>Mis tramites</h2>
+      <p class="client-instances__description">
+        Aqui puedes ver las instancias que iniciaste y abrir su seguimiento.
+      </p>
+    </div>
+
+    <button type="button" class="client-instances__refresh" (click)="cargarInstancias()" [disabled]="loading">
+      {{ loading ? 'Cargando...' : 'Actualizar' }}
+    </button>
+  </header>
+
+  <div class="client-instances__state client-instances__state--error" *ngIf="errorMessage">
+    {{ errorMessage }}
+  </div>
+
+  <div class="client-instances__state" *ngIf="loading">
+    Cargando tramites...
+  </div>
+
+  <div class="client-instances__empty" *ngIf="!loading && !errorMessage && instances.length === 0">
+    Aun no has iniciado tramites.
+  </div>
+
+  <div class="client-instances__grid" *ngIf="!loading && !errorMessage && instances.length > 0">
+    <article class="client-instance-card" *ngFor="let instance of instances; trackBy: trackByInstanceId">
+      <div class="client-instance-card__top">
+        <div>
+          <p class="client-instance-card__eyebrow">{{ instance.processKey }}</p>
+          <h3>{{ instance.processName }}</h3>
+        </div>
+        <span class="client-instance-card__status">{{ instance.estado }}</span>
+      </div>
+
+      <div class="client-instance-card__meta">
+        <span><strong>Version:</strong> v{{ instance.processVersion }}</span>
+        <span><strong>Inicio:</strong> {{ formatDate(instance.startedAt) }}</span>
+      </div>
+
+      <div class="client-instance-card__footer">
+        <a
+          class="client-instance-card__action"
+          [routerLink]="['/process-instances', instance.processInstanceId, 'tracking']"
+        >
+          Ver seguimiento
+        </a>
+      </div>
+    </article>
+  </div>
+</section>

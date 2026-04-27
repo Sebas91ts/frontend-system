@@ -232,13 +232,13 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
       return;
     }
 
-    const normalizedXml = xml.trim();
+    const normalizedXml = this.normalizeExportedXml(xml.trim());
     if (!normalizedXml) {
       throw new Error('Debes proporcionar un XML BPMN valido para importar.');
     }
 
     await this.modeler.importXML(normalizedXml);
-    this.currentImportedXml = this.normalizeExportedXml(normalizedXml);
+    this.currentImportedXml = normalizedXml;
     if (!this.lastSavedXml) {
       this.lastSavedXml = this.currentImportedXml;
     }
@@ -2364,6 +2364,8 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
       return xml;
     }
 
+    this.removeUnsupportedAttributes(document);
+
     const normalizedProcessKey = this.normalizeProcessKey(this.processKey || this.processName);
     const normalizedProcessName = this.processName?.trim() || 'Proceso sin nombre';
 
@@ -2380,6 +2382,17 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
     }
 
     return new XMLSerializer().serializeToString(document);
+  }
+
+  private removeUnsupportedAttributes(document: Document): void {
+    const elements = Array.from(document.getElementsByTagName('*'));
+    for (const element of elements) {
+      Array.from(element.attributes).forEach((attribute) => {
+        if (attribute.name === 'structureType' || attribute.localName === 'structureType') {
+          element.removeAttributeNode(attribute);
+        }
+      });
+    }
   }
 
   private normalizeProcessKey(source: string): string {

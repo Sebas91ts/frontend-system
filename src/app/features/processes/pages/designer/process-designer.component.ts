@@ -27,6 +27,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
   protected currentProcessState = 'BORRADOR';
   protected isReadonlyProcess = false;
   protected editorProcessName = '';
+  protected processDescription = '';
   protected get processContext(): string {
     if (!this.currentProcessKey) {
       return '';
@@ -42,6 +43,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
   protected isSaveDialogOpen = false;
   protected isImportConfirmOpen = false;
   protected saveDialogName = '';
+  protected saveDialogDescription = '';
   protected saveDialogStatus: 'idle' | 'saving' | 'success' | 'error' = 'idle';
   protected saveDialogMessage = '';
   protected isImportPanelOpen = false;
@@ -186,6 +188,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
     }
 
     this.saveDialogName = this.normalizeProcessName(this.processName);
+    this.saveDialogDescription = this.processDescription;
     this.saveDialogStatus = 'idle';
     this.saveDialogMessage = '';
     this.errorMessage = '';
@@ -236,8 +239,13 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
       const xml = await editor.exportToXml();
       this.exportedXml = xml;
 
-      this.processService
-        .actualizarProceso(this.currentProcessId, { nombre, xml })
+    this.processService
+        .actualizarProceso(this.currentProcessId, {
+          nombre,
+          descripcion: this.saveDialogDescription.trim() || null,
+          xml,
+          clientStartEnabled: null,
+        })
         .pipe(
           finalize(() => {
             this.isSaving = false;
@@ -253,14 +261,17 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
               return;
             }
 
-            if (response.data?.nombre) {
-              this.processName = this.normalizeProcessName(response.data.nombre);
-              this.editorProcessName = this.processName;
-            }
+          if (response.data?.nombre) {
+            this.processName = this.normalizeProcessName(response.data.nombre);
+            this.editorProcessName = this.processName;
+          }
 
-            if (response.data?.processKey) {
-              this.currentProcessKey = this.normalizeProcessKey(response.data.processKey);
-            }
+          this.processDescription = response.data?.descripcion ?? this.saveDialogDescription.trim();
+          this.saveDialogDescription = this.processDescription;
+
+          if (response.data?.processKey) {
+            this.currentProcessKey = this.normalizeProcessKey(response.data.processKey);
+          }
 
             this.saveDialogStatus = 'success';
             this.saveDialogMessage = 'Proceso BPMN actualizado correctamente.';
@@ -860,8 +871,10 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
           this.currentProcessState = procesoCargado.estado ?? 'BORRADOR';
           this.isReadonlyProcess = this.currentProcessState !== 'BORRADOR';
           this.processName = this.normalizeProcessName(procesoCargado.nombre);
+          this.processDescription = procesoCargado.descripcion ?? '';
           this.editorProcessName = this.processName;
           this.saveDialogName = this.processName;
+          this.saveDialogDescription = this.processDescription;
           this.isImportPanelOpen = false;
           this.isExportPanelOpen = false;
           this.isSaveDialogOpen = false;

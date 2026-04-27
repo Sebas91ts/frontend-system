@@ -32,6 +32,7 @@ export class ProcessesListComponent implements OnInit, OnDestroy {
   protected startingId: string | null = null;
   protected isNewProcessDialogOpen = false;
   protected newProcessName = '';
+  protected newProcessDescription = '';
   protected isCreatingProcess = false;
   protected saveDialogStatus: 'idle' | 'saving' | 'success' | 'error' = 'idle';
   protected saveDialogMessage = '';
@@ -184,6 +185,7 @@ export class ProcessesListComponent implements OnInit, OnDestroy {
 
   protected openNewProcessDialog(): void {
     this.newProcessName = '';
+    this.newProcessDescription = '';
     this.saveDialogStatus = 'idle';
     this.saveDialogMessage = '';
     this.isNewProcessDialogOpen = true;
@@ -211,7 +213,12 @@ export class ProcessesListComponent implements OnInit, OnDestroy {
     this.successMessage = '';
 
     this.processService
-      .guardarProceso({ nombre, xml: EMPTY_BPMN_XML })
+      .guardarProceso({
+        nombre,
+        descripcion: this.newProcessDescription.trim() || null,
+        xml: EMPTY_BPMN_XML,
+        clientStartEnabled: null,
+      })
       .pipe(
         timeout(15000),
         finalize(() => {

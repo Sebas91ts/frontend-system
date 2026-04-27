@@ -2,7 +2,17 @@ import { Injectable, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { ApiResponse } from '../models/auth.models';
-import { Proceso, ProcesoAutosaveRequest, ProcesoCreateRequest, ProcesoUpdateRequest } from '../models/process.models';
+import {
+  ClientProcessInstanceItem,
+  ClientProcessListItem,
+  ClientProcessStartPreview,
+  ClientProcessStartRequest,
+  ClientProcessStartResult,
+  Proceso,
+  ProcesoAutosaveRequest,
+  ProcesoCreateRequest,
+  ProcesoUpdateRequest,
+} from '../models/process.models';
 import { API_BASE_URL } from '../config/api.config';
 
 export interface ProcessAiIssue {
@@ -118,6 +128,84 @@ export class ProcessService {
         },
         error: (error) => {
           console.error('[ProcessService] GET /api/procesos/publicados -> error', error);
+        },
+      }),
+    );
+  }
+
+  listarProcesosCliente(): Observable<ApiResponse<ClientProcessListItem[]>> {
+    console.info('[ProcessService] GET /api/client/processes -> start', {
+      apiUrl: this.apiUrl,
+    });
+
+    return this.http.get<ApiResponse<ClientProcessListItem[]>>(`${this.apiUrl}/client/processes`).pipe(
+      tap({
+        next: (response) => {
+          console.info('[ProcessService] GET /api/client/processes -> success', response);
+        },
+        error: (error) => {
+          console.error('[ProcessService] GET /api/client/processes -> error', error);
+        },
+      }),
+    );
+  }
+
+  obtenerVistaInicioTramite(processId: string): Observable<ApiResponse<ClientProcessStartPreview>> {
+    console.info('[ProcessService] GET /api/client/processes/{id}/start-preview -> start', {
+      processId,
+      apiUrl: this.apiUrl,
+    });
+
+    return this.http.get<ApiResponse<ClientProcessStartPreview>>(
+      `${this.apiUrl}/client/processes/${encodeURIComponent(processId)}/start-preview`,
+    ).pipe(
+      tap({
+        next: (response) => {
+          console.info('[ProcessService] GET /api/client/processes/{id}/start-preview -> success', response);
+        },
+        error: (error) => {
+          console.error('[ProcessService] GET /api/client/processes/{id}/start-preview -> error', error);
+        },
+      }),
+    );
+  }
+
+  iniciarTramiteCliente(
+    processId: string,
+    request: ClientProcessStartRequest = {},
+  ): Observable<ApiResponse<ClientProcessStartResult>> {
+    console.info('[ProcessService] POST /api/client/processes/{id}/start -> start', {
+      processId,
+      apiUrl: this.apiUrl,
+    });
+
+    return this.http.post<ApiResponse<ClientProcessStartResult>>(
+      `${this.apiUrl}/client/processes/${encodeURIComponent(processId)}/start`,
+      request,
+    ).pipe(
+      tap({
+        next: (response) => {
+          console.info('[ProcessService] POST /api/client/processes/{id}/start -> success', response);
+        },
+        error: (error) => {
+          console.error('[ProcessService] POST /api/client/processes/{id}/start -> error', error);
+        },
+      }),
+    );
+  }
+
+  listarInstanciasCliente(): Observable<ApiResponse<ClientProcessInstanceItem[]>> {
+    console.info('[ProcessService] GET /api/client/instances -> start', {
+      apiUrl: this.apiUrl,
+    });
+
+    return this.http.get<ApiResponse<ClientProcessInstanceItem[]>>(`${this.apiUrl}/client/instances`).pipe(
+      tap({
+        next: (response) => {
+          console.info('[ProcessService] GET /api/client/instances -> success', response);
+        },
+        error: (error) => {
+          console.error('[ProcessService] GET /api/client/instances -> error', error);
         },
       }),
     );

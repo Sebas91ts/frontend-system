@@ -120,7 +120,17 @@
     </label>
 
     <label class="save-modal__field">
-      <span>Contraseña</span>
+      <span>Rol</span>
+      <select [(ngModel)]="form.role">
+        <option value="ROLE_USER">Usuario interno</option>
+        <option value="ROLE_CLIENT">Cliente</option>
+        <option value="ROLE_BPM_MANAGER">BPM Manager</option>
+        <option value="ROLE_ADMIN">Administrador</option>
+      </select>
+    </label>
+
+    <label class="save-modal__field">
+      <span>Contrasena</span>
       <input [(ngModel)]="form.password" type="password" placeholder="Minimo 6 caracteres" />
     </label>
 

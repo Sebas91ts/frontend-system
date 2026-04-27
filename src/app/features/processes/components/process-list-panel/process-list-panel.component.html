@@ -23,6 +23,9 @@
         <div>
           <span class="process-family-card__eyebrow">{{ group.processKey }}</span>
           <h4>{{ group.procesos[0]?.nombre || group.processKey }}</h4>
+          <p class="process-family-card__description">
+            {{ group.latest.descripcion || 'Sin descripcion disponible.' }}
+          </p>
         </div>
         <span class="pill pill--draft">{{ group.procesos.length }} {{ group.procesos.length === 1 ? t('processes.version') : t('processes.versions') }}</span>
       </div>

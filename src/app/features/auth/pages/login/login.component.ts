@@ -162,8 +162,8 @@ export class LoginComponent {
       next: (response) => {
         if (response.success) {
           const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
-          if (this.authService.isAdmin()) {
-            this.router.navigate(['/admin']);
+          if (this.authService.isAdmin() || this.authService.isClient()) {
+            void this.router.navigate(this.authService.getLandingRoute());
           } else if (returnUrl !== '/') {
             this.router.navigateByUrl(returnUrl);
           } else {

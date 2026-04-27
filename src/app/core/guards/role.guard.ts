@@ -29,7 +29,7 @@ export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot, state) =
         return true;
       }
 
-      return router.createUrlTree([authService.isAdmin() ? '/admin' : '/user']);
+      return router.createUrlTree(authService.getLandingRoute());
     })
   );
 };

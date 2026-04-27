@@ -29,6 +29,7 @@ export interface RegisterRequest {
   email: string;
   password: string;
   areaId?: string;
+  roles?: string[];
 }
 
 export interface ApiResponse<T> {

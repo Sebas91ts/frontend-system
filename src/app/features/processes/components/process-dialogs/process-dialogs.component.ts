@@ -18,7 +18,9 @@ export class ProcessDialogsComponent {
   @Input() processName = '';
   @Input() currentProcessId: string | null = null;
   @Input() saveDialogName = '';
+  @Input() saveDialogDescription = '';
   @Input() newProcessName = '';
+  @Input() newProcessDescription = '';
   @Input() saveDialogStatus: 'idle' | 'saving' | 'success' | 'error' = 'idle';
   @Input() saveDialogMessage = '';
   @Input() errorMessage = '';
@@ -26,7 +28,9 @@ export class ProcessDialogsComponent {
   @Input() processContext = '';
 
   @Output() saveDialogNameChange = new EventEmitter<string>();
+  @Output() saveDialogDescriptionChange = new EventEmitter<string>();
   @Output() newProcessNameChange = new EventEmitter<string>();
+  @Output() newProcessDescriptionChange = new EventEmitter<string>();
   @Output() importXmlChange = new EventEmitter<string>();
   @Output() cancelSave = new EventEmitter<void>();
   @Output() confirmSave = new EventEmitter<void>();

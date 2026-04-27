@@ -1,0 +1,255 @@
+<section class="client-processes">
+  <header class="client-processes__header">
+    <div>
+      <p class="client-processes__eyebrow">Mis tramites</p>
+      <h2>Procesos disponibles</h2>
+      <p class="client-processes__description">
+        Aqui veras solo los procesos publicados que el sistema habilite para clientes externos.
+      </p>
+    </div>
+
+    <button type="button" class="client-processes__refresh" (click)="cargarProcesos()" [disabled]="loading">
+      {{ loading ? 'Cargando...' : 'Actualizar' }}
+    </button>
+  </header>
+
+  <div class="client-processes__state client-processes__state--error" *ngIf="errorMessage">
+    {{ errorMessage }}
+  </div>
+
+  <div class="client-processes__state" *ngIf="loading">
+    Cargando tramites disponibles...
+  </div>
+
+  <div class="client-processes__empty" *ngIf="!loading && !errorMessage && processes.length === 0">
+    No hay tramites disponibles en este momento
+  </div>
+
+  <div class="client-processes__grid" *ngIf="!loading && !errorMessage && processes.length > 0">
+    <article class="client-process-card" *ngFor="let process of processes; trackBy: trackByProcessId">
+      <div class="client-process-card__top">
+        <div>
+          <p class="client-process-card__key">{{ process.processKey }}</p>
+          <h3>{{ process.nombre }}</h3>
+        </div>
+        <span class="client-process-card__version">v{{ process.version }}</span>
+      </div>
+
+      <p class="client-process-card__text">
+        {{ formatDescription(process.descripcion) }}
+      </p>
+
+      <div class="client-process-card__footer">
+        <button
+          type="button"
+          class="client-process-card__action"
+          (click)="openStartConfirmation(process)"
+          [disabled]="isProcessStarting(process.processId)"
+        >
+          {{ isProcessStarting(process.processId) ? 'Preparando...' : 'Iniciar tramite' }}
+        </button>
+      </div>
+    </article>
+  </div>
+</section>
+
+<ng-container *ngIf="selectedProcess && !previewLoading && !isStartFormOpen">
+  <div class="client-confirm-backdrop" (click)="closeStartConfirmation()"></div>
+
+  <section class="client-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="client-start-title">
+    <div class="client-confirm-modal__header">
+      <p class="client-confirm-modal__eyebrow">Confirmar inicio</p>
+      <h3 id="client-start-title">{{ selectedProcess.nombre }}</h3>
+      <p>
+        Vas a revisar el formulario inicial del proceso <strong>{{ selectedProcess.processKey }}</strong>.
+        Solo cuando completes ese formulario se iniciara la instancia.
+      </p>
+    </div>
+
+    <div class="client-confirm-modal__meta">
+      <span><strong>Version:</strong> v{{ selectedProcess.version }}</span>
+      <span><strong>Descripcion:</strong> {{ formatDescription(selectedProcess.descripcion) }}</span>
+    </div>
+
+    <div class="client-confirm-modal__actions">
+      <button type="button" class="client-secondary-button" (click)="closeStartConfirmation()" [disabled]="previewLoading || startSubmitting">
+        Cancelar
+      </button>
+      <button type="button" class="client-primary-button" (click)="confirmStart()" [disabled]="previewLoading || startSubmitting">
+        Si, continuar
+      </button>
+    </div>
+  </section>
+</ng-container>
+
+<ng-container *ngIf="selectedProcess && previewLoading">
+  <div class="client-confirm-backdrop client-confirm-backdrop--loading"></div>
+
+  <section class="client-loading-modal" role="dialog" aria-modal="true" aria-labelledby="client-loading-title">
+    <p class="client-loading-modal__eyebrow">Cargando formulario</p>
+    <h3 id="client-loading-title">{{ selectedProcess.nombre }}</h3>
+    <p>Estamos preparando el formulario de la primera tarea para que puedas completarlo antes de iniciar la instancia.</p>
+    <div class="client-loading-modal__spinner" aria-hidden="true"></div>
+  </section>
+</ng-container>
+
+<ng-container *ngIf="isStartFormOpen && startPreview">
+  <div class="client-confirm-backdrop"></div>
+
+  <section class="client-start-modal" role="dialog" aria-modal="true" aria-labelledby="client-start-form-title">
+    <header class="client-start-modal__header">
+      <div>
+        <p class="client-start-modal__eyebrow">Primer formulario</p>
+        <h3 id="client-start-form-title">{{ startTitle }}</h3>
+        <p class="client-start-modal__subtitle">
+          {{ startPreview.processName }} - v{{ startPreview.processVersion }}
+        </p>
+      </div>
+
+      <button type="button" class="client-icon-button" (click)="closeStartForm()" [disabled]="startSubmitting" aria-label="Cerrar formulario">
+        X
+      </button>
+    </header>
+
+    <div class="client-start-modal__meta">
+      <span><strong>Proceso:</strong> {{ startPreview.processKey }}</span>
+      <span><strong>Primera tarea:</strong> {{ startPreview.firstTaskName || 'Sin nombre' }}</span>
+      <span><strong>Area:</strong> {{ startPreview.firstTaskAreaName || 'Sin area' }}</span>
+      <span><strong>Definicion:</strong> {{ startPreview.firstTaskDefinitionKey || 'Sin clave' }}</span>
+    </div>
+
+    <div class="client-start-modal__error" *ngIf="startFormError">{{ startFormError }}</div>
+
+    <form class="client-start-form" (ngSubmit)="submitStartForm()">
+      <ng-container *ngIf="hasStartForm; else noStartForm">
+        <div class="client-start-form__grid">
+          <article class="client-start-field" *ngFor="let field of startFields">
+            <div class="client-start-field__head">
+              <label class="client-start-field__label" [for]="'start-field-' + field.name">
+                {{ field.label }}
+                <span *ngIf="field.required" class="client-start-field__required">*</span>
+              </label>
+              <p class="client-start-field__help" *ngIf="field.helpText">{{ field.helpText }}</p>
+            </div>
+
+            <ng-container [ngSwitch]="field.type">
+              <input
+                *ngSwitchCase="'text'"
+                class="client-start-field__input"
+                [id]="'start-field-' + field.name"
+                [name]="field.name"
+                [(ngModel)]="startFormValues[field.name]"
+                [placeholder]="field.placeholder || ''"
+                type="text"
+              />
+
+              <textarea
+                *ngSwitchCase="'textarea'"
+                class="client-start-field__textarea"
+                [id]="'start-field-' + field.name"
+                [name]="field.name"
+                [(ngModel)]="startFormValues[field.name]"
+                [placeholder]="field.placeholder || ''"
+                rows="4"
+              ></textarea>
+
+              <input
+                *ngSwitchCase="'number'"
+                class="client-start-field__input"
+                [id]="'start-field-' + field.name"
+                [name]="field.name"
+                [(ngModel)]="startFormValues[field.name]"
+                [placeholder]="field.placeholder || ''"
+                type="number"
+              />
+
+              <input
+                *ngSwitchCase="'date'"
+                class="client-start-field__input"
+                [id]="'start-field-' + field.name"
+                [name]="field.name"
+                [(ngModel)]="startFormValues[field.name]"
+                type="date"
+              />
+
+              <select
+                *ngSwitchCase="'select'"
+                class="client-start-field__select"
+                [id]="'start-field-' + field.name"
+                [name]="field.name"
+                [(ngModel)]="startFormValues[field.name]"
+              >
+                <option value="">Selecciona una opcion</option>
+                <option *ngFor="let option of getStartFieldOptions(field)" [value]="option.value">{{ option.label }}</option>
+              </select>
+
+              <label *ngSwitchCase="'checkbox'" class="client-start-field__checkbox">
+                <input
+                  type="checkbox"
+                  [name]="field.name"
+                  [(ngModel)]="startFormValues[field.name]"
+                />
+                <span>{{ field.placeholder || 'Marca esta opcion si corresponde.' }}</span>
+              </label>
+
+              <div *ngSwitchCase="'checklist'" class="client-start-field__checklist">
+                <label *ngFor="let option of getStartFieldOptions(field)" class="client-start-field__checklist-item">
+                  <input
+                    #checklistBox
+                    type="checkbox"
+                    [checked]="isStartChecklistOptionSelected(field.name, option.value)"
+                    (change)="toggleStartChecklistValue(field.name, option.value, checklistBox.checked)"
+                  />
+                  <span>{{ option.label }}</span>
+                </label>
+              </div>
+
+              <div *ngSwitchCase="'file'" class="client-start-field__file">
+                <input
+                  [id]="'start-field-' + field.name"
+                  type="file"
+                  (change)="onStartFileSelected(field, $event)"
+                />
+                <p class="client-start-field__file-name" *ngIf="getStartSelectedFileName(field.name)">
+                  {{ getStartSelectedFileName(field.name) }}
+                </p>
+                <p class="client-start-field__file-error" *ngIf="startFileUploadError(field)">
+                  {{ startFileUploadError(field) }}
+                </p>
+              </div>
+
+              <input
+                *ngSwitchDefault
+                class="client-start-field__input"
+                [id]="'start-field-' + field.name"
+                [name]="field.name"
+                [(ngModel)]="startFormValues[field.name]"
+                [placeholder]="field.placeholder || ''"
+                type="text"
+              />
+            </ng-container>
+
+            <p class="client-start-field__error" *ngIf="field.required && isStartFieldMissing(field)">
+              Este campo es obligatorio.
+            </p>
+          </article>
+        </div>
+      </ng-container>
+
+      <ng-template #noStartForm>
+        <div class="client-start-form__empty">
+          La primera tarea no tiene un formulario configurado. Puedes continuar para iniciar la instancia con los datos base del sistema.
+        </div>
+      </ng-template>
+
+      <div class="client-start-modal__actions">
+        <button type="button" class="client-secondary-button" (click)="closeStartForm()" [disabled]="startSubmitting">
+          Cancelar
+        </button>
+        <button type="submit" class="client-primary-button" [disabled]="startSubmitting">
+          {{ startSubmitting ? 'Enviando...' : 'Enviar y comenzar' }}
+        </button>
+      </div>
+    </form>
+  </section>
+</ng-container>

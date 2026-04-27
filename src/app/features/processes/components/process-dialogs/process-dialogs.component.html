@@ -28,6 +28,21 @@
       />
     </label>
 
+    <label class="save-modal__field">
+      <span>Descripción del proceso</span>
+      <textarea
+        id="process-save-description"
+        name="process-save-description"
+        rows="4"
+        autocomplete="off"
+        [ngModel]="saveDialogDescription"
+        (ngModelChange)="saveDialogDescriptionChange.emit($event)"
+        placeholder="Opcional. Describe brevemente para qué sirve el proceso."
+        title="Descripción del proceso"
+        [disabled]="saving"
+      ></textarea>
+    </label>
+
     <div
       *ngIf="saveDialogMessage"
       class="save-modal__status"
@@ -105,6 +120,21 @@
         autofocus
         [disabled]="saving"
       />
+    </label>
+
+    <label class="save-modal__field">
+      <span>Descripción del proceso</span>
+      <textarea
+        id="process-new-description"
+        name="process-new-description"
+        rows="4"
+        autocomplete="off"
+        [ngModel]="newProcessDescription"
+        (ngModelChange)="newProcessDescriptionChange.emit($event)"
+        placeholder="Opcional. Describe brevemente para qué sirve el proceso."
+        title="Descripción del proceso"
+        [disabled]="saving"
+      ></textarea>
     </label>
 
     <div *ngIf="saveDialogMessage" class="save-modal__status" [class.saving]="saveDialogStatus === 'saving'" [class.success]="saveDialogStatus === 'success'" [class.error]="saveDialogStatus === 'error'">

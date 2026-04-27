@@ -112,6 +112,22 @@ export class AuthService {
     return this.hasRole('ROLE_ADMIN');
   }
 
+  isClient(): boolean {
+    return this.hasRole('ROLE_CLIENT');
+  }
+
+  getLandingRoute(): string[] {
+    if (this.isClient()) {
+      return ['/client/home'];
+    }
+
+    if (this.isAdmin()) {
+      return ['/admin'];
+    }
+
+    return ['/user'];
+  }
+
   getToken(): string | null {
     return null;
   }
