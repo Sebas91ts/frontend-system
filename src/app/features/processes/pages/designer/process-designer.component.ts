@@ -56,6 +56,9 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
   protected isAiAnalyzing = false;
   protected isAiAnalysisPanelOpen = false;
   protected aiAnalysisResult: ProcessAiAnalysis | null = null;
+  protected aiSuggestionActionId = '';
+  protected aiSuggestionActionType: 'apply' | 'reject' | '' = '';
+  protected aiSuggestionActionMessage = '';
   protected aiProcessDescription = '';
   protected aiGeneratedXml = '';
   protected aiGeneratedProcessName = '';
@@ -67,6 +70,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
   private feedbackTimer: ReturnType<typeof setTimeout> | null = null;
   private routeSubscription?: { unsubscribe: () => void };
   private pendingProcessId: string | null = null;
+  private aiAnalysisRequestSub?: Subscription;
   private aiEditRequestSub?: Subscription;
   private aiEditProgressTimer?: ReturnType<typeof setTimeout>;
 
@@ -104,6 +108,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
 
   ngOnDestroy(): void {
     this.routeSubscription?.unsubscribe();
+    this.aiAnalysisRequestSub?.unsubscribe();
     this.aiEditRequestSub?.unsubscribe();
     if (this.aiEditProgressTimer) {
       clearTimeout(this.aiEditProgressTimer);
@@ -459,10 +464,11 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
     this.isAiAnalyzing = true;
     this.errorMessage = '';
     this.successMessage = '';
+    this.aiAnalysisRequestSub?.unsubscribe();
 
     try {
       const processXml = await editor.exportToXml();
-      this.processService
+      this.aiAnalysisRequestSub = this.processService
         .analizarProcesoIA({
           processXml,
           processName: this.processName,
@@ -474,10 +480,11 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
         .pipe(
           finalize(() => {
             this.isAiAnalyzing = false;
+            this.aiAnalysisRequestSub = undefined;
             this.cdr.detectChanges();
           }),
         )
-        .subscribe({
+          .subscribe({
           next: (response) => {
             if (!response.success || !response.data) {
               this.showFeedback(response.message || 'No se pudo analizar el proceso con IA.', 'error');
@@ -507,6 +514,18 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
     this.editorComponent?.clearAiAnalysisHighlights();
   }
 
+  protected cancelAiAnalysis(): void {
+    if (!this.isAiAnalyzing) {
+      return;
+    }
+
+    this.aiAnalysisRequestSub?.unsubscribe();
+    this.aiAnalysisRequestSub = undefined;
+    this.isAiAnalyzing = false;
+    this.showFeedback('Analisis IA cancelado por el usuario.', 'error');
+    this.cdr.detectChanges();
+  }
+
   protected highlightAnalysisElement(elementId?: string | null): void {
     this.editorComponent?.clearAiAnalysisHighlights();
     this.editorComponent?.highlightAiAnalysisElement(elementId);
@@ -534,6 +553,128 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
       return 'warning';
     }
     return 'danger';
+  }
+
+  protected canApplyAnalysisSuggestion(suggestion: NonNullable<ProcessAiAnalysis['suggestions']>[number]): boolean {
+    return Boolean(
+      this.currentProcessState === 'BORRADOR'
+      && suggestion?.id
+      && suggestion?.status !== 'APPLIED'
+      && suggestion?.status !== 'REJECTED'
+      && suggestion?.canBeAppliedAutomatically
+      && suggestion?.proposedXml
+    );
+  }
+
+  protected async applyAnalysisSuggestion(suggestion: NonNullable<ProcessAiAnalysis['suggestions']>[number]): Promise<void> {
+    if (!suggestion.id) {
+      return;
+    }
+
+    if (!this.canApplyAnalysisSuggestion(suggestion)) {
+      this.showFeedback('Esta sugerencia no tiene XML propuesto o el proceso no está en borrador.', 'error');
+      return;
+    }
+
+    this.aiSuggestionActionId = suggestion.id;
+    this.aiSuggestionActionType = 'apply';
+    this.aiSuggestionActionMessage = 'Aplicando sugerencia...';
+    this.cdr.detectChanges();
+
+    this.processService
+      .aplicarSugerenciaIA(suggestion.id)
+      .pipe(
+        finalize(() => {
+          this.aiSuggestionActionId = '';
+          this.aiSuggestionActionType = '';
+          this.cdr.detectChanges();
+        }),
+      )
+      .subscribe({
+        next: async (response) => {
+          if (!response.success || !response.data?.process?.xml) {
+            this.showFeedback(response.message || 'No se pudo aplicar la sugerencia.', 'error');
+            return;
+          }
+
+          try {
+            await this.editorComponent?.importFromXml(response.data.process.xml);
+            this.editorComponent?.resetView();
+          } catch (error) {
+            console.error('Error al importar XML aplicado por IA', error);
+            this.showFeedback('La sugerencia se aplicó pero no se pudo recargar el XML en el editor.', 'error');
+          }
+
+          this.currentProcessId = response.data.process.id ?? this.currentProcessId;
+          this.currentProcessKey = response.data.process.processKey || this.currentProcessKey;
+          this.currentProcessVersion = response.data.process.version ?? this.currentProcessVersion;
+          this.currentProcessState = response.data.process.estado || this.currentProcessState;
+          this.isReadonlyProcess = this.currentProcessState !== 'BORRADOR';
+          this.processName = this.normalizeProcessName(response.data.process.nombre || this.processName);
+          this.editorProcessName = this.processName;
+
+          this.aiAnalysisResult = {
+            ...(this.aiAnalysisResult || { summary: '', score: 0, issues: [], suggestions: [] }),
+            suggestions: (this.aiAnalysisResult?.suggestions ?? []).map((item) =>
+              item.id === suggestion.id
+                ? { ...item, status: 'APPLIED', decidedAt: new Date().toISOString(), decidedBy: response.data.suggestion?.decidedBy || '' }
+                : item,
+            ),
+          } as ProcessAiAnalysis;
+
+          this.aiSuggestionActionMessage = response.message || 'Sugerencia aplicada correctamente.';
+          this.showFeedback('Sugerencia aplicada y XML recargado en el editor.', 'success');
+          this.cdr.detectChanges();
+        },
+        error: (error: any) => {
+          this.aiSuggestionActionMessage = error?.error?.message || 'No se pudo aplicar la sugerencia.';
+          this.showFeedback(this.aiSuggestionActionMessage, 'error');
+        },
+      });
+  }
+
+  protected rejectAnalysisSuggestion(suggestion: NonNullable<ProcessAiAnalysis['suggestions']>[number]): void {
+    if (!suggestion.id) {
+      return;
+    }
+
+    this.aiSuggestionActionId = suggestion.id;
+    this.aiSuggestionActionType = 'reject';
+    this.aiSuggestionActionMessage = 'Rechazando sugerencia...';
+    this.cdr.detectChanges();
+
+    this.processService
+      .rechazarSugerenciaIA(suggestion.id)
+      .pipe(
+        finalize(() => {
+          this.aiSuggestionActionId = '';
+          this.aiSuggestionActionType = '';
+          this.cdr.detectChanges();
+        }),
+      )
+      .subscribe({
+        next: (response) => {
+          if (!response.success) {
+            this.showFeedback(response.message || 'No se pudo rechazar la sugerencia.', 'error');
+            return;
+          }
+
+          this.aiAnalysisResult = {
+            ...(this.aiAnalysisResult || { summary: '', score: 0, issues: [], suggestions: [] }),
+            suggestions: (this.aiAnalysisResult?.suggestions ?? []).map((item) =>
+              item.id === suggestion.id ? { ...item, status: 'REJECTED' } : item,
+            ),
+          } as ProcessAiAnalysis;
+
+          this.aiSuggestionActionMessage = response.message || 'Sugerencia rechazada correctamente.';
+          this.showFeedback('Sugerencia rechazada.', 'success');
+          this.cdr.detectChanges();
+        },
+        error: (error: any) => {
+          this.aiSuggestionActionMessage = error?.error?.message || 'No se pudo rechazar la sugerencia.';
+          this.showFeedback(this.aiSuggestionActionMessage, 'error');
+        },
+      });
   }
 
   private highlightAnalysisItems(): void {

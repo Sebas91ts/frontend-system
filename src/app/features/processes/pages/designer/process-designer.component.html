@@ -199,6 +199,32 @@
             <strong>{{ suggestion.title }}</strong>
             <p>{{ suggestion.description }}</p>
             <small>{{ suggestion.impact }}</small>
+            <div class="analysis-item__meta">
+              <span class="analysis-chip" *ngIf="suggestion.proposedXml">XML propuesto disponible</span>
+              <span class="analysis-chip analysis-chip--muted" *ngIf="!suggestion.proposedXml">Sin XML propuesto</span>
+              <span class="analysis-chip analysis-chip--success" *ngIf="suggestion.canBeAppliedAutomatically">Aplicable automaticamente</span>
+            </div>
+            <div class="analysis-item__actions" *ngIf="suggestion.status !== 'APPLIED' && suggestion.status !== 'REJECTED'">
+              <button
+                type="button"
+                class="analysis-link analysis-link--reject"
+                (click)="rejectAnalysisSuggestion(suggestion)"
+                [disabled]="aiSuggestionActionId === suggestion.id || suggestion.status === 'APPLIED' || suggestion.status === 'REJECTED'"
+              >
+                {{ aiSuggestionActionId === suggestion.id && aiSuggestionActionType === 'reject' ? 'Rechazando...' : 'Rechazar' }}
+              </button>
+              <button
+                type="button"
+                class="analysis-link analysis-link--apply"
+                (click)="applyAnalysisSuggestion(suggestion)"
+                [disabled]="aiSuggestionActionId === suggestion.id || !canApplyAnalysisSuggestion(suggestion)"
+              >
+                {{ aiSuggestionActionId === suggestion.id && aiSuggestionActionType === 'apply' ? 'Aplicando...' : 'Aplicar sugerencia' }}
+              </button>
+            </div>
+            <div class="analysis-item__actions analysis-item__actions--processed" *ngIf="suggestion.status === 'APPLIED' || suggestion.status === 'REJECTED'">
+              <span class="analysis-chip analysis-chip--muted">Sugerencia {{ suggestion.status === 'APPLIED' ? 'aplicada' : 'rechazada' }}</span>
+            </div>
             <button
               *ngIf="suggestion.relatedElementId"
               type="button"
@@ -230,6 +256,7 @@
         </div>
         <div class="ai-loading-modal__actions">
           <button type="button" class="toolbar-button" *ngIf="isAiEditing" (click)="cancelAiEdit()">Cancelar</button>
+          <button type="button" class="toolbar-button" *ngIf="isAiAnalyzing" (click)="cancelAiAnalysis()">Cancelar análisis</button>
         </div>
       </section>
     </div>

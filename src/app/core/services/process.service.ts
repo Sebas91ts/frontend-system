@@ -13,11 +13,21 @@ export interface ProcessAiIssue {
 }
 
 export interface ProcessAiSuggestion {
+  id?: string;
+  analysisId?: string | null;
+  processId?: string | null;
+  processKey?: string | null;
+  processVersion?: number | null;
   title: string;
   description: string;
   impact: string;
   relatedElementId?: string | null;
   canBeAppliedAutomatically?: boolean;
+  proposedXml?: string | null;
+  status?: 'PENDING' | 'APPLIED' | 'REJECTED' | string;
+  createdAt?: string;
+  decidedAt?: string | null;
+  decidedBy?: string | null;
 }
 
 export interface ProcessAiAnalysis {
@@ -32,6 +42,11 @@ export interface ProcessAiAnalysis {
   suggestions: ProcessAiSuggestion[];
   status?: 'NEW' | 'REVIEWED' | 'IGNORED' | 'APPLIED' | string;
   createdAt?: string;
+}
+
+export interface ProcessAiSuggestionActionResponse {
+  process?: Proceso | null;
+  suggestion?: ProcessAiSuggestion | null;
 }
 
 export interface ProcessAiAnalysisRequest {
@@ -292,6 +307,28 @@ export class ProcessService {
       tap({
         next: (response) => console.info('[ProcessService] PATCH /api/ai/analyses/{id}/status -> success', response),
         error: (error) => console.error('[ProcessService] PATCH /api/ai/analyses/{id}/status -> error', error),
+      }),
+    );
+  }
+
+  aplicarSugerenciaIA(id: string): Observable<ApiResponse<ProcessAiSuggestionActionResponse>> {
+    console.info('[ProcessService] POST /api/ai/suggestions/{id}/apply -> start', { id });
+
+    return this.http.post<ApiResponse<ProcessAiSuggestionActionResponse>>(`${this.apiUrl}/ai/suggestions/${id}/apply`, {}).pipe(
+      tap({
+        next: (response) => console.info('[ProcessService] POST /api/ai/suggestions/{id}/apply -> success', response),
+        error: (error) => console.error('[ProcessService] POST /api/ai/suggestions/{id}/apply -> error', error),
+      }),
+    );
+  }
+
+  rechazarSugerenciaIA(id: string): Observable<ApiResponse<ProcessAiSuggestionActionResponse>> {
+    console.info('[ProcessService] POST /api/ai/suggestions/{id}/reject -> start', { id });
+
+    return this.http.post<ApiResponse<ProcessAiSuggestionActionResponse>>(`${this.apiUrl}/ai/suggestions/${id}/reject`, {}).pipe(
+      tap({
+        next: (response) => console.info('[ProcessService] POST /api/ai/suggestions/{id}/reject -> success', response),
+        error: (error) => console.error('[ProcessService] POST /api/ai/suggestions/{id}/reject -> error', error),
       }),
     );
   }

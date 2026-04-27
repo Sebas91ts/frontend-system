@@ -452,6 +452,59 @@
   line-height: 1.5;
 }
 
+.analysis-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.6rem;
+}
+
+.analysis-item__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+
+.analysis-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.28rem 0.55rem;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.analysis-chip--success {
+  background: rgba(34, 197, 94, 0.12);
+  color: #166534;
+}
+
+.analysis-chip--muted {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.analysis-link--apply,
+.analysis-link--reject {
+  border: none;
+  cursor: pointer;
+}
+
+.analysis-link--apply {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.analysis-link--reject {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 .analysis-empty {
   border-radius: 14px;
   background: rgba(34, 197, 94, 0.08);
