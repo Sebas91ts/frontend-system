@@ -1,0 +1,287 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 32%),
+    linear-gradient(135deg, #f8fafc, #eef6ff);
+  color: #0f172a;
+}
+
+.ai-review-shell {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0 3rem;
+}
+
+.review-hero,
+.analysis-card,
+.feedback,
+.empty-state {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+}
+
+.review-hero {
+  border-radius: 28px;
+  padding: 1.4rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+.eyebrow {
+  margin: 0 0 0.45rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #1d4ed8;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+.review-hero h1 {
+  margin-bottom: 0.45rem;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+}
+
+.review-hero p,
+.summary,
+.muted,
+.issue-row p,
+.suggestion-row p {
+  color: #475569;
+  line-height: 1.6;
+}
+
+.hero-actions,
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.ghost-button,
+.primary-button {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 999px;
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.ghost-button {
+  background: rgba(255, 255, 255, 0.72);
+  color: #0f172a;
+}
+
+.primary-button {
+  border-color: transparent;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  color: #ffffff;
+}
+
+.ghost-button:disabled,
+.primary-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.feedback,
+.empty-state {
+  margin-top: 1rem;
+  border-radius: 22px;
+  padding: 1rem;
+}
+
+.feedback--error {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.analysis-grid {
+  margin-top: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.analysis-card {
+  border-radius: 26px;
+  padding: 1.1rem;
+}
+
+.analysis-card__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.analysis-card h2 {
+  margin: 0.45rem 0 0.3rem;
+}
+
+.status-pill,
+.severity {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.status-pill {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.score-badge {
+  min-width: 120px;
+  border-radius: 20px;
+  padding: 0.9rem;
+  text-align: center;
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.score-badge span {
+  display: block;
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.score-badge strong {
+  font-size: 1.45rem;
+}
+
+.score-badge--good {
+  background: #dcfce7;
+}
+
+.score-badge--warning {
+  background: #fef3c7;
+}
+
+.score-badge--danger {
+  background: #fee2e2;
+}
+
+.detail-block {
+  margin-top: 1rem;
+}
+
+.detail-block h3 {
+  margin-bottom: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.issue-row,
+.suggestion-row {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 18px;
+  padding: 0.85rem;
+  margin-bottom: 0.65rem;
+  background: #ffffff;
+}
+
+.issue-row {
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-start;
+}
+
+.issue-row strong,
+.suggestion-row strong {
+  color: #0f172a;
+}
+
+.issue-row small,
+.suggestion-row small {
+  color: #64748b;
+}
+
+.severity--high {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.severity--medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.severity--low {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.card-actions {
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+:host-context(.dark-theme) {
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 35%),
+    linear-gradient(135deg, #020617, #0f172a);
+  color: #f8fafc;
+}
+
+:host-context(.dark-theme) .review-hero,
+:host-context(.dark-theme) .analysis-card,
+:host-context(.dark-theme) .feedback,
+:host-context(.dark-theme) .empty-state,
+:host-context(.dark-theme) .issue-row,
+:host-context(.dark-theme) .suggestion-row {
+  background: rgba(15, 23, 42, 0.86);
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+:host-context(.dark-theme) .ghost-button {
+  background: rgba(15, 23, 42, 0.76);
+  color: #f8fafc;
+}
+
+:host-context(.dark-theme) .review-hero p,
+:host-context(.dark-theme) .summary,
+:host-context(.dark-theme) .muted,
+:host-context(.dark-theme) .issue-row p,
+:host-context(.dark-theme) .suggestion-row p {
+  color: #cbd5e1;
+}
+
+:host-context(.dark-theme) .issue-row strong,
+:host-context(.dark-theme) .suggestion-row strong {
+  color: #f8fafc;
+}
+
+@media (max-width: 760px) {
+  .review-hero,
+  .analysis-card__top {
+    flex-direction: column;
+  }
+
+  .hero-actions,
+  .card-actions {
+    width: 100%;
+  }
+
+  .ghost-button,
+  .primary-button {
+    flex: 1;
+  }
+}

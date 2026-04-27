@@ -1,0 +1,80 @@
+<main class="ai-review-shell">
+  <section class="review-hero">
+    <div>
+      <p class="eyebrow">Recomendaciones IA</p>
+      <h1>Analisis inteligente de procesos</h1>
+      <p>
+        Revisa riesgos, cuellos de botella y sugerencias detectadas por IA en procesos publicados o analizados desde el editor.
+      </p>
+    </div>
+
+    <div class="hero-actions">
+      <button type="button" class="ghost-button" (click)="goBack()">Volver</button>
+      <button type="button" class="primary-button" (click)="refresh()" [disabled]="isLoading">
+        {{ isLoading ? 'Cargando...' : 'Actualizar' }}
+      </button>
+    </div>
+  </section>
+
+  <section class="feedback" *ngIf="isLoading">Cargando recomendaciones IA...</section>
+  <section class="feedback feedback--error" *ngIf="errorMessage && !isLoading">{{ errorMessage }}</section>
+
+  <section class="empty-state" *ngIf="!isLoading && !analyses.length && !errorMessage">
+    <strong>No hay recomendaciones pendientes.</strong>
+    <p>Cuando la IA detecte riesgos relevantes, apareceran aqui para que el administrador los revise.</p>
+  </section>
+
+  <section class="analysis-grid" *ngIf="!isLoading && analyses.length">
+    <article class="analysis-card" *ngFor="let analysis of analyses; trackBy: trackAnalysis">
+      <div class="analysis-card__top">
+        <div>
+          <span class="status-pill">{{ analysis.status || 'NEW' }}</span>
+          <h2>{{ analysis.processName || analysis.processKey || 'Proceso sin nombre' }}</h2>
+          <p>{{ analysis.processKey }} · v{{ analysis.processVersion || 1 }} · {{ formatDate(analysis.createdAt) }}</p>
+        </div>
+
+        <div class="score-badge" [ngClass]="'score-badge--' + scoreTone(analysis.score)">
+          <span>Score</span>
+          <strong>{{ analysis.score }}/100</strong>
+        </div>
+      </div>
+
+      <p class="summary">{{ analysis.summary }}</p>
+
+      <section class="detail-block">
+        <h3>Problemas</h3>
+        <p class="muted" *ngIf="!analysis.issues.length">Sin problemas relevantes.</p>
+        <div class="issue-row" *ngFor="let issue of analysis.issues">
+          <span class="severity" [ngClass]="'severity--' + issue.severity">{{ severityLabel(issue.severity) }}</span>
+          <div>
+            <strong>{{ issue.type }}</strong>
+            <p>{{ issue.description }}</p>
+            <small *ngIf="issue.elementId">Elemento: {{ issue.elementId }}</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="detail-block">
+        <h3>Sugerencias</h3>
+        <p class="muted" *ngIf="!analysis.suggestions.length">Sin sugerencias pendientes.</p>
+        <div class="suggestion-row" *ngFor="let suggestion of analysis.suggestions">
+          <strong>{{ suggestion.title }}</strong>
+          <p>{{ suggestion.description }}</p>
+          <small>{{ suggestion.impact }}</small>
+        </div>
+      </section>
+
+      <div class="card-actions">
+        <button type="button" class="ghost-button" (click)="viewProcess(analysis)" [disabled]="!analysis.processId">
+          Ver proceso
+        </button>
+        <button type="button" class="ghost-button" (click)="updateStatus(analysis, 'IGNORED')" [disabled]="updatingId === analysis.id">
+          Ignorar
+        </button>
+        <button type="button" class="primary-button" (click)="updateStatus(analysis, 'REVIEWED')" [disabled]="updatingId === analysis.id">
+          {{ updatingId === analysis.id ? 'Actualizando...' : 'Marcar revisado' }}
+        </button>
+      </div>
+    </article>
+  </section>
+</main>

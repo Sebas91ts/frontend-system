@@ -9,8 +9,22 @@
         <button type="button" class="action-button accent" (click)="goToTasks()">{{ t('admin.openTasks') }}</button>
         <button type="button" class="action-button tracking" (click)="goToInstances()">{{ t('admin.openInstances') }}</button>
         <button type="button" class="action-button" (click)="goToProcesses()">{{ t('admin.openProcesses') }}</button>
+        <button type="button" class="action-button" (click)="goToAiRecommendations()">Recomendaciones IA</button>
         <button type="button" class="action-button" (click)="goToUsers()">{{ t('admin.manageUsers') }}</button>
         <button type="button" class="action-button" (click)="goToAreas()">{{ t('admin.manageAreas') }}</button>
+        <div class="hero-more">
+          <button type="button" class="more-button" (click)="toggleMoreMenu()" aria-label="Mas opciones">
+            ⋯
+          </button>
+          <div class="more-menu" *ngIf="isMoreMenuOpen">
+            <button type="button" class="more-menu__item" (click)="goToSettings()">
+              Ajustes
+            </button>
+            <button type="button" class="more-menu__item" (click)="closeMoreMenu()">
+              Cerrar menu
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -150,4 +164,52 @@
       </ng-template>
     </section>
   </ng-container>
+
+  <button type="button" class="assistant-launcher" (click)="openAssistant()" aria-label="Abrir asistente">
+    <span class="assistant-launcher__icon">?</span>
+    <span class="assistant-launcher__text">Ayuda IA</span>
+  </button>
+
+  <section class="assistant-modal" *ngIf="isAssistantOpen">
+    <div class="assistant-modal__backdrop" (click)="closeAssistant()"></div>
+    <div class="assistant-modal__panel" role="dialog" aria-modal="true" aria-labelledby="admin-assistant-title">
+      <header class="assistant-modal__header">
+        <div>
+          <p class="eyebrow">Asistente interno</p>
+          <h2 id="admin-assistant-title">Consulta tu sistema BPM</h2>
+        </div>
+        <button type="button" class="assistant-close" (click)="closeAssistant()" [disabled]="assistantLoading" aria-label="Cerrar asistente">×</button>
+      </header>
+
+      <div class="assistant-modal__messages">
+        <article
+          class="assistant-message"
+          *ngFor="let message of assistantMessages"
+          [class.assistant-message--user]="message.role === 'user'"
+          [class.assistant-message--bot]="message.role === 'assistant'"
+        >
+          {{ message.text }}
+        </article>
+        <div class="assistant-message assistant-message--bot" *ngIf="assistantLoading">
+          Pensando...
+        </div>
+      </div>
+
+      <div class="assistant-modal__error" *ngIf="assistantError">{{ assistantError }}</div>
+
+      <footer class="assistant-modal__footer">
+        <input
+          type="text"
+          [(ngModel)]="assistantInput"
+          [ngModelOptions]="{ standalone: true }"
+          placeholder="Escribe una duda sobre administracion, procesos o tareas..."
+          (keydown.enter)="sendAssistantMessage()"
+          [disabled]="assistantLoading"
+        />
+        <button type="button" class="action-button accent" (click)="sendAssistantMessage()" [disabled]="assistantLoading || !assistantInput.trim()">
+          {{ assistantLoading ? 'Consultando...' : 'Preguntar' }}
+        </button>
+      </footer>
+    </div>
+  </section>
 </main>

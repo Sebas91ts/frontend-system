@@ -1,8 +1,10 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { LanguagePreference, UiPreferencesService } from '../../../../core/services/ui-preferences.service';
+import {
+  LanguagePreference,
+  UiPreferencesService,
+} from '../../../../core/services/ui-preferences.service';
 
 @Component({
   selector: 'app-settings-page',
@@ -13,7 +15,7 @@ import { LanguagePreference, UiPreferencesService } from '../../../../core/servi
 })
 export class SettingsPageComponent {
   protected readonly preferences = inject(UiPreferencesService);
-  private readonly router = inject(Router);
+  private readonly location = inject(Location);
 
   protected t(key: Parameters<UiPreferencesService['translate']>[0]): string {
     return this.preferences.translate(key);
@@ -28,6 +30,6 @@ export class SettingsPageComponent {
   }
 
   protected goBack(): void {
-    void this.router.navigate(['/user']);
+    this.location.back(); // ← Usar back() en lugar de navigate
   }
 }

@@ -3,7 +3,7 @@ import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChi
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription, finalize } from 'rxjs';
-import { ProcessService } from '../../../../core/services/process.service';
+import { ProcessAiAnalysis, ProcessService } from '../../../../core/services/process.service';
 import { BpmnEditorComponent } from '../../components/bpmn-editor/bpmn-editor.component';
 import { ProcessDialogsComponent } from '../../components/process-dialogs/process-dialogs.component';
 
@@ -53,6 +53,9 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
   protected aiEditedXml = '';
   protected aiEditStatusMessage = '';
   protected aiEditAttempt = 0;
+  protected isAiAnalyzing = false;
+  protected isAiAnalysisPanelOpen = false;
+  protected aiAnalysisResult: ProcessAiAnalysis | null = null;
   protected aiProcessDescription = '';
   protected aiGeneratedXml = '';
   protected aiGeneratedProcessName = '';
@@ -445,6 +448,107 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
     this.aiEditInstruction = '';
     this.aiEditedXml = '';
     this.isAiEditPanelOpen = true;
+  }
+
+  protected async analyzeProcessWithAi(): Promise<void> {
+    const editor = this.editorComponent;
+    if (!editor) {
+      return;
+    }
+
+    this.isAiAnalyzing = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    try {
+      const processXml = await editor.exportToXml();
+      this.processService
+        .analizarProcesoIA({
+          processXml,
+          processName: this.processName,
+          processId: this.currentProcessId,
+          processKey: this.currentProcessKey,
+          processVersion: this.currentProcessVersion,
+          metrics: {},
+        })
+        .pipe(
+          finalize(() => {
+            this.isAiAnalyzing = false;
+            this.cdr.detectChanges();
+          }),
+        )
+        .subscribe({
+          next: (response) => {
+            if (!response.success || !response.data) {
+              this.showFeedback(response.message || 'No se pudo analizar el proceso con IA.', 'error');
+              return;
+            }
+
+            this.aiAnalysisResult = response.data;
+            this.isAiAnalysisPanelOpen = true;
+            this.editorComponent?.clearAiAnalysisHighlights();
+            this.highlightAnalysisItems();
+            this.showFeedback('Analisis IA listo. Revisa las recomendaciones detectadas.', 'success');
+            this.cdr.detectChanges();
+          },
+          error: (error: any) => {
+            this.showFeedback(error?.error?.message || 'No se pudo analizar el proceso con IA.', 'error');
+          },
+        });
+    } catch (error) {
+      console.error('Error exportando XML para analisis IA', error);
+      this.isAiAnalyzing = false;
+      this.showFeedback('No se pudo exportar el XML actual para analizarlo.', 'error');
+    }
+  }
+
+  protected closeAiAnalysisPanel(): void {
+    this.isAiAnalysisPanelOpen = false;
+    this.editorComponent?.clearAiAnalysisHighlights();
+  }
+
+  protected highlightAnalysisElement(elementId?: string | null): void {
+    this.editorComponent?.clearAiAnalysisHighlights();
+    this.editorComponent?.highlightAiAnalysisElement(elementId);
+  }
+
+  protected getSeverityLabel(severity?: string | null): string {
+    switch ((severity ?? '').toLowerCase()) {
+      case 'high':
+        return 'Alta';
+      case 'medium':
+        return 'Media';
+      case 'low':
+        return 'Baja';
+      default:
+        return 'Sin severidad';
+    }
+  }
+
+  protected getScoreTone(score?: number | null): string {
+    const value = score ?? 0;
+    if (value >= 85) {
+      return 'good';
+    }
+    if (value >= 70) {
+      return 'warning';
+    }
+    return 'danger';
+  }
+
+  private highlightAnalysisItems(): void {
+    const result = this.aiAnalysisResult;
+    if (!result) {
+      return;
+    }
+
+    for (const issue of result.issues ?? []) {
+      this.editorComponent?.highlightAiAnalysisElement(issue.elementId);
+    }
+
+    for (const suggestion of result.suggestions ?? []) {
+      this.editorComponent?.highlightAiAnalysisElement(suggestion.relatedElementId);
+    }
   }
 
   protected closeAiEditPanel(): void {

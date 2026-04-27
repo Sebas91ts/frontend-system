@@ -222,6 +222,12 @@
   color: #b91c1c;
 }
 
+:host ::ng-deep .ai-analysis-highlight .djs-visual > :first-child {
+  stroke: #f59e0b !important;
+  stroke-width: 4px !important;
+  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.45));
+}
+
 @media (max-width: 1024px) {
   .properties-sidebar {
     width: 300px;

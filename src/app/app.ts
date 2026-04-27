@@ -2,12 +2,11 @@ import { Component, OnInit, signal, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { AuthService } from './core/services/auth.service';
 import { NotificationBellComponent } from './shared/components/notification-bell/notification-bell.component';
-import { UiPreferencesComponent } from './shared/components/ui-preferences/ui-preferences.component';
 import { UiPreferencesService } from './core/services/ui-preferences.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, NotificationBellComponent, UiPreferencesComponent],
+  imports: [RouterOutlet, NotificationBellComponent],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })

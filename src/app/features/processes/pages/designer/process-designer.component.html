@@ -37,9 +37,19 @@
         class="toolbar-button accent"
         title="Editar o crear proceso con IA sobre el lienzo actual"
         (click)="openAiEditGenerator()"
-        [disabled]="isBusy || isSaving || isLoadingProcess || isReadonlyProcess || !currentProcessId"
+        [disabled]="isBusy || isSaving || isLoadingProcess || isAiAnalyzing || isReadonlyProcess || !currentProcessId"
       >
         IA BPMN
+      </button>
+
+      <button
+        type="button"
+        class="toolbar-button ai-analysis-button"
+        title="Analizar optimizacion, riesgos y cuellos de botella del BPMN actual"
+        (click)="analyzeProcessWithAi()"
+        [disabled]="isBusy || isSaving || isLoadingProcess || isAiAnalyzing || !currentProcessId"
+      >
+        {{ isAiAnalyzing ? 'Analizando...' : 'Analizar IA' }}
       </button>
 
       <button
@@ -141,10 +151,69 @@
           </button>
         </div>
       </aside>
+
+      <aside class="overlay-panel analysis-overlay" *ngIf="isAiAnalysisPanelOpen && aiAnalysisResult">
+        <div class="panel-header analysis-header">
+          <div>
+            <h3>Analisis inteligente</h3>
+            <p>{{ aiAnalysisResult.summary }}</p>
+          </div>
+          <button type="button" class="panel-close" (click)="closeAiAnalysisPanel()">×</button>
+        </div>
+
+        <div class="analysis-score" [ngClass]="'analysis-score--' + getScoreTone(aiAnalysisResult.score)">
+          <span>Score</span>
+          <strong>{{ aiAnalysisResult.score }}/100</strong>
+        </div>
+
+        <section class="analysis-section">
+          <h4>Problemas detectados</h4>
+          <p class="analysis-empty" *ngIf="!aiAnalysisResult.issues.length">
+            No se detectaron problemas relevantes en este analisis.
+          </p>
+          <article class="analysis-item" *ngFor="let issue of aiAnalysisResult.issues">
+            <div class="analysis-item__header">
+              <span class="severity-pill" [ngClass]="'severity-pill--' + issue.severity">
+                {{ getSeverityLabel(issue.severity) }}
+              </span>
+              <strong>{{ issue.type }}</strong>
+            </div>
+            <p>{{ issue.description }}</p>
+            <button
+              *ngIf="issue.elementId"
+              type="button"
+              class="analysis-link"
+              (click)="highlightAnalysisElement(issue.elementId)"
+            >
+              Ver en diagrama
+            </button>
+          </article>
+        </section>
+
+        <section class="analysis-section">
+          <h4>Sugerencias</h4>
+          <p class="analysis-empty" *ngIf="!aiAnalysisResult.suggestions.length">
+            No hay sugerencias pendientes.
+          </p>
+          <article class="analysis-item" *ngFor="let suggestion of aiAnalysisResult.suggestions">
+            <strong>{{ suggestion.title }}</strong>
+            <p>{{ suggestion.description }}</p>
+            <small>{{ suggestion.impact }}</small>
+            <button
+              *ngIf="suggestion.relatedElementId"
+              type="button"
+              class="analysis-link"
+              (click)="highlightAnalysisElement(suggestion.relatedElementId)"
+            >
+              Ver en diagrama
+            </button>
+          </article>
+        </section>
+      </aside>
     </div>
   </div>
 
-  <ng-container *ngIf="isAiEditing">
+  <ng-container *ngIf="isAiEditing || isAiAnalyzing">
     <div class="ai-loading-screen" role="status" aria-live="polite" aria-busy="true">
       <div class="modal-backdrop modal-backdrop--strong"></div>
 
@@ -152,15 +221,15 @@
         <div class="ai-loading-modal__spinner"></div>
         <div class="ai-loading-modal__content">
           <span class="ai-modal__eyebrow">IA BPMN</span>
-          <h3>Procesando diagrama</h3>
-          <p>{{ aiEditStatusMessage || 'Estamos generando la siguiente versión del BPMN.' }}</p>
-          <p class="ai-loading-modal__attempt">Intento: {{ aiEditAttempt }}/2</p>
-          <p class="ai-loading-modal__hint">
+          <h3>{{ isAiAnalyzing ? 'Analizando proceso' : 'Procesando diagrama' }}</h3>
+          <p>{{ isAiAnalyzing ? 'Estamos revisando estructura, lanes, gateways y posibles cuellos de botella.' : (aiEditStatusMessage || 'Estamos generando la siguiente versión del BPMN.') }}</p>
+          <p class="ai-loading-modal__attempt" *ngIf="!isAiAnalyzing">Intento: {{ aiEditAttempt }}/2</p>
+          <p class="ai-loading-modal__hint" *ngIf="!isAiAnalyzing">
             Si tardara demasiado, puedes cancelar y volver a intentarlo.
           </p>
         </div>
         <div class="ai-loading-modal__actions">
-          <button type="button" class="toolbar-button" (click)="cancelAiEdit()">Cancelar</button>
+          <button type="button" class="toolbar-button" *ngIf="isAiEditing" (click)="cancelAiEdit()">Cancelar</button>
         </div>
       </section>
     </div>

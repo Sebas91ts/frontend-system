@@ -103,6 +103,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
   private lastBackendSaveAt = 0;
   private lastSavedXml = '';
   private pendingAutosaveXml = '';
+  private aiAnalysisHighlightedIds = new Set<string>();
   protected isAutosaving = false;
   private readonly autosaveDebounceMs = 5000;
   private readonly backendSaveMinIntervalMs = 10000;
@@ -243,6 +244,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
     }
     this.clearLaneSelection();
     this.clearSequenceFlowSelection();
+    this.clearAiAnalysisHighlights();
     this.restoreLaneAreaBindings();
     this.refreshLaneAreaOverlays();
     this.scheduleFitViewport();
@@ -268,6 +270,42 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
 
   resetView(): void {
     this.fitViewport();
+  }
+
+  public highlightAiAnalysisElement(elementId?: string | null): void {
+    const normalizedId = elementId?.trim();
+    if (!this.modeler || !normalizedId) {
+      return;
+    }
+
+    const elementRegistry = this.modeler.get('elementRegistry') as {
+      get: (id: string) => any | null;
+    };
+    const element = elementRegistry.get(normalizedId);
+    if (!element) {
+      return;
+    }
+
+    const canvas = this.modeler.get('canvas') as {
+      addMarker: (id: string, marker: string) => void;
+    };
+    canvas.addMarker(normalizedId, 'ai-analysis-highlight');
+    this.aiAnalysisHighlightedIds.add(normalizedId);
+  }
+
+  public clearAiAnalysisHighlights(): void {
+    if (!this.modeler || this.aiAnalysisHighlightedIds.size === 0) {
+      this.aiAnalysisHighlightedIds.clear();
+      return;
+    }
+
+    const canvas = this.modeler.get('canvas') as {
+      removeMarker: (id: string, marker: string) => void;
+    };
+    for (const elementId of this.aiAnalysisHighlightedIds) {
+      canvas.removeMarker(elementId, 'ai-analysis-highlight');
+    }
+    this.aiAnalysisHighlightedIds.clear();
   }
 
   public validateLaneAssignments(): LaneValidationResult {

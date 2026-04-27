@@ -53,6 +53,13 @@ export const routes: Routes = [
     canActivate: [authGuard, roleGuard],
     data: { roles: ['ROLE_ADMIN'] }
   },
+  {
+    path: 'admin/ai-recommendations',
+    loadComponent: () => import('./features/admin/pages/ai-recommendations/ai-recommendations.component')
+      .then(m => m.AiRecommendationsComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_ADMIN'] }
+  },
 
   // Rutas de Usuario (ROLE_USER o ROLE_ADMIN)
   {

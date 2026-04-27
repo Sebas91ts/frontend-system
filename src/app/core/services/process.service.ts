@@ -5,6 +5,44 @@ import { ApiResponse } from '../models/auth.models';
 import { Proceso, ProcesoAutosaveRequest, ProcesoCreateRequest, ProcesoUpdateRequest } from '../models/process.models';
 import { API_BASE_URL } from '../config/api.config';
 
+export interface ProcessAiIssue {
+  type: string;
+  description: string;
+  elementId?: string | null;
+  severity: 'low' | 'medium' | 'high' | string;
+}
+
+export interface ProcessAiSuggestion {
+  title: string;
+  description: string;
+  impact: string;
+  relatedElementId?: string | null;
+  canBeAppliedAutomatically?: boolean;
+}
+
+export interface ProcessAiAnalysis {
+  id?: string;
+  processId?: string | null;
+  processKey?: string | null;
+  processVersion?: number | null;
+  processName?: string | null;
+  summary: string;
+  score: number;
+  issues: ProcessAiIssue[];
+  suggestions: ProcessAiSuggestion[];
+  status?: 'NEW' | 'REVIEWED' | 'IGNORED' | 'APPLIED' | string;
+  createdAt?: string;
+}
+
+export interface ProcessAiAnalysisRequest {
+  processXml: string;
+  processName?: string;
+  processId?: string | null;
+  processKey?: string | null;
+  processVersion?: number | null;
+  metrics?: Record<string, unknown>;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -217,6 +255,43 @@ export class ProcessService {
       tap({
         next: (response) => console.info('[ProcessService] POST /api/ai/edit-diagram -> success', response),
         error: (error) => console.error('[ProcessService] POST /api/ai/edit-diagram -> error', error),
+      }),
+    );
+  }
+
+  analizarProcesoIA(request: ProcessAiAnalysisRequest): Observable<ApiResponse<ProcessAiAnalysis>> {
+    console.info('[ProcessService] POST /api/ai/analyze-process -> start', {
+      processName: request.processName,
+      xmlLength: request.processXml?.length ?? 0,
+      apiUrl: this.apiUrl,
+    });
+
+    return this.http.post<ApiResponse<ProcessAiAnalysis>>(`${this.apiUrl}/ai/analyze-process`, request).pipe(
+      tap({
+        next: (response) => console.info('[ProcessService] POST /api/ai/analyze-process -> success', response),
+        error: (error) => console.error('[ProcessService] POST /api/ai/analyze-process -> error', error),
+      }),
+    );
+  }
+
+  listarAnalisisIA(): Observable<ApiResponse<ProcessAiAnalysis[]>> {
+    console.info('[ProcessService] GET /api/ai/analyses -> start', { apiUrl: this.apiUrl });
+
+    return this.http.get<ApiResponse<ProcessAiAnalysis[]>>(`${this.apiUrl}/ai/analyses`).pipe(
+      tap({
+        next: (response) => console.info('[ProcessService] GET /api/ai/analyses -> success', response),
+        error: (error) => console.error('[ProcessService] GET /api/ai/analyses -> error', error),
+      }),
+    );
+  }
+
+  actualizarEstadoAnalisisIA(id: string, status: 'REVIEWED' | 'IGNORED' | 'APPLIED'): Observable<ApiResponse<ProcessAiAnalysis>> {
+    console.info('[ProcessService] PATCH /api/ai/analyses/{id}/status -> start', { id, status });
+
+    return this.http.patch<ApiResponse<ProcessAiAnalysis>>(`${this.apiUrl}/ai/analyses/${id}/status`, { status }).pipe(
+      tap({
+        next: (response) => console.info('[ProcessService] PATCH /api/ai/analyses/{id}/status -> success', response),
+        error: (error) => console.error('[ProcessService] PATCH /api/ai/analyses/{id}/status -> error', error),
       }),
     );
   }
