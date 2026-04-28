@@ -16,5 +16,58 @@
         [pendingTaskKeys]="item.pendingTaskKeys">
       </app-process-tracking-viewer>
     </section>
+
+    <section class="client-history-card">
+      <header class="client-history-card__header">
+        <div>
+          <p class="client-history-card__eyebrow">Tus envios</p>
+          <h2>Informacion que enviaste</h2>
+          <p class="client-history-card__copy">
+            Aqui puedes revisar los datos que completaste en tus tareas anteriores dentro de este tramite.
+          </p>
+        </div>
+        <span class="client-history-card__count">{{ submittedHistory.length }} envio(s)</span>
+      </header>
+
+      <div class="client-history-card__empty" *ngIf="!hasSubmittedHistory">
+        Aun no has enviado informacion en este tramite.
+      </div>
+
+      <div class="client-history-list" *ngIf="hasSubmittedHistory">
+        <article class="client-history-item" *ngFor="let entry of submittedHistory; trackBy: trackByHistoryEntry">
+          <div class="client-history-item__top">
+            <div>
+              <p class="client-history-item__badge">Enviado por ti</p>
+              <h3>{{ entry.taskName || 'Tarea sin nombre' }}</h3>
+              <p class="client-history-item__meta">
+                {{ entry.areaName || 'Area no identificada' }} · {{ entry.completedAt || 'Sin fecha' }}
+              </p>
+            </div>
+          </div>
+
+          <div class="client-history-item__fields" *ngIf="getHistoryEntries(entry).length; else emptyFields">
+            <div class="client-history-field" *ngFor="let field of getHistoryEntries(entry)">
+              <span>{{ field.key }}</span>
+
+              <ng-container *ngIf="historyFile(field.value) as file; else regularValue">
+                <a [href]="file.secureUrl" target="_blank" rel="noopener">
+                  {{ file.fileName || 'Archivo adjunto' }}
+                </a>
+              </ng-container>
+
+              <ng-template #regularValue>
+                <strong>{{ formatHistoryValue(field.value) }}</strong>
+              </ng-template>
+            </div>
+          </div>
+
+          <ng-template #emptyFields>
+            <div class="client-history-card__empty client-history-card__empty--inline">
+              No se registraron datos de formulario en esta tarea.
+            </div>
+          </ng-template>
+        </article>
+      </div>
+    </section>
   </ng-container>
 </div>

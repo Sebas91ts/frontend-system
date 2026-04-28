@@ -48,6 +48,7 @@ interface ClientAssistantMessage {
         <nav class="client-nav">
           <a routerLink="/client/home" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }">Inicio</a>
           <a routerLink="/client/processes" routerLinkActive="is-active">Mis tramites</a>
+          <a routerLink="/client/tasks" routerLinkActive="is-active">Tareas</a>
           <a routerLink="/client/instances" routerLinkActive="is-active">Instancias</a>
           <a routerLink="/client/notifications" routerLinkActive="is-active">Notificaciones</a>
         </nav>

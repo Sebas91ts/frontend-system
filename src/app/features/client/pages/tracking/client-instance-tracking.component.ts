@@ -2,7 +2,8 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { finalize, Subscription } from 'rxjs';
-import { ClientInstanceTracking } from '../../../../core/models/process-tracking.models';
+import { ClientInstanceTracking, ClientTrackingHistoryItem } from '../../../../core/models/process-tracking.models';
+import { UploadedFileMetadata } from '../../../../core/models/form.models';
 import { ProcessTrackingService } from '../../../../core/services/process-tracking.service';
 import { ProcessTrackingViewerComponent } from '../../../process-instances/components/tracking-viewer/process-tracking-viewer.component';
 
@@ -38,6 +39,64 @@ export class ClientInstanceTrackingComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.realtimeSubscription?.unsubscribe();
+  }
+
+  get submittedHistory(): ClientTrackingHistoryItem[] {
+    return this.tracking?.history ?? [];
+  }
+
+  get hasSubmittedHistory(): boolean {
+    return this.submittedHistory.length > 0;
+  }
+
+  trackByHistoryEntry(_: number, entry: ClientTrackingHistoryItem): string {
+    return `${entry.taskName ?? 'task'}-${entry.completedAt ?? 'time'}`;
+  }
+
+  getHistoryEntries(entry: ClientTrackingHistoryItem): Array<{ key: string; value: unknown }> {
+    const formData = entry.formData ?? {};
+    const excludedKeys = new Set(['clientUserId', 'clientEmail', 'startedByRole']);
+    return Object.entries(formData)
+      .filter(([key]) => !excludedKeys.has(key))
+      .map(([key, value]) => ({ key, value }));
+  }
+
+  formatHistoryValue(value: unknown): string {
+    if (value == null) {
+      return 'Sin dato';
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.formatHistoryValue(item)).join(', ');
+    }
+
+    if (typeof value === 'object') {
+      const file = this.asFileMetadata(value);
+      if (file) {
+        return file.fileName || 'Archivo adjunto';
+      }
+
+      return Object.entries(value as Record<string, unknown>)
+        .map(([key, item]) => `${key}: ${this.formatHistoryValue(item)}`)
+        .join(' | ');
+    }
+
+    return String(value);
+  }
+
+  historyFile(value: unknown): UploadedFileMetadata | null {
+    return this.asFileMetadata(value);
+  }
+
+  private asFileMetadata(value: unknown): UploadedFileMetadata | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null;
+    }
+
+    const candidate = value as UploadedFileMetadata;
+    return typeof candidate.fileName === 'string' && typeof candidate.secureUrl === 'string'
+      ? candidate
+      : null;
   }
 
   private loadTracking(): void {

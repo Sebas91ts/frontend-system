@@ -158,6 +158,11 @@ export const routes: Routes = [
           .then(m => m.ClientInstancesComponent)
       },
       {
+        path: 'tasks',
+        loadComponent: () => import('./features/client/pages/tasks/client-tasks.component')
+          .then(m => m.ClientTasksComponent)
+      },
+      {
         path: 'instances/:processInstanceId/tracking',
         loadComponent: () => import('./features/client/pages/tracking/client-instance-tracking.component')
           .then(m => m.ClientInstanceTrackingComponent)

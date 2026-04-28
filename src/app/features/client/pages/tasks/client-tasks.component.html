@@ -1,0 +1,163 @@
+<section class="client-tasks-shell">
+  <header class="client-tasks-hero">
+    <div>
+      <p class="eyebrow">Portal cliente</p>
+      <h1>Tareas pendientes</h1>
+      <p class="hero-copy">Acción requerida. Aqui veras lo que esta pendiente de tu parte para avanzar tus tramites.</p>
+    </div>
+
+    <button type="button" class="refresh-button" (click)="loadTasks()" [disabled]="loading">Actualizar</button>
+  </header>
+
+  <div class="client-tasks-banner error" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="client-tasks-banner" *ngIf="loading">Cargando tareas pendientes...</div>
+
+  <section class="client-tasks-empty" *ngIf="!loading && !errorMessage && !hasTasks">
+    <strong>No hay tareas pendientes por ahora</strong>
+    <p>Cuando exista una accion requerida para ti, aparecera aqui automaticamente.</p>
+  </section>
+
+  <section class="client-task-grid" *ngIf="hasTasks">
+    <article class="client-task-card" *ngFor="let task of tasks; trackBy: trackByTaskId">
+      <div class="client-task-card__header">
+        <div>
+          <p class="client-task-card__badge">Accion requerida</p>
+          <h2>{{ task.taskName }}</h2>
+          <p class="client-task-card__subtitle">{{ task.processName }}</p>
+        </div>
+
+        <span class="client-task-card__status">{{ task.assignedToClient ? 'Pendiente de tu parte' : 'Disponible para ti' }}</span>
+      </div>
+
+      <div class="client-task-card__meta">
+        <span>{{ task.areaName || 'Area no identificada' }}</span>
+        <span>{{ task.processInstanceId }}</span>
+      </div>
+
+      <div class="client-task-card__footer">
+        <div>
+          <small>Proceso</small>
+          <strong>{{ task.processName }}</strong>
+        </div>
+        <button type="button" class="primary-button" (click)="openTask(task)">Completar</button>
+      </div>
+    </article>
+  </section>
+
+  <section class="task-modal" *ngIf="selectedTask">
+    <div class="task-modal__backdrop" (click)="closeTask()"></div>
+    <div class="task-modal__panel" role="dialog" aria-modal="true" aria-labelledby="task-modal-title">
+      <header class="task-modal__header">
+        <div>
+          <p class="eyebrow">Pendiente de tu parte</p>
+          <h2 id="task-modal-title">{{ currentTaskTitle }}</h2>
+          <p class="hero-copy">{{ currentProcessTitle }} | {{ currentAreaTitle }}</p>
+        </div>
+        <button type="button" class="close-button" (click)="closeTask()" [disabled]="formSubmitting">×</button>
+      </header>
+
+      <div class="task-modal__body">
+        <div class="task-modal__message" *ngIf="formLoading">Cargando formulario...</div>
+        <div class="task-modal__message error" *ngIf="formError">{{ formError }}</div>
+
+        <form class="task-form" *ngIf="selectedTask && !formLoading">
+          <div class="task-form__field" *ngFor="let field of formFields">
+            <label>
+              <span>{{ field.label || field.name }} <strong *ngIf="field.required">*</strong></span>
+
+              <ng-container [ngSwitch]="field.type">
+                <input
+                  *ngSwitchCase="'text'"
+                  type="text"
+                  [ngModel]="getFieldValue(field)"
+                  (ngModelChange)="setFieldValue(field.name, $event)"
+                  [ngModelOptions]="{ standalone: true }"
+                  [required]="field.required"
+                  [placeholder]="field.placeholder || ''"
+                />
+                <textarea
+                  *ngSwitchCase="'textarea'"
+                  [ngModel]="getFieldValue(field)"
+                  (ngModelChange)="setFieldValue(field.name, $event)"
+                  [ngModelOptions]="{ standalone: true }"
+                  [required]="field.required"
+                  [placeholder]="field.placeholder || ''"
+                ></textarea>
+                <input
+                  *ngSwitchCase="'number'"
+                  type="number"
+                  [ngModel]="getFieldValue(field)"
+                  (ngModelChange)="setFieldValue(field.name, $event)"
+                  [ngModelOptions]="{ standalone: true }"
+                  [required]="field.required"
+                  [placeholder]="field.placeholder || ''"
+                />
+                <input
+                  *ngSwitchCase="'date'"
+                  type="date"
+                  [ngModel]="getFieldValue(field)"
+                  (ngModelChange)="setFieldValue(field.name, $event)"
+                  [ngModelOptions]="{ standalone: true }"
+                  [required]="field.required"
+                  [placeholder]="field.placeholder || ''"
+                />
+                <select
+                  *ngSwitchCase="'select'"
+                  [ngModel]="getFieldValue(field)"
+                  (ngModelChange)="setFieldValue(field.name, $event)"
+                  [ngModelOptions]="{ standalone: true }"
+                  [required]="field.required"
+                >
+                  <option value="">Selecciona una opcion</option>
+                  <option *ngFor="let option of getFieldOptions(field)" [value]="option.value">{{ option.label }}</option>
+                </select>
+                <label *ngSwitchCase="'checkbox'" class="choice-card">
+                  <input
+                    type="checkbox"
+                    [checked]="getFieldValue(field) === true"
+                    (change)="setFieldValue(field.name, ($any($event.target)).checked)"
+                  />
+                  <span>{{ field.helpText || 'Marca esta opcion si corresponde.' }}</span>
+                </label>
+                <div *ngSwitchCase="'checklist'" class="checklist-grid">
+                  <label class="choice-card" *ngFor="let option of getFieldOptions(field)">
+                    <input
+                      type="checkbox"
+                      [checked]="isChecklistOptionSelected(field.name, option.value)"
+                      (change)="toggleChecklistValue(field.name, option.value, $any($event.target).checked)"
+                    />
+                    <span>{{ option.label }}</span>
+                  </label>
+                </div>
+                <div *ngSwitchCase="'file'" class="file-field">
+                  <input type="file" (change)="onFileSelected(field, $event)" />
+                  <div class="file-state" *ngIf="getSelectedFile(field.name)">
+                    Archivo seleccionado: {{ getSelectedFileName(field.name) }}
+                  </div>
+                  <div class="file-state" *ngIf="!getSelectedFile(field.name) && !getSelectedFileMetadata(field.name)">
+                    El archivo se enviara al completar la tarea.
+                  </div>
+                  <div class="file-state success" *ngIf="getSelectedFileMetadata(field.name)">
+                    Archivo cargado: {{ getSelectedFileMetadata(field.name)?.fileName }}
+                    <a *ngIf="getSelectedFileMetadata(field.name)?.secureUrl" [href]="getSelectedFileMetadata(field.name)?.secureUrl" target="_blank" rel="noopener">Ver</a>
+                  </div>
+                  <div class="file-state error" *ngIf="fileUploadError(field)">{{ fileUploadError(field) }}</div>
+                </div>
+              </ng-container>
+
+              <small *ngIf="field.helpText">{{ field.helpText }}</small>
+              <small class="field-error" *ngIf="isFieldMissing(field)">Completa este campo antes de enviar.</small>
+            </label>
+          </div>
+        </form>
+      </div>
+
+      <footer class="task-modal__footer">
+        <button type="button" class="ghost-button" (click)="closeTask()" [disabled]="formSubmitting">Cancelar</button>
+        <button type="button" class="primary-button" (click)="submitTask()" [disabled]="formSubmitting || formLoading">
+          {{ formSubmitting ? 'Enviando...' : 'Completar tarea' }}
+        </button>
+      </footer>
+    </div>
+  </section>
+</section>
