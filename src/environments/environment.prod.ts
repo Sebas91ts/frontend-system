@@ -1,8 +1,8 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://18.222.249.255/api',
-  camundaUrl: 'https://18.222.249.255/engine-rest',
-  fastapiUrl: 'https://18.222.249.255/ai',
-  wsUrl: 'wss://18.222.249.255/ws',
-  yjsUrl: 'wss://18.222.249.255/yjs',
+  apiUrl: 'https://systembpm-sebas.duckdns.org/api',
+  camundaUrl: 'https://systembpm-sebas.duckdns.org/engine-rest',
+  fastapiUrl: 'https://systembpm-sebas.duckdns.org/ai',
+  wsUrl: 'wss://systembpm-sebas.duckdns.org/ws',
+  yjsUrl: 'wss://systembpm-sebas.duckdns.org/yjs',
 };
