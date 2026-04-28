@@ -3,6 +3,7 @@ import { Subject, Observable } from 'rxjs';
 import { API_BASE_URL } from '../config/api.config';
 import { Usuario } from '../models/auth.models';
 import { RealtimeEvent } from '../models/realtime.models';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root',
@@ -206,6 +207,10 @@ export class RealtimeService {
   }
 
   private toWebSocketUrl(apiUrl: string): string {
+    if (environment.wsUrl?.trim()) {
+      return environment.wsUrl.trim();
+    }
+
     const origin = apiUrl.replace(/\/api\/?$/, '');
     if (origin.startsWith('https://')) {
       return `${origin.replace('https://', 'wss://')}/ws`;

@@ -15,6 +15,7 @@ import { BpmnPropertiesPanelModule, BpmnPropertiesProviderModule } from 'bpmn-js
 import { finalize } from 'rxjs';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
+import { environment } from '../../../../../environments/environment';
 import { Area } from '../../../../core/models/area.models';
 import { ApiResponse } from '../../../../core/models/auth.models';
 import {
@@ -1106,6 +1107,9 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
   }
 
   private resolveYjsServerUrl(): string {
+    if (environment.yjsUrl?.trim()) {
+      return environment.yjsUrl.trim();
+    }
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     return `${protocol}://${window.location.hostname}:1234`;
   }
