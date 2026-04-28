@@ -147,7 +147,9 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const payload: any = { ...this.form, roles: [this.form.role] };
+    const payload: any = this.editingUserId
+      ? { ...this.form, roles: [this.form.role] }
+      : { ...this.form, roles: ['ROLE_USER'], role: undefined };
     delete payload.role;
     if (!payload.password) {
       delete payload.password;
@@ -165,7 +167,7 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
 
     request$.pipe(finalize(() => (this.isSaving = false))).subscribe({
       next: (response) => {
-        this.showFeedback(response.message || 'Usuario guardado correctamente.', 'success');
+        this.showFeedback(response.message || 'Funcionario guardado correctamente.', 'success');
         this.isFormOpen = false;
         this.loadUsers();
       },
@@ -175,7 +177,7 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
           error?.error?.data?.email ||
           error?.error?.data?.password ||
           error?.error?.message ||
-          'No se pudo guardar el usuario.',
+          'No se pudo guardar el funcionario.',
           'error',
         );
       },
@@ -217,7 +219,7 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
       .pipe(finalize(() => (this.isDeletingId = null)))
       .subscribe({
       next: (response) => {
-          this.showFeedback(response.message || 'Usuario eliminado correctamente.', 'success');
+          this.showFeedback(response.message || 'Funcionario desactivado correctamente.', 'success');
           this.isDeleteModalOpen = false;
           this.userToDelete = null;
           this.loadUsers();

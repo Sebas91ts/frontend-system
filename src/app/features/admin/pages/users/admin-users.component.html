@@ -4,14 +4,14 @@
       <p class="eyebrow">Administracion</p>
       <h1>Gestion de usuarios</h1>
       <p class="users-hero__text">
-        Crea, edita y elimina usuarios del sistema con una vista clara y un flujo simple de operar.
+        Crea funcionarios internos, edita cuentas existentes y administra el acceso del equipo desde un solo lugar.
       </p>
     </div>
 
     <div class="users-hero__actions">
       <a routerLink="/admin" class="action-link">Volver al panel</a>
       <button type="button" class="action-button accent" (click)="openCreate()">
-        Nuevo usuario
+        Nuevo funcionario
       </button>
     </div>
   </header>
@@ -25,7 +25,7 @@
     <div class="table-header">
       <div>
         <h2>Usuarios registrados</h2>
-        <p>Lista central para mantener el acceso y los datos del personal.</p>
+        <p>Lista central para mantener el acceso y los datos del personal interno.</p>
       </div>
       <button type="button" class="action-button" (click)="loadUsers()" [disabled]="isLoading">
         {{ isLoading ? 'Cargando...' : 'Refrescar' }}
@@ -33,7 +33,7 @@
     </div>
 
     <div class="table-empty" *ngIf="!isLoading && !usuarios.length">
-      Todavia no hay usuarios para mostrar.
+      Todavia no hay funcionarios para mostrar.
     </div>
 
     <div class="table-wrap" *ngIf="usuarios.length">
@@ -90,7 +90,7 @@
     aria-labelledby="user-form-title"
   >
     <div class="save-modal__header">
-      <h3 id="user-form-title">{{ editingUserId ? 'Editar usuario' : 'Crear usuario' }}</h3>
+      <h3 id="user-form-title">{{ editingUserId ? 'Editar funcionario' : 'Crear funcionario' }}</h3>
       <p>Completa los datos para registrar o actualizar la cuenta dentro del sistema.</p>
     </div>
 
@@ -110,7 +110,7 @@
     </label>
 
     <label class="save-modal__field">
-      <span>Area</span>
+      <span>Area asignada</span>
       <select [(ngModel)]="form.areaId">
         <option value="">Sin area</option>
         <option *ngFor="let area of areas" [value]="area.id">
@@ -119,15 +119,10 @@
       </select>
     </label>
 
-    <label class="save-modal__field">
-      <span>Rol</span>
-      <select [(ngModel)]="form.role">
-        <option value="ROLE_USER">Usuario interno</option>
-        <option value="ROLE_CLIENT">Cliente</option>
-        <option value="ROLE_BPM_MANAGER">BPM Manager</option>
-        <option value="ROLE_ADMIN">Administrador</option>
-      </select>
-    </label>
+    <div class="save-modal__status">
+      <strong>{{ editingUserId ? 'Rol actual' : 'Rol de alta' }}:</strong>
+      {{ editingUserId ? (form.role || 'ROLE_USER') : 'ROLE_USER' }}
+    </div>
 
     <label class="save-modal__field">
       <span>Contrasena</span>

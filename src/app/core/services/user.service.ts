@@ -26,12 +26,12 @@ export class UserService {
   }
 
   registrarUsuarioAdmin(request: RegisterRequest): Observable<ApiResponse<Usuario>> {
-    console.info('[UserService] POST /api/auth/register -> start', { apiUrl: this.apiUrl });
+    console.info('[UserService] POST /api/users -> start', { apiUrl: this.apiUrl });
 
-    return this.http.post<ApiResponse<Usuario>>(`${this.apiUrl}/auth/register`, request).pipe(
+    return this.http.post<ApiResponse<Usuario>>(`${this.apiUrl}/users`, request).pipe(
       tap({
-        next: (response) => console.info('[UserService] POST /api/auth/register -> success', response),
-        error: (error) => console.error('[UserService] POST /api/auth/register -> error', error),
+        next: (response) => console.info('[UserService] POST /api/users -> success', response),
+        error: (error) => console.error('[UserService] POST /api/users -> error', error),
       }),
     );
   }
