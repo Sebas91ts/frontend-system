@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
+import { take } from 'rxjs';
 import { AuthService } from '../../../../core/services/auth.service';
 import { LoginRequest } from '../../../../core/models/auth.models';
 
@@ -145,7 +146,7 @@ import { LoginRequest } from '../../../../core/models/auth.models';
     </div>
   `,
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   private authService = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -153,6 +154,16 @@ export class LoginComponent {
   loginRequest: LoginRequest = { email: '', password: '' };
   errorMessage = '';
   isLoading = false;
+
+  ngOnInit(): void {
+    if (this.authService.getToken()) {
+      this.authService.ensureSession().pipe(take(1)).subscribe((isAuthenticated) => {
+        if (isAuthenticated) {
+          void this.router.navigate(this.authService.getLandingRoute());
+        }
+      });
+    }
+  }
 
   onSubmit(): void {
     this.errorMessage = '';

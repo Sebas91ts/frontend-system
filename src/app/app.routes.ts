@@ -4,7 +4,7 @@ import { roleGuard } from './core/guards/role.guard';
 
 export const routes: Routes = [
   // Ruta por defecto
-  { path: '', redirectTo: 'auth/login', pathMatch: 'full' },
+  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
 
   // Rutas de Autenticación (públicas)
   {
