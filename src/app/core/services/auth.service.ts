@@ -1,7 +1,7 @@
 import { Injectable, signal, computed, Signal, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, tap, catchError, throwError, map, of } from 'rxjs';
+import { Observable, tap, catchError, throwError, map, of, shareReplay, finalize } from 'rxjs';
 import { Usuario, AuthResponse, LoginRequest, RegisterRequest, ApiResponse } from '../models/auth.models';
 import { API_BASE_URL } from '../config/api.config';
 import { RealtimeService } from './realtime.service';
@@ -13,6 +13,7 @@ export class AuthService {
   private static readonly TOKEN_STORAGE_KEY = 'systembpm_auth_token';
   private currentUserSignal = signal<Usuario | null>(null);
   private sessionCheckedSignal = signal(false);
+  private restoreSessionInFlight: Observable<boolean> | null = null;
   public readonly currentUser: Signal<Usuario | null> = this.currentUserSignal;
   public readonly isAuthenticated: Signal<boolean> = computed(() => !!this.currentUserSignal());
   public readonly sessionChecked: Signal<boolean> = this.sessionCheckedSignal;
@@ -60,6 +61,10 @@ export class AuthService {
   }
 
   restoreSession(): Observable<boolean> {
+    if (this.restoreSessionInFlight) {
+      return this.restoreSessionInFlight;
+    }
+
     const token = this.getToken();
     if (!token) {
       this.currentUserSignal.set(null);
@@ -68,7 +73,7 @@ export class AuthService {
       return of(false);
     }
 
-    return this.http.get<ApiResponse<Usuario>>(`${this.apiUrl}/auth/me`, {
+    this.restoreSessionInFlight = this.http.get<ApiResponse<Usuario>>(`${this.apiUrl}/auth/me`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -91,8 +96,14 @@ export class AuthService {
         this.sessionCheckedSignal.set(true);
         this.realtimeService.disconnect();
         return of(false);
-      })
+      }),
+      finalize(() => {
+        this.restoreSessionInFlight = null;
+      }),
+      shareReplay(1)
     );
+
+    return this.restoreSessionInFlight;
   }
 
   ensureSession(): Observable<boolean> {
