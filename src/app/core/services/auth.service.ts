@@ -10,7 +10,7 @@ import { RealtimeService } from './realtime.service';
   providedIn: 'root'
 })
 export class AuthService {
-  // Estado solo en memoria: evita persistir tokens/usuario en localStorage.
+  private static readonly TOKEN_STORAGE_KEY = 'systembpm_auth_token';
   private currentUserSignal = signal<Usuario | null>(null);
   private sessionCheckedSignal = signal(false);
   public readonly currentUser: Signal<Usuario | null> = this.currentUserSignal;
@@ -32,6 +32,9 @@ export class AuthService {
     ).pipe(
       tap(response => {
         if (response.success && response.data) {
+          if (response.data.token) {
+            localStorage.setItem(AuthService.TOKEN_STORAGE_KEY, response.data.token);
+          }
           this.currentUserSignal.set(response.data.usuario);
           this.realtimeService.connectForUser(response.data.usuario);
         }
@@ -57,8 +60,18 @@ export class AuthService {
   }
 
   restoreSession(): Observable<boolean> {
+    const token = this.getToken();
+    if (!token) {
+      this.currentUserSignal.set(null);
+      this.sessionCheckedSignal.set(true);
+      this.realtimeService.disconnect();
+      return of(false);
+    }
+
     return this.http.get<ApiResponse<Usuario>>(`${this.apiUrl}/auth/me`, {
-      withCredentials: true
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
     }).pipe(
       map(response => {
         if (response.success && response.data) {
@@ -96,6 +109,7 @@ export class AuthService {
     }).pipe(
       catchError(() => of(null))
     ).subscribe(() => {
+      localStorage.removeItem(AuthService.TOKEN_STORAGE_KEY);
       this.currentUserSignal.set(null);
       this.realtimeService.disconnect();
       this.router.navigate(['/auth/login']);
@@ -129,6 +143,6 @@ export class AuthService {
   }
 
   getToken(): string | null {
-    return null;
+    return localStorage.getItem(AuthService.TOKEN_STORAGE_KEY);
   }
 }

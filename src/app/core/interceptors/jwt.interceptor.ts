@@ -1,12 +1,14 @@
 import { HttpInterceptorFn } from '@angular/common/http';
 
 /**
- * Interceptor que asegura el envío de cookies de sesión al backend.
- * El JWT vive en una cookie HttpOnly, así que no se adjunta manualmente.
+ * Interceptor que adjunta el JWT como Bearer token y conserva withCredentials
+ * para compatibilidad con endpoints que aún usen cookies.
  */
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
+  const token = localStorage.getItem('systembpm_auth_token');
   const authReq = req.clone({
-    withCredentials: true
+    withCredentials: true,
+    setHeaders: token ? { Authorization: `Bearer ${token}` } : {}
   });
 
   return next(authReq);
