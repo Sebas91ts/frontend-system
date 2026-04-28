@@ -27,3 +27,24 @@ export interface ProcessInstanceTracking {
   activeTaskKeys: string[];
   pendingTaskKeys: string[];
 }
+
+export interface ClientTrackingHistoryItem {
+  taskName?: string | null;
+  areaName?: string | null;
+  completedAt?: string | null;
+  formData?: Record<string, unknown> | null;
+}
+
+export interface ClientInstanceTracking {
+  processName?: string | null;
+  estado?: string | null;
+  startedAt?: string | null;
+  progressPercentage?: number | null;
+  currentTaskName?: string | null;
+  currentAreaName?: string | null;
+  history: ClientTrackingHistoryItem[];
+  xmlBpmn?: string | null;
+  completedTaskKeys: string[];
+  activeTaskKeys: string[];
+  pendingTaskKeys: string[];
+}

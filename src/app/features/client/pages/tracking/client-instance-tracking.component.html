@@ -1,0 +1,20 @@
+<div class="client-tracking-page">
+  <div class="page-status" *ngIf="loading && !tracking">
+    Cargando seguimiento del tramite...
+  </div>
+
+  <div class="page-status error" *ngIf="errorMessage">
+    {{ errorMessage }}
+  </div>
+
+  <ng-container *ngIf="tracking as item">
+    <section class="viewer-only">
+      <app-process-tracking-viewer
+        [xml]="item.xmlBpmn || ''"
+        [completedTaskKeys]="item.completedTaskKeys"
+        [activeTaskKeys]="item.activeTaskKeys"
+        [pendingTaskKeys]="item.pendingTaskKeys">
+      </app-process-tracking-viewer>
+    </section>
+  </ng-container>
+</div>

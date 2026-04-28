@@ -82,7 +82,7 @@ export class ProcessTrackingViewerComponent implements AfterViewInit, OnChanges,
     try {
       await this.viewer.importXML(this.xml);
       const canvas = this.viewer.get('canvas') as {
-        zoom: (value: 'fit-viewport') => void;
+        zoom: (value?: 'fit-viewport') => number;
         addMarker: (id: string, marker: string) => void;
         removeMarker: (id: string, marker: string) => void;
       };

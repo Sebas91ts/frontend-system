@@ -1,0 +1,75 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.12), transparent 28%),
+    radial-gradient(circle at top right, rgba(34, 197, 94, 0.11), transparent 30%),
+    linear-gradient(180deg, #f7fafc, #eef4f8);
+}
+
+.client-tracking-page {
+  max-width: 1460px;
+  margin: 0 auto;
+  padding: 14px;
+}
+
+.page-status {
+  margin-bottom: 14px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid #dbe5ef;
+  background: rgba(255, 255, 255, 0.92);
+  color: #475569;
+}
+
+.page-status.error {
+  color: #b91c1c;
+  border-color: #fecaca;
+  background: #fff7f7;
+}
+
+.viewer-only {
+  background: transparent;
+}
+
+:host ::ng-deep app-process-tracking-viewer .viewer-card {
+  padding: 10px;
+}
+
+:host ::ng-deep app-process-tracking-viewer .viewer-head {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+:host ::ng-deep app-process-tracking-viewer .viewer-head > div:first-child {
+  display: none;
+}
+
+:host ::ng-deep app-process-tracking-viewer .legend {
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+:host ::ng-deep app-process-tracking-viewer .legend-item {
+  font-size: 0.8rem;
+}
+
+:host ::ng-deep app-process-tracking-viewer .viewer-status {
+  padding-top: 0;
+}
+
+:host ::ng-deep app-process-tracking-viewer .canvas-shell {
+  border-radius: 28px;
+}
+
+@media (max-width: 720px) {
+  .client-tracking-page {
+    padding: 12px;
+  }
+
+  :host ::ng-deep app-process-tracking-viewer .viewer-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
