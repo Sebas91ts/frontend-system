@@ -134,6 +134,48 @@
           <p class="warning-note">La IA siempre trabajará sobre el XML actual del editor y luego podrás cargar la versión resultante.</p>
         </div>
 
+        <section class="voice-assistant-panel">
+          <div class="voice-assistant-panel__header">
+            <div>
+              <span class="voice-assistant-panel__eyebrow">Entrada por voz</span>
+              <strong>Dicta la instrucción y revísala antes de aplicarla</strong>
+            </div>
+            <button
+              type="button"
+              class="voice-toggle-button"
+              [class.voice-toggle-button--recording]="isVoiceRecording"
+              (click)="toggleVoiceCapture()"
+              [disabled]="isAiEditing || !isVoiceInputSupported"
+            >
+              {{ isVoiceRecording ? 'Detener micrófono' : 'Usar micrófono' }}
+            </button>
+          </div>
+
+          <p class="voice-assistant-panel__hint" *ngIf="isVoiceInputSupported">
+            {{ isVoiceRecording ? 'Escuchando en tiempo real. Cuando termines, detén la grabación y decide si anexas el texto al prompt.' : 'Puedes hablar en español y luego decidir si agregas esa transcripción al prompt editable.' }}
+          </p>
+          <p class="voice-assistant-panel__hint voice-assistant-panel__hint--warning" *ngIf="!isVoiceInputSupported">
+            Tu navegador no expone reconocimiento de voz para esta pantalla. El flujo IA sigue funcionando con texto manual.
+          </p>
+          <p class="voice-assistant-panel__error" *ngIf="aiVoiceErrorMessage">{{ aiVoiceErrorMessage }}</p>
+
+          <div class="voice-transcript-card" *ngIf="isVoiceRecording || aiVoiceTranscriptPreview">
+            <div class="voice-transcript-card__header">
+              <span>Transcripción detectada</span>
+              <button
+                *ngIf="aiVoiceTranscriptPreview"
+                type="button"
+                class="voice-link-button"
+                (click)="appendVoiceTranscript()"
+                [disabled]="isAiEditing"
+              >
+                Pasar al prompt
+              </button>
+            </div>
+            <p>{{ aiVoiceTranscriptPreview || 'Esperando que comiences a hablar...' }}</p>
+          </div>
+        </section>
+
         <textarea
           [(ngModel)]="aiEditInstruction"
           class="xml-input"

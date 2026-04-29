@@ -7,6 +7,30 @@ import { ProcessAiAnalysis, ProcessService } from '../../../../core/services/pro
 import { BpmnEditorComponent } from '../../components/bpmn-editor/bpmn-editor.component';
 import { ProcessDialogsComponent } from '../../components/process-dialogs/process-dialogs.component';
 
+interface BrowserSpeechRecognitionEvent {
+  results: ArrayLike<{
+    isFinal: boolean;
+    length: number;
+    [index: number]: {
+      transcript: string;
+    };
+  }>;
+}
+
+interface BrowserSpeechRecognition {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: (() => void) | null;
+  onresult: ((event: BrowserSpeechRecognitionEvent) => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+
+type SpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
+
 @Component({
   selector: 'app-process-designer',
   standalone: true,
@@ -55,6 +79,10 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
   protected aiEditedXml = '';
   protected aiEditStatusMessage = '';
   protected aiEditAttempt = 0;
+  protected readonly isVoiceInputSupported = this.getSpeechRecognitionConstructor() !== null;
+  protected isVoiceRecording = false;
+  protected aiVoiceTranscriptPreview = '';
+  protected aiVoiceErrorMessage = '';
   protected isAiAnalyzing = false;
   protected isAiAnalysisPanelOpen = false;
   protected aiAnalysisResult: ProcessAiAnalysis | null = null;
@@ -75,6 +103,8 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
   private aiAnalysisRequestSub?: Subscription;
   private aiEditRequestSub?: Subscription;
   private aiEditProgressTimer?: ReturnType<typeof setTimeout>;
+  private speechRecognition?: BrowserSpeechRecognition;
+  private speechRecognitionConstructor = this.getSpeechRecognitionConstructor();
 
   constructor(
     private readonly processService: ProcessService,
@@ -112,6 +142,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
     this.routeSubscription?.unsubscribe();
     this.aiAnalysisRequestSub?.unsubscribe();
     this.aiEditRequestSub?.unsubscribe();
+    this.stopVoiceCapture(true);
     if (this.aiEditProgressTimer) {
       clearTimeout(this.aiEditProgressTimer);
       this.aiEditProgressTimer = undefined;
@@ -463,6 +494,8 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
 
     this.aiEditInstruction = '';
     this.aiEditedXml = '';
+    this.aiVoiceTranscriptPreview = '';
+    this.aiVoiceErrorMessage = '';
     this.isAiEditPanelOpen = true;
   }
 
@@ -708,7 +741,120 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
       return;
     }
 
+    this.stopVoiceCapture(true);
     this.isAiEditPanelOpen = false;
+  }
+
+  protected toggleVoiceCapture(): void {
+    if (!this.isVoiceInputSupported) {
+      this.aiVoiceErrorMessage = 'El navegador actual no soporta reconocimiento de voz para este editor.';
+      return;
+    }
+
+    if (this.isVoiceRecording) {
+      this.stopVoiceCapture();
+      return;
+    }
+
+    this.startVoiceCapture();
+  }
+
+  protected appendVoiceTranscript(): void {
+    const transcript = this.aiVoiceTranscriptPreview.trim();
+    if (!transcript) {
+      return;
+    }
+
+    this.aiEditInstruction = this.aiEditInstruction.trim()
+      ? `${this.aiEditInstruction.trim()}\n${transcript}`
+      : transcript;
+    this.aiVoiceTranscriptPreview = '';
+    this.aiVoiceErrorMessage = '';
+  }
+
+  private startVoiceCapture(): void {
+    if (!this.speechRecognitionConstructor) {
+      return;
+    }
+
+    this.stopVoiceCapture(true);
+    this.aiVoiceTranscriptPreview = '';
+    this.aiVoiceErrorMessage = '';
+
+    const recognition = new this.speechRecognitionConstructor();
+    recognition.lang = 'es-ES';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+      this.isVoiceRecording = true;
+      this.aiVoiceErrorMessage = '';
+      this.cdr.detectChanges();
+    };
+
+    recognition.onresult = (event: BrowserSpeechRecognitionEvent) => {
+      let transcript = '';
+      for (let index = 0; index < event.results.length; index += 1) {
+        transcript += event.results[index][0]?.transcript ?? '';
+      }
+
+      this.aiVoiceTranscriptPreview = transcript.trim();
+      this.cdr.detectChanges();
+    };
+
+    recognition.onerror = (event: { error?: string }) => {
+      if (event.error === 'not-allowed') {
+        this.aiVoiceErrorMessage = 'No se concedió permiso al micrófono. Revisa los permisos del navegador.';
+      } else if (event.error === 'no-speech') {
+        this.aiVoiceErrorMessage = 'No se detectó voz. Puedes volver a intentarlo.';
+      } else {
+        this.aiVoiceErrorMessage = 'No se pudo transcribir el audio. Intenta nuevamente.';
+      }
+
+      this.isVoiceRecording = false;
+      this.cdr.detectChanges();
+    };
+
+    recognition.onend = () => {
+      this.isVoiceRecording = false;
+      this.cdr.detectChanges();
+    };
+
+    this.speechRecognition = recognition;
+    recognition.start();
+  }
+
+  private stopVoiceCapture(silent = false): void {
+    if (!this.speechRecognition) {
+      this.isVoiceRecording = false;
+      return;
+    }
+
+    const activeRecognition = this.speechRecognition;
+    this.speechRecognition = undefined;
+    activeRecognition.onstart = null;
+    activeRecognition.onresult = null;
+    activeRecognition.onerror = null;
+    activeRecognition.onend = null;
+
+    try {
+      activeRecognition.stop();
+    } catch (error) {
+      if (!silent) {
+        console.warn('No se pudo detener el reconocimiento de voz.', error);
+      }
+    }
+
+    this.isVoiceRecording = false;
+  }
+
+  private getSpeechRecognitionConstructor(): SpeechRecognitionConstructor | null {
+    const speechWindow = window as Window & {
+      SpeechRecognition?: SpeechRecognitionConstructor;
+      webkitSpeechRecognition?: SpeechRecognitionConstructor;
+    };
+
+    return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null;
   }
 
   protected async editDiagramWithAi(): Promise<void> {
