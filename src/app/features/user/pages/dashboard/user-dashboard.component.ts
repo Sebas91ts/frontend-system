@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnDestroy, OnInit, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { finalize, forkJoin } from 'rxjs';
+import { catchError, finalize, forkJoin, of } from 'rxjs';
 import { TareaInstancia } from '../../../../core/models/task-instance.models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { RealtimeService } from '../../../../core/services/realtime.service';
@@ -11,7 +12,6 @@ import { TranslationKey, UiPreferencesService } from '../../../../core/services/
 import { NotificationBellComponent } from '../../../../shared/components/notification-bell/notification-bell.component';
 import { API_BASE_URL } from '../../../../core/config/api.config';
 import { ApiResponse } from '../../../../core/models/auth.models';
-import { HttpClient } from '@angular/common/http';
 
 type WorkloadStatus = 'healthy' | 'attention' | 'empty';
 
@@ -296,8 +296,8 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
 
     forkJoin({
-      mine: this.taskService.listarMisTareas(),
-      area: this.taskService.listarTareasDeMiArea(),
+      mine: this.taskService.listarMisTareas().pipe(catchError((error) => this.handleTaskListFallback(error, 'mis tareas'))),
+      area: this.taskService.listarTareasDeMiArea().pipe(catchError((error) => this.handleTaskListFallback(error, 'tareas del área'))),
     })
       .pipe(
         finalize(() => {
@@ -317,6 +317,19 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
           this.errorMessage = error?.error?.message || 'No se pudo cargar tu espacio de trabajo.';
         },
       });
+  }
+
+  private handleTaskListFallback(error: unknown, source: string) {
+    if (error instanceof HttpErrorResponse && error.status === 404) {
+      console.warn(`[UserDashboard] ${source} devolvió 404. Se mostrará como lista vacía.`, error);
+      return of({
+        success: true,
+        message: 'Sin tareas disponibles.',
+        data: [] as TareaInstancia[],
+      } satisfies ApiResponse<TareaInstancia[]>);
+    }
+
+    throw error;
   }
 
   private subscribeRealtime(): void {

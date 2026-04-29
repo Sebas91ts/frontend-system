@@ -1,6 +1,7 @@
 import { ApplicationConfig, inject, provideAppInitializer, provideBrowserGlobalErrorListeners } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withEnabledBlockingInitialNavigation } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 
 import { routes } from './app.routes';
 import { jwtInterceptor } from './core/interceptors/jwt.interceptor';
@@ -11,12 +12,12 @@ import { AuthService } from './core/services/auth.service';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes),
+    provideRouter(routes, withEnabledBlockingInitialNavigation()),
     provideHttpClient(withInterceptors([jwtInterceptor])),
     { provide: API_BASE_URL, useValue: environment.apiUrl },
     provideAppInitializer(() => {
       const authService = inject(AuthService);
-      return authService.ensureSession();
+      return firstValueFrom(authService.ensureSession());
     })
   ]
 };

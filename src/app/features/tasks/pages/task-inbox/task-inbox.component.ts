@@ -12,11 +12,36 @@ import {
   FormFieldOptionDefinition,
   UploadedFileMetadata,
 } from '../../../../core/models/form.models';
+import { AiService, FormFillSuggestion } from '../../../../core/services/ai.service';
 import { FormService } from '../../../../core/services/form.service';
 import { FileUploadService } from '../../../../core/services/file-upload.service';
 import { ApiResponse } from '../../../../core/models/auth.models';
 import { RealtimeService } from '../../../../core/services/realtime.service';
 import { TranslationKey, UiPreferencesService } from '../../../../core/services/ui-preferences.service';
+
+interface BrowserSpeechRecognitionEvent {
+  results: ArrayLike<{
+    isFinal: boolean;
+    length: number;
+    [index: number]: {
+      transcript: string;
+    };
+  }>;
+}
+
+interface BrowserSpeechRecognition {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: (() => void) | null;
+  onresult: ((event: BrowserSpeechRecognitionEvent) => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+
+type SpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
 
 @Component({
   selector: 'app-task-inbox',
@@ -32,6 +57,7 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly formService = inject(FormService);
   private readonly fileUploadService = inject(FileUploadService);
+  private readonly aiService = inject(AiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -54,6 +80,13 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
   protected quickWorkForm: FormDefinition | null = null;
   protected quickWorkValues: Record<string, unknown> = {};
   protected quickWorkFileState: Record<string, { uploading: boolean; error: string }> = {};
+  protected readonly isVoiceInputSupported = this.getSpeechRecognitionConstructor() !== null;
+  protected isQuickWorkVoiceRecording = false;
+  protected isQuickWorkAiFilling = false;
+  protected quickWorkTranscript = '';
+  protected quickWorkVoiceError = '';
+  protected quickWorkAiSummary = '';
+  protected quickWorkAiFilledFieldsCount = 0;
   protected searchTerm = '';
   protected selectedProcess = '';
   protected selectedInstance = '';
@@ -63,6 +96,8 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
   private feedbackTimer: ReturnType<typeof setTimeout> | null = null;
   private queryParamsSubscription?: { unsubscribe: () => void };
   private realtimeSubscription?: { unsubscribe: () => void };
+  private speechRecognition?: BrowserSpeechRecognition;
+  private speechRecognitionConstructor = this.getSpeechRecognitionConstructor();
 
   ngOnInit(): void {
     this.subscribeRealtimeTopics();
@@ -77,6 +112,7 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.queryParamsSubscription?.unsubscribe();
     this.realtimeSubscription?.unsubscribe();
+    this.stopQuickWorkVoiceCapture(true);
     this.clearFeedbackTimer();
   }
 
@@ -331,12 +367,17 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
       return;
     }
 
+    this.stopQuickWorkVoiceCapture(true);
     this.quickWorkTask = null;
     this.quickWorkForm = null;
     this.quickWorkValues = {};
     this.quickWorkFileState = {};
     this.quickWorkError = '';
     this.quickWorkSuccess = '';
+    this.quickWorkTranscript = '';
+    this.quickWorkVoiceError = '';
+    this.quickWorkAiSummary = '';
+    this.quickWorkAiFilledFieldsCount = 0;
   }
 
   protected get quickWorkProcessLabel(): string {
@@ -512,6 +553,84 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
     this.quickWorkValues[field.name] = file;
     this.quickWorkFileState[field.name] = { uploading: false, error: '' };
     this.cdr.detectChanges();
+  }
+
+  protected toggleQuickWorkVoiceCapture(): void {
+    if (!this.isVoiceInputSupported) {
+      this.quickWorkVoiceError = 'Tu navegador no soporta reconocimiento de voz en esta pantalla.';
+      return;
+    }
+
+    if (this.isQuickWorkVoiceRecording) {
+      this.stopQuickWorkVoiceCapture();
+      return;
+    }
+
+    this.startQuickWorkVoiceCapture();
+  }
+
+  protected suggestQuickWorkWithAi(): void {
+    if (!this.quickWorkForm || !this.quickWorkTask || this.isQuickWorkAiFilling) {
+      return;
+    }
+
+    const transcript = this.quickWorkTranscript.trim();
+    if (!transcript) {
+      this.quickWorkError = 'Primero dicta o escribe la transcripción para que la IA sugiera valores.';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.isQuickWorkAiFilling = true;
+    this.quickWorkError = '';
+    this.quickWorkSuccess = '';
+    this.quickWorkAiSummary = '';
+    this.quickWorkAiFilledFieldsCount = 0;
+    this.cdr.detectChanges();
+
+    const request = {
+      transcript,
+      processName: this.quickWorkProcessLabel,
+      taskName: this.getTaskName(this.quickWorkTask),
+      areaName: this.getAreaLabel(this.quickWorkTask),
+      currentValues: this.buildQuickWorkAiCurrentValues(),
+      fields: (this.quickWorkForm.fields ?? []).map((field) => ({
+        name: field.name,
+        label: field.label || field.name,
+        type: field.type,
+        required: field.required,
+        placeholder: field.placeholder ?? null,
+        helpText: field.helpText ?? null,
+        options: this.getQuickWorkFieldOptions(field).map((option) => option.value),
+      })),
+    };
+
+    this.aiService
+      .sugerirFormulario(request)
+      .pipe(
+        finalize(() => {
+          this.isQuickWorkAiFilling = false;
+          this.cdr.detectChanges();
+        }),
+      )
+      .subscribe({
+        next: (response) => {
+          if (!response.success || !response.data) {
+            this.quickWorkError = response.message || 'No se pudo sugerir el llenado del formulario.';
+            return;
+          }
+
+          const appliedCount = this.applyQuickWorkAiSuggestions(response.data.suggestions ?? []);
+          this.quickWorkAiSummary = response.data.summary || 'La IA preparó sugerencias para este formulario.';
+          this.quickWorkAiFilledFieldsCount = appliedCount;
+          this.quickWorkSuccess = appliedCount
+            ? `La IA completó ${appliedCount} campo(s). Revisa el formulario antes de enviarlo.`
+            : 'La IA no encontró datos suficientes para completar campos automáticamente.';
+        },
+        error: (error: any) => {
+          this.quickWorkError = error?.error?.message || 'No se pudo sugerir el llenado del formulario.';
+        },
+      });
   }
 
   protected async completeQuickWork(): Promise<void> {
@@ -751,6 +870,10 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
         this.quickWorkForm = response.data ?? null;
         this.quickWorkValues = {};
         this.quickWorkFileState = {};
+        this.quickWorkTranscript = '';
+        this.quickWorkVoiceError = '';
+        this.quickWorkAiSummary = '';
+        this.quickWorkAiFilledFieldsCount = 0;
         if (!this.quickWorkForm) {
           this.quickWorkError = 'Esta tarea no tiene formulario configurado.';
         }
@@ -891,5 +1014,191 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
         void this.loadTasks();
       }
     });
+  }
+
+  private startQuickWorkVoiceCapture(): void {
+    if (!this.speechRecognitionConstructor) {
+      return;
+    }
+
+    this.stopQuickWorkVoiceCapture(true);
+    this.quickWorkVoiceError = '';
+
+    const recognition = new this.speechRecognitionConstructor();
+    recognition.lang = 'es-ES';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+      this.isQuickWorkVoiceRecording = true;
+      this.quickWorkVoiceError = '';
+      this.cdr.detectChanges();
+    };
+
+    recognition.onresult = (event: BrowserSpeechRecognitionEvent) => {
+      let transcript = '';
+      for (let index = 0; index < event.results.length; index += 1) {
+        transcript += event.results[index][0]?.transcript ?? '';
+      }
+
+      this.quickWorkTranscript = transcript.trim();
+      this.cdr.detectChanges();
+    };
+
+    recognition.onerror = (event: { error?: string }) => {
+      if (event.error === 'not-allowed') {
+        this.quickWorkVoiceError = 'No se concedió permiso al micrófono. Revisa los permisos del navegador.';
+      } else if (event.error === 'no-speech') {
+        this.quickWorkVoiceError = 'No se detectó voz. Puedes volver a intentarlo.';
+      } else {
+        this.quickWorkVoiceError = 'No se pudo transcribir el audio. Intenta nuevamente.';
+      }
+
+      this.isQuickWorkVoiceRecording = false;
+      this.cdr.detectChanges();
+    };
+
+    recognition.onend = () => {
+      this.isQuickWorkVoiceRecording = false;
+      this.cdr.detectChanges();
+    };
+
+    this.speechRecognition = recognition;
+    recognition.start();
+  }
+
+  private stopQuickWorkVoiceCapture(silent = false): void {
+    if (!this.speechRecognition) {
+      this.isQuickWorkVoiceRecording = false;
+      return;
+    }
+
+    const activeRecognition = this.speechRecognition;
+    this.speechRecognition = undefined;
+    activeRecognition.onstart = null;
+    activeRecognition.onresult = null;
+    activeRecognition.onerror = null;
+    activeRecognition.onend = null;
+
+    try {
+      activeRecognition.stop();
+    } catch (error) {
+      if (!silent) {
+        console.warn('No se pudo detener el reconocimiento de voz.', error);
+      }
+    }
+
+    this.isQuickWorkVoiceRecording = false;
+  }
+
+  private getSpeechRecognitionConstructor(): SpeechRecognitionConstructor | null {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    const speechWindow = window as Window & {
+      SpeechRecognition?: SpeechRecognitionConstructor;
+      webkitSpeechRecognition?: SpeechRecognitionConstructor;
+    };
+
+    return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null;
+  }
+
+  private buildQuickWorkAiCurrentValues(): Record<string, unknown> {
+    const normalized: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(this.quickWorkValues)) {
+      if (value instanceof File) {
+        continue;
+      }
+
+      normalized[key] = value;
+    }
+
+    return normalized;
+  }
+
+  private applyQuickWorkAiSuggestions(suggestions: FormFillSuggestion[]): number {
+    if (!this.quickWorkForm) {
+      return 0;
+    }
+
+    let appliedCount = 0;
+
+    for (const suggestion of suggestions) {
+      const field = (this.quickWorkForm.fields ?? []).find((item) => item.name === suggestion.fieldName);
+      if (!field) {
+        continue;
+      }
+
+      const normalizedValue = this.normalizeQuickWorkAiValue(field, suggestion.value);
+      if (normalizedValue === undefined) {
+        continue;
+      }
+
+      this.quickWorkValues[field.name] = normalizedValue;
+      appliedCount += 1;
+    }
+
+    return appliedCount;
+  }
+
+  private normalizeQuickWorkAiValue(field: FormFieldDefinition, value: unknown): unknown {
+    if (field.type === 'file') {
+      return undefined;
+    }
+
+    if (field.type === 'checkbox') {
+      if (typeof value === 'boolean') {
+        return value;
+      }
+
+      if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (['true', 'si', 'sí', 'yes', '1'].includes(normalized)) {
+          return true;
+        }
+        if (['false', 'no', '0'].includes(normalized)) {
+          return false;
+        }
+      }
+
+      return undefined;
+    }
+
+    if (field.type === 'checklist') {
+      if (!Array.isArray(value)) {
+        return undefined;
+      }
+
+      const options = new Set(this.getQuickWorkFieldOptions(field).map((option) => option.value));
+      return value
+        .filter((item): item is string => typeof item === 'string' && options.has(item))
+        .map((item) => item.trim());
+    }
+
+    if (field.type === 'select') {
+      if (typeof value !== 'string') {
+        return undefined;
+      }
+
+      const options = new Set(this.getQuickWorkFieldOptions(field).map((option) => option.value));
+      return options.has(value) ? value : undefined;
+    }
+
+    if (field.type === 'number') {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    }
+
+    if (field.type === 'date') {
+      return typeof value === 'string' ? value.trim() : undefined;
+    }
+
+    if (typeof value === 'string') {
+      return value.trim();
+    }
+
+    return undefined;
   }
 }

@@ -87,6 +87,69 @@
       {{ formMessage }}
     </div>
 
+    <section class="task-assistant-card" *ngIf="hasForm && !formLoading">
+      <div class="task-assistant-card__header">
+        <div>
+          <p class="task-assistant-card__eyebrow">Asistente IA</p>
+          <h3>Dicta la información y deja que la IA complete el formulario</h3>
+          <p>
+            El funcionario puede hablar, revisar la transcripción y luego pedir sugerencias antes de enviar la tarea.
+          </p>
+        </div>
+        <button
+          type="button"
+          class="task-assistant-card__mic"
+          [class.task-assistant-card__mic--recording]="isVoiceRecording"
+          (click)="toggleVoiceCapture()"
+          [disabled]="isAiFormFilling || !isVoiceInputSupported"
+        >
+          {{ isVoiceRecording ? 'Detener micrófono' : 'Usar micrófono' }}
+        </button>
+      </div>
+
+      <p class="task-assistant-card__hint" *ngIf="isVoiceInputSupported">
+        {{ isVoiceRecording ? 'Escuchando en tiempo real. Cuando termines, detén el micrófono y revisa el texto.' : 'Puedes editar la transcripción antes de pedir el autollenado con IA.' }}
+      </p>
+      <p class="task-assistant-card__hint task-assistant-card__hint--warning" *ngIf="!isVoiceInputSupported">
+        Tu navegador no soporta reconocimiento de voz en esta pantalla. Aun así puedes escribir la transcripción manualmente.
+      </p>
+      <p class="task-assistant-card__error" *ngIf="aiVoiceErrorMessage">{{ aiVoiceErrorMessage }}</p>
+
+      <textarea
+        class="task-assistant-card__transcript"
+        rows="5"
+        [ngModel]="aiTranscript"
+        (ngModelChange)="aiTranscript = $event"
+        [ngModelOptions]="{ standalone: true }"
+        placeholder="Ej. Mi nombre es Juan Perez, solicito viáticos para viaje a La Paz, salida el 2026-05-03..."
+      ></textarea>
+
+      <div class="task-assistant-card__actions">
+        <button
+          type="button"
+          class="toolbar-button"
+          (click)="aiTranscript = ''; aiFormSummary = ''; aiFilledFieldsCount = 0"
+          [disabled]="isAiFormFilling"
+        >
+          Limpiar
+        </button>
+        <button
+          type="button"
+          class="toolbar-button accent"
+          (click)="suggestFormWithAi()"
+          [disabled]="isAiFormFilling || !aiTranscript.trim()"
+        >
+          {{ isAiFormFilling ? 'Sugiriendo...' : 'Sugerir con IA' }}
+        </button>
+      </div>
+
+      <div class="task-assistant-card__summary" *ngIf="aiFormSummary">
+        <strong>Resultado IA</strong>
+        <p>{{ aiFormSummary }}</p>
+        <span *ngIf="aiFilledFieldsCount">Campos completados: {{ aiFilledFieldsCount }}</span>
+      </div>
+    </section>
+
     <form class="task-detail-form" *ngIf="hasForm && !formLoading">
       <div class="task-detail-form__field" *ngFor="let field of formDefinition?.fields || []">
         <label>

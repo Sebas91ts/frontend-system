@@ -159,7 +159,9 @@ export class LoginComponent implements OnInit {
     if (this.authService.getToken()) {
       this.authService.ensureSession().pipe(take(1)).subscribe((isAuthenticated) => {
         if (isAuthenticated) {
-          void this.router.navigate(this.authService.getLandingRoute());
+          queueMicrotask(() => {
+            void this.router.navigate(this.authService.getLandingRoute());
+          });
         }
       });
     }
@@ -171,23 +173,25 @@ export class LoginComponent implements OnInit {
 
     this.authService.login(this.loginRequest).subscribe({
       next: (response) => {
-        if (response.success) {
-          const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
-          if (this.authService.isAdmin() || this.authService.isClient()) {
-            void this.router.navigate(this.authService.getLandingRoute());
-          } else if (returnUrl !== '/') {
-            this.router.navigateByUrl(returnUrl);
-          } else {
-            this.router.navigate(['/user']);
-          }
+        if (!response.success) {
+          this.isLoading = false;
+          return;
+        }
+
+        const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
+        this.isLoading = false;
+
+        if (this.authService.isAdmin() || this.authService.isClient()) {
+          void this.router.navigate(this.authService.getLandingRoute());
+        } else if (returnUrl !== '/') {
+          void this.router.navigateByUrl(returnUrl);
+        } else {
+          void this.router.navigate(['/user']);
         }
       },
       error: (error) => {
         this.errorMessage =
           error.error?.message || 'No pudimos iniciar sesión. Revisa tus credenciales.';
-        this.isLoading = false;
-      },
-      complete: () => {
         this.isLoading = false;
       },
     });

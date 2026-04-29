@@ -241,6 +241,67 @@
 
       <div class="quick-work__form" *ngIf="quickWorkHasForm; else noFormMessage">
         <h3>{{ quickWorkForm?.title || t('tasks.formTitle') }}</h3>
+
+        <section class="quick-work-assistant">
+          <div class="quick-work-assistant__header">
+            <div>
+              <p class="quick-work-assistant__eyebrow">Asistente IA</p>
+              <strong>Dicta la información y deja que la IA prepare el formulario</strong>
+            </div>
+            <button
+              type="button"
+              class="quick-work-assistant__mic"
+              [class.quick-work-assistant__mic--recording]="isQuickWorkVoiceRecording"
+              (click)="toggleQuickWorkVoiceCapture()"
+              [disabled]="quickWorkSaving || isQuickWorkAiFilling || !isVoiceInputSupported"
+            >
+              {{ isQuickWorkVoiceRecording ? 'Detener micrófono' : 'Usar micrófono' }}
+            </button>
+          </div>
+
+          <p class="quick-work-assistant__hint" *ngIf="isVoiceInputSupported">
+            {{ isQuickWorkVoiceRecording ? 'Escuchando en tiempo real. Cuando termines, detén el micrófono y revisa la transcripción.' : 'Puedes editar la transcripción manualmente antes de pedir sugerencias con IA.' }}
+          </p>
+          <p class="quick-work-assistant__hint quick-work-assistant__hint--warning" *ngIf="!isVoiceInputSupported">
+            Tu navegador no soporta reconocimiento de voz en este modal. Aun así puedes escribir la transcripción manualmente.
+          </p>
+          <p class="quick-work-assistant__error" *ngIf="quickWorkVoiceError">{{ quickWorkVoiceError }}</p>
+
+          <textarea
+            class="quick-work-assistant__transcript"
+            rows="4"
+            [ngModel]="quickWorkTranscript"
+            (ngModelChange)="quickWorkTranscript = $event"
+            [ngModelOptions]="{ standalone: true }"
+            placeholder="Ej. Mi nombre es Juan Pérez, el monto solicitado es 1200 y el motivo es viaje de supervisión..."
+          ></textarea>
+
+          <div class="quick-work-assistant__actions">
+            <button
+              type="button"
+              class="toolbar-button"
+              (click)="quickWorkTranscript = ''; quickWorkAiSummary = ''; quickWorkAiFilledFieldsCount = 0"
+              [disabled]="isQuickWorkAiFilling"
+            >
+              Limpiar
+            </button>
+            <button
+              type="button"
+              class="toolbar-button accent"
+              (click)="suggestQuickWorkWithAi()"
+              [disabled]="isQuickWorkAiFilling || !quickWorkTranscript.trim()"
+            >
+              {{ isQuickWorkAiFilling ? 'Sugiriendo...' : 'Sugerir con IA' }}
+            </button>
+          </div>
+
+          <div class="quick-work-assistant__summary" *ngIf="quickWorkAiSummary">
+            <strong>Resultado IA</strong>
+            <p>{{ quickWorkAiSummary }}</p>
+            <span *ngIf="quickWorkAiFilledFieldsCount">Campos completados: {{ quickWorkAiFilledFieldsCount }}</span>
+          </div>
+        </section>
+
         <div class="quick-work__field" *ngFor="let field of quickWorkForm?.fields || []">
           <label>
             <span>

@@ -17,6 +17,5 @@ export class App implements OnInit {
 
   ngOnInit(): void {
     this.uiPreferences.theme();
-    this.authService.restoreSession().subscribe();
   }
 }

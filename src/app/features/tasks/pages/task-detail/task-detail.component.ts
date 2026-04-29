@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { finalize, firstValueFrom } from 'rxjs';
@@ -12,11 +12,36 @@ import {
 } from '../../../../core/models/form.models';
 import { HistoryDisplayField, TaskExecutionLog } from '../../../../core/models/task-history.models';
 import { TareaInstancia } from '../../../../core/models/task-instance.models';
+import { AiService, FormFillSuggestion } from '../../../../core/services/ai.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { FileUploadService } from '../../../../core/services/file-upload.service';
 import { FormService } from '../../../../core/services/form.service';
 import { TaskInstanceService } from '../../../../core/services/task-instance.service';
 import { TranslationKey, UiPreferencesService } from '../../../../core/services/ui-preferences.service';
+
+interface BrowserSpeechRecognitionEvent {
+  results: ArrayLike<{
+    isFinal: boolean;
+    length: number;
+    [index: number]: {
+      transcript: string;
+    };
+  }>;
+}
+
+interface BrowserSpeechRecognition {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: (() => void) | null;
+  onresult: ((event: BrowserSpeechRecognitionEvent) => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+
+type SpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
 
 @Component({
   selector: 'app-task-detail',
@@ -25,7 +50,7 @@ import { TranslationKey, UiPreferencesService } from '../../../../core/services/
   templateUrl: './task-detail.component.html',
   styleUrl: './task-detail.component.css',
 })
-export class TaskDetailComponent implements OnInit {
+export class TaskDetailComponent implements OnInit, OnDestroy {
   private static readonly MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
   private readonly route = inject(ActivatedRoute);
@@ -33,6 +58,7 @@ export class TaskDetailComponent implements OnInit {
   private readonly taskService = inject(TaskInstanceService);
   private readonly formService = inject(FormService);
   private readonly fileUploadService = inject(FileUploadService);
+  private readonly aiService = inject(AiService);
   private readonly authService = inject(AuthService);
   private readonly preferences = inject(UiPreferencesService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -51,7 +77,16 @@ export class TaskDetailComponent implements OnInit {
   protected historyEntries: TaskExecutionLog[] = [];
   protected historyLoading = false;
   protected historyMessage = '';
+  protected readonly isVoiceInputSupported = this.getSpeechRecognitionConstructor() !== null;
+  protected isVoiceRecording = false;
+  protected isAiFormFilling = false;
+  protected aiTranscript = '';
+  protected aiVoiceErrorMessage = '';
+  protected aiFormSummary = '';
+  protected aiFilledFieldsCount = 0;
   private loadingTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private speechRecognition?: BrowserSpeechRecognition;
+  private speechRecognitionConstructor = this.getSpeechRecognitionConstructor();
 
   t(key: TranslationKey): string {
     return this.preferences.translate(key);
@@ -73,6 +108,11 @@ export class TaskDetailComponent implements OnInit {
     }
 
     this.loadTask(id);
+  }
+
+  ngOnDestroy(): void {
+    this.stopVoiceCapture(true);
+    this.clearLoadingTimeout();
   }
 
   protected goBack(): void {
@@ -371,6 +411,84 @@ export class TaskDetailComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
+  protected toggleVoiceCapture(): void {
+    if (!this.isVoiceInputSupported) {
+      this.aiVoiceErrorMessage = 'Tu navegador no soporta reconocimiento de voz en esta pantalla.';
+      return;
+    }
+
+    if (this.isVoiceRecording) {
+      this.stopVoiceCapture();
+      return;
+    }
+
+    this.startVoiceCapture();
+  }
+
+  protected suggestFormWithAi(): void {
+    if (!this.formDefinition || !this.task || this.isAiFormFilling) {
+      return;
+    }
+
+    const transcript = this.aiTranscript.trim();
+    if (!transcript) {
+      this.errorMessage = 'Primero dicta o escribe la transcripción que deseas usar para completar el formulario.';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.isAiFormFilling = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+    this.aiFormSummary = '';
+    this.aiFilledFieldsCount = 0;
+    this.cdr.detectChanges();
+
+    const request = {
+      transcript,
+      processName: this.getProcessLabel(),
+      taskName: this.task.name || this.task.nombreTarea || undefined,
+      areaName: this.getAreaLabel(),
+      currentValues: this.buildAiCurrentValues(),
+      fields: (this.formDefinition.fields ?? []).map((field) => ({
+        name: field.name,
+        label: field.label || field.name,
+        type: field.type,
+        required: field.required,
+        placeholder: field.placeholder ?? null,
+        helpText: field.helpText ?? null,
+        options: this.getFieldOptions(field).map((option) => option.value),
+      })),
+    };
+
+    this.aiService
+      .sugerirFormulario(request)
+      .pipe(
+        finalize(() => {
+          this.isAiFormFilling = false;
+          this.cdr.detectChanges();
+        }),
+      )
+      .subscribe({
+        next: (response) => {
+          if (!response.success || !response.data) {
+            this.errorMessage = response.message || 'No se pudo sugerir el llenado del formulario.';
+            return;
+          }
+
+          const appliedCount = this.applyAiSuggestions(response.data.suggestions ?? []);
+          this.aiFormSummary = response.data.summary || 'La IA preparó sugerencias para este formulario.';
+          this.aiFilledFieldsCount = appliedCount;
+          this.successMessage = appliedCount
+            ? `La IA completó ${appliedCount} campo(s). Revisa el formulario antes de enviarlo.`
+            : 'La IA no encontró datos suficientes para completar campos automáticamente.';
+        },
+        error: (error: any) => {
+          this.errorMessage = error?.error?.message || 'No se pudo sugerir el llenado del formulario.';
+        },
+      });
+  }
+
   private loadTask(id: string): void {
     this.isLoading = true;
     this.errorMessage = '';
@@ -477,6 +595,8 @@ export class TaskDetailComponent implements OnInit {
           this.formDefinition = response.data ?? null;
           this.formValues = {};
           this.fileUploadState = {};
+          this.aiFormSummary = '';
+          this.aiFilledFieldsCount = 0;
           if (!this.formDefinition) {
             this.formMessage = this.t('taskDetail.formMissing');
           }
@@ -734,5 +854,191 @@ export class TaskDetailComponent implements OnInit {
       clearTimeout(this.loadingTimeoutId);
       this.loadingTimeoutId = null;
     }
+  }
+
+  private startVoiceCapture(): void {
+    if (!this.speechRecognitionConstructor) {
+      return;
+    }
+
+    this.stopVoiceCapture(true);
+    this.aiVoiceErrorMessage = '';
+
+    const recognition = new this.speechRecognitionConstructor();
+    recognition.lang = 'es-ES';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+      this.isVoiceRecording = true;
+      this.aiVoiceErrorMessage = '';
+      this.cdr.detectChanges();
+    };
+
+    recognition.onresult = (event: BrowserSpeechRecognitionEvent) => {
+      let transcript = '';
+      for (let index = 0; index < event.results.length; index += 1) {
+        transcript += event.results[index][0]?.transcript ?? '';
+      }
+
+      this.aiTranscript = transcript.trim();
+      this.cdr.detectChanges();
+    };
+
+    recognition.onerror = (event: { error?: string }) => {
+      if (event.error === 'not-allowed') {
+        this.aiVoiceErrorMessage = 'No se concedió permiso al micrófono. Revisa los permisos del navegador.';
+      } else if (event.error === 'no-speech') {
+        this.aiVoiceErrorMessage = 'No se detectó voz. Puedes volver a intentarlo.';
+      } else {
+        this.aiVoiceErrorMessage = 'No se pudo transcribir el audio. Intenta nuevamente.';
+      }
+
+      this.isVoiceRecording = false;
+      this.cdr.detectChanges();
+    };
+
+    recognition.onend = () => {
+      this.isVoiceRecording = false;
+      this.cdr.detectChanges();
+    };
+
+    this.speechRecognition = recognition;
+    recognition.start();
+  }
+
+  private stopVoiceCapture(silent = false): void {
+    if (!this.speechRecognition) {
+      this.isVoiceRecording = false;
+      return;
+    }
+
+    const activeRecognition = this.speechRecognition;
+    this.speechRecognition = undefined;
+    activeRecognition.onstart = null;
+    activeRecognition.onresult = null;
+    activeRecognition.onerror = null;
+    activeRecognition.onend = null;
+
+    try {
+      activeRecognition.stop();
+    } catch (error) {
+      if (!silent) {
+        console.warn('No se pudo detener el reconocimiento de voz.', error);
+      }
+    }
+
+    this.isVoiceRecording = false;
+  }
+
+  private getSpeechRecognitionConstructor(): SpeechRecognitionConstructor | null {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    const speechWindow = window as Window & {
+      SpeechRecognition?: SpeechRecognitionConstructor;
+      webkitSpeechRecognition?: SpeechRecognitionConstructor;
+    };
+
+    return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null;
+  }
+
+  private buildAiCurrentValues(): Record<string, unknown> {
+    const normalized: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(this.formValues)) {
+      if (value instanceof File) {
+        continue;
+      }
+
+      normalized[key] = value;
+    }
+
+    return normalized;
+  }
+
+  private applyAiSuggestions(suggestions: FormFillSuggestion[]): number {
+    if (!this.formDefinition) {
+      return 0;
+    }
+
+    let appliedCount = 0;
+
+    for (const suggestion of suggestions) {
+      const field = (this.formDefinition.fields ?? []).find((item) => item.name === suggestion.fieldName);
+      if (!field) {
+        continue;
+      }
+
+      const normalizedValue = this.normalizeAiSuggestedValue(field, suggestion.value);
+      if (normalizedValue === undefined) {
+        continue;
+      }
+
+      this.formValues[field.name] = normalizedValue;
+      appliedCount += 1;
+    }
+
+    return appliedCount;
+  }
+
+  private normalizeAiSuggestedValue(field: FormFieldDefinition, value: unknown): unknown {
+    if (field.type === 'file') {
+      return undefined;
+    }
+
+    if (field.type === 'checkbox') {
+      if (typeof value === 'boolean') {
+        return value;
+      }
+
+      if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (['true', 'si', 'sí', 'yes', '1'].includes(normalized)) {
+          return true;
+        }
+        if (['false', 'no', '0'].includes(normalized)) {
+          return false;
+        }
+      }
+
+      return undefined;
+    }
+
+    if (field.type === 'checklist') {
+      if (!Array.isArray(value)) {
+        return undefined;
+      }
+
+      const options = new Set(this.getFieldOptions(field).map((option) => option.value));
+      return value
+        .filter((item): item is string => typeof item === 'string' && options.has(item))
+        .map((item) => item.trim());
+    }
+
+    if (field.type === 'select') {
+      if (typeof value !== 'string') {
+        return undefined;
+      }
+
+      const options = new Set(this.getFieldOptions(field).map((option) => option.value));
+      return options.has(value) ? value : undefined;
+    }
+
+    if (field.type === 'number') {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    }
+
+    if (field.type === 'date') {
+      return typeof value === 'string' ? value.trim() : undefined;
+    }
+
+    if (typeof value === 'string') {
+      return value.trim();
+    }
+
+    return undefined;
   }
 }

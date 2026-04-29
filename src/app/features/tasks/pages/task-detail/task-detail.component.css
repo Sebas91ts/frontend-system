@@ -107,6 +107,123 @@
   gap: 1rem;
 }
 
+.task-assistant-card {
+  display: grid;
+  gap: 0.95rem;
+  padding: 1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(37, 99, 235, 0.14);
+  background:
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 32%),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(241, 245, 249, 0.96));
+}
+
+.task-assistant-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.task-assistant-card__eyebrow {
+  margin: 0 0 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: #0369a1;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.task-assistant-card__header h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.05rem;
+}
+
+.task-assistant-card__header p {
+  margin: 0.4rem 0 0;
+  color: #475569;
+  line-height: 1.55;
+}
+
+.task-assistant-card__mic {
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 0.85rem 1rem;
+  min-width: 10rem;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.task-assistant-card__mic--recording {
+  background: linear-gradient(135deg, #ef4444, #f97316);
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+}
+
+.task-assistant-card__mic:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.task-assistant-card__hint,
+.task-assistant-card__error {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.task-assistant-card__hint {
+  color: #475569;
+}
+
+.task-assistant-card__hint--warning {
+  color: #92400e;
+}
+
+.task-assistant-card__error {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.task-assistant-card__transcript {
+  width: 100%;
+  min-height: 7rem;
+  border-radius: 14px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 0.9rem 1rem;
+  resize: vertical;
+}
+
+.task-assistant-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.task-assistant-card__summary {
+  border-radius: 14px;
+  border-left: 4px solid #22c55e;
+  background: rgba(34, 197, 94, 0.08);
+  color: #14532d;
+  padding: 0.9rem 1rem;
+}
+
+.task-assistant-card__summary strong,
+.task-assistant-card__summary p,
+.task-assistant-card__summary span {
+  display: block;
+}
+
+.task-assistant-card__summary p {
+  margin: 0.35rem 0;
+  line-height: 1.55;
+}
+
 .task-detail-form__field label {
   display: grid;
   gap: 0.45rem;
@@ -351,6 +468,11 @@
 
 @media (max-width: 768px) {
   .task-detail-hero {
+    flex-direction: column;
+  }
+
+  .task-assistant-card__header,
+  .task-assistant-card__actions {
     flex-direction: column;
   }
 
