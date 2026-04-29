@@ -455,8 +455,8 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
     this.refreshGeneratedExpressionPreview();
   }
 
-  protected onSequenceFlowValueChange(value: string): void {
-    this.selectedSequenceFlowValue = value;
+  protected onSequenceFlowValueChange(value: unknown): void {
+    this.selectedSequenceFlowValue = this.normalizeSequenceFlowValue(value);
     this.selectedSequenceFlowValidationMessage = '';
     this.refreshGeneratedExpressionPreview();
   }
@@ -1742,7 +1742,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
 
     this.selectedSequenceFlowFieldName = parsed.fieldName;
     this.selectedSequenceFlowOperator = parsed.operator;
-    this.selectedSequenceFlowValue = parsed.value;
+    this.selectedSequenceFlowValue = this.normalizeSequenceFlowValue(parsed.value);
     this.refreshGeneratedExpressionPreview();
   }
 
@@ -1833,10 +1833,26 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
     return trimmed;
   }
 
+  private normalizeSequenceFlowValue(value: unknown): string {
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+    if (value == null) {
+      return '';
+    }
+    return String(value);
+  }
+
   private validateSequenceFlowBuilder(): string {
     if (this.selectedSequenceFlowDefaultDraft) {
       return '';
     }
+
+    const normalizedSequenceFlowValue = this.normalizeSequenceFlowValue(this.selectedSequenceFlowValue);
+    this.selectedSequenceFlowValue = normalizedSequenceFlowValue;
 
     const selectedField = this.getSelectedConditionField();
     if (!selectedField) {
@@ -1854,18 +1870,18 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
       return 'El operador seleccionado no es compatible con el tipo de campo.';
     }
 
-    if (this.operatorRequiresValue(this.selectedSequenceFlowOperator) && !this.selectedSequenceFlowValue.trim()) {
+    if (this.operatorRequiresValue(this.selectedSequenceFlowOperator) && !normalizedSequenceFlowValue.trim()) {
       return 'Debes ingresar un valor para completar la condicion.';
     }
 
     if (selectedField.type === 'number' && this.operatorRequiresValue(this.selectedSequenceFlowOperator)) {
-      if (!Number.isFinite(Number(this.selectedSequenceFlowValue))) {
+      if (!Number.isFinite(Number(normalizedSequenceFlowValue))) {
         return 'El valor debe ser numerico para este campo.';
       }
     }
 
     if (selectedField.type === 'select' && this.operatorRequiresValue(this.selectedSequenceFlowOperator)) {
-      if (!this.normalizeSelectOptions(selectedField).some((option) => option.value === this.selectedSequenceFlowValue)) {
+      if (!this.normalizeSelectOptions(selectedField).some((option) => option.value === normalizedSequenceFlowValue)) {
         return 'Debes elegir una opcion valida para este campo.';
       }
     }
@@ -1879,13 +1895,16 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
       return;
     }
 
+    const normalizedSequenceFlowValue = this.normalizeSequenceFlowValue(this.selectedSequenceFlowValue);
+    this.selectedSequenceFlowValue = normalizedSequenceFlowValue;
+
     const selectedField = this.getSelectedConditionField();
     if (!selectedField || !this.selectedSequenceFlowOperator) {
       this.selectedSequenceFlowGeneratedExpression = '';
       return;
     }
 
-    if (this.operatorRequiresValue(this.selectedSequenceFlowOperator) && !this.selectedSequenceFlowValue.trim()) {
+    if (this.operatorRequiresValue(this.selectedSequenceFlowOperator) && !normalizedSequenceFlowValue.trim()) {
       this.selectedSequenceFlowGeneratedExpression = '';
       return;
     }
@@ -1893,7 +1912,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
     this.selectedSequenceFlowGeneratedExpression = this.buildBpmnConditionExpression(
       selectedField,
       this.selectedSequenceFlowOperator,
-      this.selectedSequenceFlowValue,
+      normalizedSequenceFlowValue,
     );
   }
 
