@@ -48,17 +48,56 @@
 
   <ng-container *ngIf="summary && !isLoading">
     <section class="summary-grid">
-      <article class="summary-card" *ngFor="let card of summaryCards">
+      <article class="summary-card" *ngFor="let card of summaryCards" [class]="'summary-card summary-card--' + card.tone">
         <p>{{ card.label }}</p>
         <strong>{{ card.value }}</strong>
+        <span class="summary-card__caption">
+          {{
+            card.tone === 'green'
+              ? 'Base activa para ejecucion'
+              : card.tone === 'blue'
+                ? 'Monitoreo en tiempo real'
+                : card.tone === 'amber'
+                  ? 'Carga actual en bandejas'
+                  : 'Capacidad ya ejecutada'
+          }}
+        </span>
+      </article>
+    </section>
+
+    <section class="executive-grid">
+      <article class="executive-card" *ngFor="let card of executiveCards" [class]="'executive-card executive-card--' + card.tone">
+        <p class="executive-card__label">{{ card.label }}</p>
+        <strong>{{ card.value }}</strong>
+        <span>{{ card.caption }}</span>
+      </article>
+    </section>
+
+    <section class="kpi-ribbon">
+      <article class="kpi-ribbon__card">
+        <p class="feature-card__tag">KPI de resolucion</p>
+        <strong>{{ resolutionRate }}%</strong>
+        <span>Tareas completadas sobre carga observable del sistema.</span>
+      </article>
+
+      <article class="kpi-ribbon__card">
+        <p class="feature-card__tag">Presion operativa</p>
+        <strong>{{ backlogPerInstance }}</strong>
+        <span>Tareas pendientes por instancia activa para medir saturacion.</span>
       </article>
     </section>
 
     <section class="tracking-spotlight">
       <div class="tracking-spotlight__intro">
-        <p class="feature-card__tag">{{ t('admin.trackingTitle') }}</p>
-        <h2>{{ t('admin.trackingTitle') }}</h2>
-        <p>{{ t('admin.trackingSubtitle') }}</p>
+        <p class="feature-card__tag">Lectura ejecutiva</p>
+        <h2>Panorama operativo del sistema</h2>
+        <p>{{ operationalHealthNarrative }}</p>
+        <div class="executive-meter">
+          <div class="executive-meter__track">
+            <span class="executive-meter__fill" [style.width.%]="operationalHealthScore"></span>
+          </div>
+          <strong>{{ operationalHealthScore }}/100</strong>
+        </div>
         <button type="button" class="action-button action-button--inline tracking" (click)="goToInstances()">
           {{ t('admin.openInstances') }}
         </button>
@@ -92,17 +131,49 @@
     </section>
 
     <section class="panel-grid">
-      <article class="panel-card">
+      <article class="panel-card panel-card--chart">
         <div class="panel-card__header">
           <div>
-            <p class="feature-card__tag">{{ t('admin.completedByArea') }}</p>
-            <h2>{{ t('admin.completedByArea') }}</h2>
+            <p class="feature-card__tag">Backlog operativo</p>
+            <h2>Tareas pendientes por area</h2>
           </div>
         </div>
 
-        <div class="metric-list" *ngIf="tareasPorArea.length; else emptyAreas">
-          <div class="metric-row" *ngFor="let item of tareasPorArea; trackBy: trackByLabel">
-            <span>{{ item.label }}</span>
+        <div class="bar-list" *ngIf="pendientesPorAreaChart.length; else emptyPendingAreas">
+          <div class="bar-row" *ngFor="let item of pendientesPorAreaChart; trackBy: trackByLabel">
+            <div class="bar-row__meta">
+              <span>{{ item.label }}</span>
+              <small>{{ shareOfTotal(item, pendientesPorArea) }}</small>
+            </div>
+            <div class="bar-row__track">
+              <span class="bar-row__fill bar-row__fill--amber" [style.width.%]="barWidth(item, pendientesPorArea)"></span>
+            </div>
+            <strong>{{ item.total }}</strong>
+          </div>
+        </div>
+
+        <ng-template #emptyPendingAreas>
+          <p class="empty-state">No hay tareas pendientes por area para mostrar.</p>
+        </ng-template>
+      </article>
+
+      <article class="panel-card panel-card--chart">
+        <div class="panel-card__header">
+          <div>
+            <p class="feature-card__tag">Rendimiento por area</p>
+            <h2>Tareas completadas por area</h2>
+          </div>
+        </div>
+
+        <div class="bar-list" *ngIf="tareasPorAreaChart.length; else emptyAreas">
+          <div class="bar-row" *ngFor="let item of tareasPorAreaChart; trackBy: trackByLabel">
+            <div class="bar-row__meta">
+              <span>{{ item.label }}</span>
+              <small>{{ shareOfTotal(item, tareasPorArea) }}</small>
+            </div>
+            <div class="bar-row__track">
+              <span class="bar-row__fill bar-row__fill--green" [style.width.%]="barWidth(item, tareasPorArea)"></span>
+            </div>
             <strong>{{ item.total }}</strong>
           </div>
         </div>
@@ -112,17 +183,23 @@
         </ng-template>
       </article>
 
-      <article class="panel-card">
+      <article class="panel-card panel-card--chart">
         <div class="panel-card__header">
           <div>
-            <p class="feature-card__tag">{{ t('admin.completedByUser') }}</p>
-            <h2>{{ t('admin.completedByUser') }}</h2>
+            <p class="feature-card__tag">Productividad individual</p>
+            <h2>Tareas completadas por usuario</h2>
           </div>
         </div>
 
-        <div class="metric-list" *ngIf="tareasPorUsuario.length; else emptyUsers">
-          <div class="metric-row" *ngFor="let item of tareasPorUsuario; trackBy: trackByLabel">
-            <span>{{ item.label }}</span>
+        <div class="bar-list" *ngIf="tareasPorUsuarioChart.length; else emptyUsers">
+          <div class="bar-row" *ngFor="let item of tareasPorUsuarioChart; trackBy: trackByLabel">
+            <div class="bar-row__meta">
+              <span>{{ item.label }}</span>
+              <small>{{ shareOfTotal(item, tareasPorUsuario) }}</small>
+            </div>
+            <div class="bar-row__track">
+              <span class="bar-row__fill bar-row__fill--blue" [style.width.%]="barWidth(item, tareasPorUsuario)"></span>
+            </div>
             <strong>{{ item.total }}</strong>
           </div>
         </div>
@@ -136,8 +213,32 @@
     <section class="panel-card panel-card--full">
       <div class="panel-card__header">
         <div>
-          <p class="feature-card__tag">{{ t('admin.recentTitle') }}</p>
-          <h2>{{ t('admin.recentTitle') }}</h2>
+          <p class="feature-card__tag">Cuello de botella</p>
+          <h2>Alertas operativas prioritarias</h2>
+        </div>
+      </div>
+
+      <div class="bottleneck-grid" *ngIf="bottleneckCards.length">
+        <article class="bottleneck-card" *ngFor="let item of bottleneckCards">
+          <p class="bottleneck-card__label">{{ item.label }}</p>
+          <strong>{{ item.value }}</strong>
+          <span>{{ item.hint }}</span>
+        </article>
+      </div>
+
+      <div class="methodology-note">
+        <p class="feature-card__tag">Como se calcula</p>
+        <div class="methodology-note__list">
+          <p *ngFor="let item of bottleneckMethodology">{{ item }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel-card panel-card--full">
+      <div class="panel-card__header">
+        <div>
+          <p class="feature-card__tag">Trazabilidad reciente</p>
+          <h2>Ultimas tareas completadas</h2>
         </div>
       </div>
 

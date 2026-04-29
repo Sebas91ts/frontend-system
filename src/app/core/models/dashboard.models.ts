@@ -20,7 +20,14 @@ export interface DashboardSummary {
   totalInstanciasActivas: number;
   totalTareasPendientes: number;
   totalTareasCompletadas: number;
+  tareasPendientesPorArea: DashboardMetricItem[];
   tareasCompletadasPorArea: DashboardMetricItem[];
   tareasCompletadasPorUsuario: DashboardMetricItem[];
+  actividadConMasPendientes: string;
+  actividadConMasPendientesTotal: number;
+  tareaConMayorTiempoPromedioEspera: string;
+  tareaConMayorTiempoPromedioEsperaMinutos: number;
+  areaConMasAcumulacion: string;
+  areaConMasAcumulacionTotal: number;
   ultimosLogsTareas: DashboardRecentTask[];
 }

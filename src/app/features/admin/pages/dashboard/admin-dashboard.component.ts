@@ -59,12 +59,85 @@ export class AdminDashboardComponent implements OnInit {
     ];
   }
 
+  protected get executiveCards(): Array<{ label: string; value: string; tone: string; caption: string }> {
+    if (!this.summary) {
+      return [];
+    }
+
+    return [
+      {
+        label: 'Indice de salud operativa',
+        value: `${this.operationalHealthScore}/100`,
+        tone: this.operationalHealthTone,
+        caption: this.operationalHealthNarrative,
+      },
+      {
+        label: 'Nodo con mayor congestion',
+        value: this.summary.actividadConMasPendientes || 'Sin datos',
+        tone: 'amber',
+        caption: `${this.summary.actividadConMasPendientesTotal ?? 0} tareas esperando atencion`,
+      },
+      {
+        label: 'Mayor tiempo de espera',
+        value: this.formatDurationCompact(this.summary.tareaConMayorTiempoPromedioEsperaMinutos ?? 0),
+        tone: 'rose',
+        caption: this.summary.tareaConMayorTiempoPromedioEspera || 'Sin historial suficiente',
+      },
+      {
+        label: 'Area con mas acumulacion',
+        value: this.summary.areaConMasAcumulacion || 'Sin datos',
+        tone: 'blue',
+        caption: `${this.summary.areaConMasAcumulacionTotal ?? 0} tareas en cola`,
+      },
+    ];
+  }
+
   protected get tareasPorArea(): DashboardMetricItem[] {
     return this.summary?.tareasCompletadasPorArea ?? [];
   }
 
+  protected get pendientesPorArea(): DashboardMetricItem[] {
+    return this.summary?.tareasPendientesPorArea ?? [];
+  }
+
   protected get tareasPorUsuario(): DashboardMetricItem[] {
     return this.summary?.tareasCompletadasPorUsuario ?? [];
+  }
+
+  protected get pendientesPorAreaChart(): DashboardMetricItem[] {
+    return this.pendientesPorArea.slice(0, 6);
+  }
+
+  protected get tareasPorAreaChart(): DashboardMetricItem[] {
+    return this.tareasPorArea.slice(0, 6);
+  }
+
+  protected get tareasPorUsuarioChart(): DashboardMetricItem[] {
+    return this.tareasPorUsuario.slice(0, 6);
+  }
+
+  protected get bottleneckCards(): Array<{ label: string; value: string; hint: string }> {
+    if (!this.summary) {
+      return [];
+    }
+
+    return [
+      {
+        label: 'Actividad con mas pendientes',
+        value: this.summary.actividadConMasPendientes || 'Sin datos',
+        hint: `${this.summary.actividadConMasPendientesTotal ?? 0} tareas pendientes`,
+      },
+      {
+        label: 'Mayor espera promedio',
+        value: this.summary.tareaConMayorTiempoPromedioEspera || 'Sin datos',
+        hint: this.formatDuration(this.summary.tareaConMayorTiempoPromedioEsperaMinutos ?? 0),
+      },
+      {
+        label: 'Area con mas acumulacion',
+        value: this.summary.areaConMasAcumulacion || 'Sin datos',
+        hint: `${this.summary.areaConMasAcumulacionTotal ?? 0} tareas en cola`,
+      },
+    ];
   }
 
   protected get ultimasTareas(): DashboardRecentTask[] {
@@ -90,12 +163,133 @@ export class AdminDashboardComponent implements OnInit {
     return this.trackingDestacados.length;
   }
 
+  protected get resolutionRate(): number {
+    if (!this.summary) {
+      return 0;
+    }
+
+    const completed = this.summary.totalTareasCompletadas ?? 0;
+    const pending = this.summary.totalTareasPendientes ?? 0;
+    const total = completed + pending;
+    if (total <= 0) {
+      return 0;
+    }
+
+    return Math.round((completed / total) * 100);
+  }
+
+  protected get backlogPerInstance(): string {
+    if (!this.summary) {
+      return '0.0';
+    }
+
+    const active = Math.max(this.summary.totalInstanciasActivas ?? 0, 1);
+    const pending = this.summary.totalTareasPendientes ?? 0;
+    return (pending / active).toFixed(1);
+  }
+
+  protected get operationalHealthScore(): number {
+    if (!this.summary) {
+      return 0;
+    }
+
+    const completed = this.summary.totalTareasCompletadas ?? 0;
+    const pending = this.summary.totalTareasPendientes ?? 0;
+    const waitMinutes = this.summary.tareaConMayorTiempoPromedioEsperaMinutos ?? 0;
+    const backlogPenalty = pending * 4;
+    const waitPenalty = Math.min(waitMinutes / 12, 25);
+    const throughputBonus = Math.min(completed * 2, 35);
+    const rawScore = 55 + throughputBonus - backlogPenalty - waitPenalty;
+    return Math.max(0, Math.min(100, Math.round(rawScore)));
+  }
+
+  protected get operationalHealthTone(): string {
+    const score = this.operationalHealthScore;
+    if (score >= 75) {
+      return 'green';
+    }
+    if (score >= 50) {
+      return 'amber';
+    }
+    return 'rose';
+  }
+
+  protected get operationalHealthNarrative(): string {
+    const score = this.operationalHealthScore;
+    if (score >= 75) {
+      return 'Carga estable y tiempos de respuesta bajo control.';
+    }
+    if (score >= 50) {
+      return 'Hay acumulacion operativa, conviene reasignar o acelerar tareas clave.';
+    }
+    return 'Riesgo alto de congestion. Prioriza tareas pendientes y revisa la actividad critica.';
+  }
+
+  protected get bottleneckMethodology(): string[] {
+    return [
+      'Nodo con mayor congestion: actividad con mas tareas pendientes activas.',
+      'Mayor tiempo de espera: promedio entre createdAt y completedAt de tareas historicas.',
+      'Area con mas acumulacion: area con mayor volumen de tareas en estado pendiente.',
+    ];
+  }
+
   protected formatDate(value?: string | null): string {
     if (!value) {
       return this.t('admin.noDate');
     }
 
     return new Date(value).toLocaleString();
+  }
+
+  protected formatDuration(totalMinutes: number): string {
+    if (!totalMinutes || totalMinutes <= 0) {
+      return 'Sin historial suficiente';
+    }
+
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    if (hours <= 0) {
+      return `${minutes} min promedio`;
+    }
+
+    if (minutes === 0) {
+      return `${hours} h promedio`;
+    }
+
+    return `${hours} h ${minutes} min promedio`;
+  }
+
+  protected formatDurationCompact(totalMinutes: number): string {
+    if (!totalMinutes || totalMinutes <= 0) {
+      return '0 min';
+    }
+
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours <= 0) {
+      return `${minutes} min`;
+    }
+    if (minutes === 0) {
+      return `${hours} h`;
+    }
+    return `${hours} h ${minutes} min`;
+  }
+
+  protected barWidth(item: DashboardMetricItem, collection: DashboardMetricItem[]): number {
+    const max = collection.reduce((acc, current) => Math.max(acc, current.total), 0);
+    if (max <= 0) {
+      return 0;
+    }
+    return Math.max(10, Math.round((item.total / max) * 100));
+  }
+
+  protected shareOfTotal(item: DashboardMetricItem, collection: DashboardMetricItem[]): string {
+    const total = collection.reduce((acc, current) => acc + current.total, 0);
+    if (total <= 0) {
+      return '0%';
+    }
+    return `${Math.round((item.total / total) * 100)}%`;
   }
 
   protected getProcessLabel(task: DashboardRecentTask): string {
