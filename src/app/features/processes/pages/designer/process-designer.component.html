@@ -1,5 +1,5 @@
 ﻿<section class="designer-shell">
-  <header class="header">Process Designer</header>
+  <header class="header">Diseñador UML 2.5</header>
 
   <div class="workspace">
     <aside class="sidebar">
@@ -25,7 +25,7 @@
       <button
         type="button"
         class="toolbar-button"
-        title="Importar BPMN"
+        title="Importar diagrama UML"
         (click)="toggleImportPanel()"
         [disabled]="isBusy || isLoadingProcess || isReadonlyProcess || !currentProcessId"
       >
@@ -35,17 +35,17 @@
       <button
         type="button"
         class="toolbar-button accent"
-        title="Editar o crear proceso con IA sobre el lienzo actual"
+        title="Editar o crear diagrama UML con IA sobre el lienzo actual"
         (click)="openAiEditGenerator()"
         [disabled]="isBusy || isSaving || isLoadingProcess || isAiAnalyzing || isReadonlyProcess || !currentProcessId"
       >
-        IA BPMN
+        IA UML
       </button>
 
       <button
         type="button"
         class="toolbar-button ai-analysis-button"
-        title="Analizar optimizacion, riesgos y cuellos de botella del BPMN actual"
+        title="Analizar optimizacion, riesgos y cuellos de botella del diagrama actual"
         (click)="analyzeProcessWithAi()"
         [disabled]="isBusy || isSaving || isLoadingProcess || isAiAnalyzing || !currentProcessId"
       >
@@ -55,7 +55,7 @@
       <button
         type="button"
         class="toolbar-button"
-        title="Exportar BPMN"
+        title="Exportar diagrama UML"
         (click)="onExportXml()"
         [disabled]="isBusy || isLoadingProcess || !currentProcessId"
       >
@@ -90,8 +90,8 @@
 
       <aside class="overlay-panel" *ngIf="isImportPanelOpen">
         <div class="panel-header">
-          <h3>Importar XML BPMN</h3>
-          <p>Pega el XML del proceso y cargalo en el modelador.</p>
+          <h3>Importar XML del diagrama</h3>
+          <p>Pega el XML interno del proceso y cargalo en el modelador UML.</p>
         </div>
 
         <textarea
@@ -99,7 +99,7 @@
           class="xml-input"
           rows="16"
           spellcheck="false"
-          placeholder="Pega aqui el XML BPMN"
+          placeholder="Pega aqui el XML del diagrama"
         ></textarea>
 
         <div class="panel-actions">
@@ -111,8 +111,8 @@
 
       <section class="overlay-panel export-overlay" *ngIf="isExportPanelOpen">
         <div class="panel-header">
-          <h3>XML exportado</h3>
-          <p>Este contenido ya puede enviarse al backend para persistirse.</p>
+          <h3>XML exportado del diagrama</h3>
+          <p>Este contenido interno ya puede enviarse al backend para persistirse.</p>
         </div>
 
         <textarea
@@ -126,12 +126,12 @@
 
       <aside class="overlay-panel ai-overlay" *ngIf="isAiEditPanelOpen">
         <div class="panel-header">
-          <h3>IA BPMN sobre el lienzo actual</h3>
+          <h3>IA UML 2.5 sobre el lienzo actual</h3>
           <p>
-            Puedes pedir desde cero o sobre el diagrama actual. Ejemplo: "creame un proceso de compra con ventas,
-            gerencia y facturación" o "agrega una tarea de aprobación en gerencia".
+            Puedes pedir desde cero o sobre el diagrama actual. Ejemplo: "creame una actividad de compra con particiones de ventas,
+            gerencia y facturación" o "agrega una accion de aprobacion en gerencia".
           </p>
-          <p class="warning-note">La IA siempre trabajará sobre el XML actual del editor y luego podrás cargar la versión resultante.</p>
+          <p class="warning-note">La IA siempre trabajará sobre el XML interno actual del editor y luego podrás cargar la versión resultante.</p>
         </div>
 
         <section class="voice-assistant-panel">
@@ -181,7 +181,7 @@
           class="xml-input"
           rows="12"
           spellcheck="false"
-          placeholder="Ej. agrega una tarea de aprobación en Gerencia"
+          placeholder="Ej. agrega una accion de aprobacion en Gerencia"
         ></textarea>
 
         <div class="panel-actions">
@@ -288,9 +288,9 @@
       <section class="ai-loading-modal">
         <div class="ai-loading-modal__spinner"></div>
         <div class="ai-loading-modal__content">
-          <span class="ai-modal__eyebrow">IA BPMN</span>
+          <span class="ai-modal__eyebrow">IA UML</span>
           <h3>{{ isAiAnalyzing ? 'Analizando proceso' : 'Procesando diagrama' }}</h3>
-          <p>{{ isAiAnalyzing ? 'Estamos revisando estructura, lanes, gateways y posibles cuellos de botella.' : (aiEditStatusMessage || 'Estamos generando la siguiente versión del BPMN.') }}</p>
+          <p>{{ isAiAnalyzing ? 'Estamos revisando estructura, particiones, nodos de control y posibles cuellos de botella.' : (aiEditStatusMessage || 'Estamos generando la siguiente versión del diagrama.') }}</p>
           <p class="ai-loading-modal__attempt" *ngIf="!isAiAnalyzing">Intento: {{ aiEditAttempt }}/2</p>
           <p class="ai-loading-modal__hint" *ngIf="!isAiAnalyzing">
             Si tardara demasiado, puedes cancelar y volver a intentarlo.
@@ -337,7 +337,7 @@
       aria-labelledby="ai-edit-confirm-title"
     >
       <div class="ai-modal__header">
-        <span class="ai-modal__eyebrow">IA BPMN</span>
+        <span class="ai-modal__eyebrow">IA UML</span>
         <h3 id="ai-edit-confirm-title">Confirmar resultado de IA</h3>
         <p>
           La IA preparó una nueva versión del XML actual. Si la cargas, reemplazarás el contenido del editor por el
@@ -351,7 +351,7 @@
       </div>
 
       <div class="ai-modal__note">
-        Revisa que los ids, lanes, formularios y conexiones sigan coherentes antes de continuar.
+        Revisa que los ids, particiones, formularios y conexiones sigan coherentes antes de continuar.
       </div>
 
       <div class="ai-modal__actions">

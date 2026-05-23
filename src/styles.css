@@ -748,19 +748,129 @@ select {
 }
 
 .djs-palette {
-  background: #ffffff !important;
-  border-right: 1px solid #e5e7eb !important;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 1px solid rgba(15, 23, 42, 0.12) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 20px 36px rgba(15, 23, 42, 0.12) !important;
+  padding: 0.6rem 0.45rem 0.75rem !important;
+  width: 186px !important;
+}
+
+.djs-palette .group {
+  margin-bottom: 0.3rem;
+}
+
+.djs-palette .separator {
+  margin: 0.35rem 0 !important;
+  border-top-color: rgba(148, 163, 184, 0.2) !important;
 }
 
 .djs-palette .entry {
+  position: relative;
+  display: flex !important;
+  align-items: center;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 42px;
   color: #1f2937 !important;
   filter: none !important;
   opacity: 1 !important;
+  border-radius: 12px;
+  margin: 0.1rem 0;
+  padding: 0.6rem 0.75rem 0.6rem 2.55rem !important;
 }
 
 .djs-palette .entry:hover {
-  background: #f3f4f6 !important;
+  background: rgba(37, 99, 235, 0.08) !important;
+}
+
+.djs-palette .entry.selected,
+.djs-palette .entry.djs-palette-entry-selected {
+  background: rgba(37, 99, 235, 0.12) !important;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.18) !important;
+}
+
+.djs-palette .entry::before {
+  position: absolute;
+  left: 0.86rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.djs-palette .entry::after {
+  position: absolute;
+  left: 2.55rem;
+  right: 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #0f172a;
+  white-space: normal;
+  line-height: 1.1;
+}
+
+.djs-palette .entry.bpmn-icon-start-event-none::after {
+  content: 'Nodo inicial';
+}
+
+.djs-palette .entry.bpmn-icon-end-event-none::after {
+  content: 'Nodo final';
+}
+
+.djs-palette .entry.bpmn-icon-user-task::after {
+  content: 'Accion';
+}
+
+.djs-palette .entry.bpmn-icon-task::after {
+  content: 'Tarea';
+}
+
+.djs-palette .entry.bpmn-icon-gateway-xor::after {
+  content: 'Decision';
+}
+
+.djs-palette .entry.bpmn-icon-gateway-parallel::after {
+  content: 'Sincronizacion';
+}
+
+.djs-palette .entry.bpmn-icon-lane::after {
+  content: 'Particion';
+}
+
+.djs-palette .entry.bpmn-icon-hand-tool::after {
+  content: 'Mover lienzo';
+}
+
+.djs-palette .entry.bpmn-icon-lasso-tool::after {
+  content: 'Seleccion multiple';
+}
+
+.djs-palette .entry.bpmn-icon-space-tool::after {
+  content: 'Espacio';
+}
+
+.djs-palette .entry.bpmn-icon-connection-multi::after,
+.djs-palette .entry.bpmn-icon-connection::after {
+  content: 'Conectar';
+}
+
+.djs-palette .entry.bpmn-icon-participant,
+.djs-palette .entry.bpmn-icon-data-object,
+.djs-palette .entry.bpmn-icon-data-store,
+.djs-palette .entry.bpmn-icon-subprocess-expanded,
+.djs-palette .entry.bpmn-icon-manual-task,
+.djs-palette .entry.bpmn-icon-service-task,
+.djs-palette .entry.bpmn-icon-business-rule-task,
+.djs-palette .entry.bpmn-icon-script-task,
+.djs-palette .entry.bpmn-icon-call-activity,
+.djs-palette .entry.bpmn-icon-intermediate-event-none,
+.djs-palette .entry.bpmn-icon-text-annotation,
+.djs-palette .entry.bpmn-icon-group,
+.djs-palette .entry.bpmn-icon-trash,
+.djs-palette .entry.bpmn-icon-gateway-complex,
+.djs-palette .entry.bpmn-icon-gateway-eventbased,
+.djs-palette .entry.bpmn-icon-gateway-inclusive {
+  display: none !important;
 }
 
 .djs-context-pad {
@@ -799,12 +909,13 @@ select {
 
 .djs-element .djs-label {
   fill: #111827 !important;
-  font-weight: 500;
+  font-weight: 700;
 }
 
 .djs-label {
   fill: #111827 !important;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .djs-direct-editing-parent {
@@ -836,6 +947,125 @@ input.djs-direct-editing-content {
   border-radius: 8px;
 }
 
+.djs-container .djs-label {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  fill: #0f172a !important;
+}
+
+.djs-container .djs-connection .djs-visual > :nth-child(1) {
+  stroke: #0f172a !important;
+  stroke-width: 2.1px !important;
+}
+
+.djs-container .uml-action .djs-visual > rect {
+  fill: #ffffff !important;
+  stroke: #2563eb !important;
+  stroke-width: 2px !important;
+  rx: 12px !important;
+  ry: 12px !important;
+  filter: none !important;
+}
+
+.djs-container .uml-action .djs-visual > path,
+.djs-container .uml-action .djs-visual > polygon,
+.djs-container .uml-action .djs-visual > image {
+  display: none !important;
+}
+
+.djs-container .djs-shape[data-element-id^='Lane_'] .djs-visual > rect {
+  fill: #ffffff !important;
+  stroke: rgba(15, 23, 42, 0.18) !important;
+  stroke-width: 1.2px !important;
+}
+
+.djs-container .djs-shape[data-element-id^='Participant_'] .djs-visual > rect {
+  fill: transparent !important;
+  stroke: transparent !important;
+}
+
+.djs-container .djs-shape[data-element-id^='Lane_'] .djs-label,
+.djs-container .uml-partition .djs-label,
+.djs-container .uml-partition-frame .djs-label {
+  display: none !important;
+}
+
+.djs-container .djs-shape[data-element-id^='Participant_'] .djs-label,
+.djs-container .djs-shape[data-element-id^='Lane_'] > .djs-children .djs-label,
+.djs-container .djs-shape[data-element-id^='Lane_'] .djs-label {
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  fill: #0f172a !important;
+  color: #0f172a !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.01em !important;
+}
+
+.djs-container .djs-shape[data-element-id^='Participant_'] .djs-label tspan,
+.djs-container .djs-shape[data-element-id^='Lane_'] .djs-label tspan,
+.djs-container .djs-shape[data-element-id^='Participant_'] .djs-label text,
+.djs-container .djs-shape[data-element-id^='Lane_'] .djs-label text {
+  fill: #0f172a !important;
+  opacity: 1 !important;
+}
+
+.djs-container .uml-hidden-label {
+  display: none !important;
+}
+
+.djs-container .uml-gateway-label .djs-label,
+.djs-container .uml-flow-label .djs-label {
+  fill: #0f172a !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
+}
+
+.djs-container .uml-flow-label .djs-label {
+  font-size: 11px !important;
+}
+
+.djs-container .uml-flow-label .djs-label {
+  transform: translateY(-2px) !important;
+  transform-box: fill-box !important;
+  transform-origin: center center !important;
+}
+
+.djs-container .uml-action .djs-label,
+.djs-container .uml-initial .djs-label,
+.djs-container .uml-final .djs-label,
+.djs-container .uml-decision .djs-label {
+  fill: #0f172a !important;
+  stroke: none !important;
+}
+
+.djs-container .uml-decision .djs-visual > :not(:first-child) {
+  display: none !important;
+}
+
+.djs-container .uml-decision .djs-visual > :first-child {
+  fill: #ffffff !important;
+  stroke: #d97706 !important;
+  stroke-width: 2px !important;
+}
+
+.djs-container .uml-sync .djs-visual > :not(:first-child) {
+  display: none !important;
+}
+
+.djs-container .uml-sync .djs-visual > :first-child {
+  fill: #1f2937 !important;
+  stroke: #1f2937 !important;
+}
+
+.bjs-powered-by,
+.bio-properties-panel-logo,
+.bio-properties-panel-open {
+  display: none !important;
+}
+
 :root[data-theme='dark'] .djs-container {
   background: #0f172a !important;
 }
@@ -854,9 +1084,16 @@ input.djs-direct-editing-content {
 :root[data-theme='dark'] .djs-popup .entry,
 :root[data-theme='dark'] .djs-popup .entry:before,
 :root[data-theme='dark'] .djs-label,
-:root[data-theme='dark'] .djs-element .djs-label {
+:root[data-theme='dark'] .djs-element .djs-label,
+:root[data-theme='dark'] .djs-container .djs-label text,
+:root[data-theme='dark'] .djs-container .djs-label tspan,
+:root[data-theme='dark'] .djs-container text {
   color: #e5e7eb !important;
   fill: #e5e7eb !important;
+}
+
+:root[data-theme='dark'] .djs-palette .entry::after {
+  color: #f8fafc !important;
 }
 
 :root[data-theme='dark'] .djs-palette .entry:hover,
@@ -901,38 +1138,4 @@ input.djs-direct-editing-content {
 /* Contenedor interno */
 .djs-popup-body {
   background: #ffffff !important;
-}
-
-.lane-area-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.7rem;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.9);
-  color: #f8fafc;
-  font-size: 0.72rem;
-  font-weight: 700;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.25);
-  pointer-events: none;
-  white-space: nowrap;
-}
-
-.lane-area-badge--unassigned {
-  background: rgba(148, 163, 184, 0.92);
-  color: #f8fafc;
-}
-
-.lane-area-badge::before {
-  content: 'Area';
-  color: #86efac;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 0.62rem;
-  font-weight: 800;
-}
-
-.lane-area-badge--unassigned::before {
-  content: 'Sin';
-  color: #e2e8f0;
 }

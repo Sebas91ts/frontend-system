@@ -36,14 +36,14 @@
 
 <section class="editor-surface" [class.readonly-mode]="isEffectiveReadonly">
   <div class="canvas-wrapper">
-    <div #canvasHost class="bpmn-canvas" aria-label="Canvas del modelador BPMN"></div>
+    <div #canvasHost class="bpmn-canvas" aria-label="Lienzo del diagrama de actividades UML 2.5"></div>
   </div>
 
   <aside class="properties-sidebar">
     <div class="properties-header">
-      <p class="properties-eyebrow">Propiedades</p>
-      <h3>Elemento seleccionado</h3>
-      <p>Usa este panel para editar nombres, ids, areas y responsabilidades.</p>
+      <p class="properties-eyebrow">Inspector UML</p>
+      <h3>Nodo o particion seleccionada</h3>
+      <p>Usa este panel para ajustar acciones, particiones, transiciones y responsabilidades del diagrama.</p>
     </div>
 
     <app-lane-assignment-panel
@@ -91,7 +91,7 @@
       (configure)="openTaskFormPanel(selectedUserTask)"
     />
 
-    <div #propertiesHost class="properties-panel-host" aria-label="Panel de propiedades BPMN"></div>
+    <div #propertiesHost class="properties-panel-host" aria-label="Panel tecnico interno del diagrama"></div>
   </aside>
 </section>
 

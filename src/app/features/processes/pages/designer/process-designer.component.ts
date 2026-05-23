@@ -201,7 +201,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
 
   protected openSaveCurrent(): void {
     if (this.isReadonlyProcess) {
-      this.showFeedback('Este proceso está en modo solo lectura. Vuelve a la lista para crear una nueva versión.', 'error');
+      this.showFeedback('Este diagrama está en modo solo lectura. Vuelve a la lista para crear una nueva versión.', 'error');
       return;
     }
 
@@ -257,7 +257,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
 
     this.isSaving = true;
     this.saveDialogStatus = 'saving';
-    this.saveDialogMessage = 'Guardando el proceso en MongoDB...';
+    this.saveDialogMessage = 'Guardando el diagrama en MongoDB...';
     this.errorMessage = '';
     this.successMessage = '';
     this.processName = nombre;
@@ -305,8 +305,8 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
           }
 
             this.saveDialogStatus = 'success';
-            this.saveDialogMessage = 'Proceso BPMN actualizado correctamente.';
-            this.showFeedback('Proceso BPMN actualizado correctamente en MongoDB.', 'success');
+            this.saveDialogMessage = 'Diagrama actualizado correctamente.';
+            this.showFeedback('Diagrama actualizado correctamente en MongoDB.', 'success');
             this.cdr.detectChanges();
 
             setTimeout(() => {
@@ -325,7 +325,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
           },
         });
     } catch (error: any) {
-      console.error('Error al exportar BPMN antes del guardado', error);
+      console.error('Error al exportar el diagrama antes del guardado', error);
       this.saveDialogStatus = 'error';
       this.saveDialogMessage =
         error?.error?.message || 'No se pudo exportar el XML del diagrama actual.';
@@ -347,10 +347,10 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
     try {
       this.exportedXml = await editor.exportToXml();
       this.isExportPanelOpen = true;
-      this.showFeedback('XML exportado correctamente.', 'success');
+      this.showFeedback('XML del diagrama exportado correctamente.', 'success');
     } catch (error) {
-      console.error('Error al exportar XML BPMN', error);
-      this.showFeedback('No se pudo exportar el XML del diagrama actual.', 'error');
+      console.error('Error al exportar XML del diagrama', error);
+      this.showFeedback('No se pudo exportar el XML interno del diagrama actual.', 'error');
     } finally {
       this.isBusy = false;
     }
@@ -358,7 +358,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
 
   protected onImportXml(): void {
     if (this.isReadonlyProcess) {
-      this.showFeedback('Este proceso está en modo solo lectura. Crea una nueva versión para modificarlo.', 'error');
+      this.showFeedback('Este diagrama está en modo solo lectura. Crea una nueva versión para modificarlo.', 'error');
       return;
     }
 
@@ -381,7 +381,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
 
   protected toggleImportPanel(): void {
     if (this.isReadonlyProcess) {
-      this.showFeedback('Este proceso está en modo solo lectura. Crea una nueva versión para importar XML.', 'error');
+      this.showFeedback('Este diagrama está en modo solo lectura. Crea una nueva versión para importar XML.', 'error');
       return;
     }
 
@@ -393,7 +393,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
 
   protected openAiGenerator(): void {
     if (this.isReadonlyProcess) {
-      this.showFeedback('Este proceso está en modo solo lectura. Crea una nueva versión para usar IA.', 'error');
+      this.showFeedback('Este diagrama está en modo solo lectura. Crea una nueva versión para usar IA.', 'error');
       return;
     }
 
@@ -414,7 +414,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
 
   protected async generateDiagramWithAi(): Promise<void> {
     if (this.isReadonlyProcess) {
-      this.showFeedback('Este proceso está en modo solo lectura. Crea una nueva versión para usar IA.', 'error');
+      this.showFeedback('Este diagrama está en modo solo lectura. Crea una nueva versión para usar IA.', 'error');
       return;
     }
 
@@ -436,7 +436,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
     ).subscribe({
       next: (response) => {
         if (!response.success || !response.data?.xml) {
-          this.showFeedback(response.message || 'No se pudo generar el diagrama con IA.', 'error');
+          this.showFeedback(response.message || 'No se pudo generar el diagrama UML con IA.', 'error');
           return;
         }
 
@@ -448,7 +448,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
         this.showFeedback('Se generó una base editable. Confirma para cargarla en el editor.', 'success');
       },
       error: (error: any) => {
-        this.showFeedback(error?.error?.message || 'No se pudo generar el diagrama con IA.', 'error');
+        this.showFeedback(error?.error?.message || 'No se pudo generar el diagrama UML con IA.', 'error');
       },
     });
   }
@@ -488,7 +488,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
 
   protected openAiEditGenerator(): void {
     if (this.isReadonlyProcess) {
-      this.showFeedback('Este proceso está en modo solo lectura. Crea una nueva versión para usar IA.', 'error');
+      this.showFeedback('Este diagrama está en modo solo lectura. Crea una nueva versión para usar IA.', 'error');
       return;
     }
 
@@ -531,7 +531,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
           .subscribe({
           next: (response) => {
             if (!response.success || !response.data) {
-              this.showFeedback(response.message || 'No se pudo analizar el proceso con IA.', 'error');
+              this.showFeedback(response.message || 'No se pudo analizar el diagrama con IA.', 'error');
               return;
             }
 
@@ -543,7 +543,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
             this.cdr.detectChanges();
           },
           error: (error: any) => {
-            this.showFeedback(error?.error?.message || 'No se pudo analizar el proceso con IA.', 'error');
+            this.showFeedback(error?.error?.message || 'No se pudo analizar el diagrama con IA.', 'error');
           },
         });
     } catch (error) {
@@ -1028,11 +1028,11 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
 
           if (this.isReadonlyProcess) {
             this.showFeedback(
-              'Este proceso está en solo lectura. Vuelve a la lista para crear una nueva versión.',
+              'Este diagrama está en solo lectura. Vuelve a la lista para crear una nueva versión.',
               'success',
             );
           } else {
-            this.showFeedback('Proceso en borrador cargado correctamente.', 'success');
+            this.showFeedback('Diagrama en borrador cargado correctamente.', 'success');
           }
 
           try {
@@ -1040,7 +1040,7 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
             this.showFeedback(`Proceso "${procesoCargado.nombre}" cargado correctamente.`, 'success');
           } catch (error) {
             console.error('Error al importar proceso guardado', error);
-            this.showFeedback('No se pudo cargar el XML BPMN del proceso seleccionado.', 'error');
+            this.showFeedback('No se pudo cargar el XML interno del proceso seleccionado.', 'error');
           }
 
           this.cdr.detectChanges();
@@ -1071,9 +1071,9 @@ export class ProcessDesignerComponent implements OnInit, AfterViewInit, OnDestro
         'success',
       );
     } catch (error) {
-      console.error('Error al importar XML BPMN', error);
+      console.error('Error al importar XML del diagrama', error);
       this.showFeedback(
-        'No se pudo importar el XML BPMN. Verifica la estructura del archivo e intenta nuevamente.',
+        'No se pudo importar el XML del diagrama. Verifica la estructura del archivo e intenta nuevamente.',
         'error',
       );
     } finally {

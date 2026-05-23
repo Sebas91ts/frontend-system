@@ -1,9 +1,9 @@
 <section class="lane-assignment">
   <div class="lane-assignment__header">
-    <p class="lane-assignment__eyebrow">Lane seleccionada</p>
+    <p class="lane-assignment__eyebrow">Particion seleccionada</p>
     <strong>{{ selectedLaneName }}</strong>
     <span class="lane-assignment__meta">
-      {{ hasSelectedLane ? selectedLaneAreaLabel : 'Selecciona una lane para asignar un area' }}
+      {{ hasSelectedLane ? selectedLaneAreaLabel : 'Selecciona una particion para asignar un area responsable' }}
     </span>
   </div>
 
@@ -22,7 +22,7 @@
   </label>
 
   <div class="lane-assignment__note" *ngIf="!hasSelectedLane">
-    Aun no hay una lane seleccionada. Haz click sobre una lane del diagrama para vincularle un area.
+    Aun no hay una particion seleccionada. Haz click sobre una particion del diagrama para vincularle un area.
   </div>
 
   <div class="lane-assignment__note" *ngIf="laneBindingMessage">
@@ -34,6 +34,6 @@
   </div>
 
   <div class="lane-assignment__note" *ngIf="isAreasLoading">
-    Cargando areas activas...
+    Cargando areas responsables...
   </div>
 </section>

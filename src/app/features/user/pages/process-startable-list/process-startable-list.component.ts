@@ -94,7 +94,7 @@ export class ProcessStartableListComponent implements OnInit, OnDestroy {
             (response.data as any)?.instanceId;
 
           if (instanceId) {
-            void this.router.navigate(['/tasks'], { queryParams: { mode: 'mine', instanceId } });
+            void this.router.navigate(['/tasks'], { queryParams: { mode: 'area', instanceId } });
             return;
           }
 

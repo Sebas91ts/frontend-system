@@ -31,6 +31,7 @@ import { ProcessService } from '../../../../core/services/process.service';
 import { EMPTY_BPMN_XML } from '../../shared/bpmn-templates';
 import { validateExclusiveGatewayXml } from '../../shared/bpmn-gateway-validation';
 import { customModdle } from '../../shared/custom-moddle';
+import { UmlActivityRendererModule } from '../../shared/uml-activity-renderer.module';
 import {
   ConditionFieldOption,
   ConditionOperator,
@@ -92,6 +93,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
   private commandStackChangedHandler?: () => void;
   private laneOverlayIds = new Map<string, string>();
   private overlayRefreshFrameId: number | null = null;
+  private umlCanvasRefreshFrameId: number | null = null;
   private ydoc: Y.Doc | null = null;
   private provider: WebsocketProvider | null = null;
   private sharedProcessMap: Y.Map<string | number> | null = null;
@@ -219,6 +221,10 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
       cancelAnimationFrame(this.overlayRefreshFrameId);
       this.overlayRefreshFrameId = null;
     }
+    if (this.umlCanvasRefreshFrameId !== null) {
+      cancelAnimationFrame(this.umlCanvasRefreshFrameId);
+      this.umlCanvasRefreshFrameId = null;
+    }
     this.modeler?.destroy();
     this.modeler = null;
     this.selectedLaneElement = null;
@@ -235,7 +241,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
 
     const normalizedXml = this.normalizeExportedXml(xml.trim());
     if (!normalizedXml) {
-      throw new Error('Debes proporcionar un XML BPMN valido para importar.');
+      throw new Error('Debes proporcionar un XML valido del diagrama para importar.');
     }
 
     await this.modeler.importXML(normalizedXml);
@@ -248,13 +254,14 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
     this.clearAiAnalysisHighlights();
     this.restoreLaneAreaBindings();
     this.refreshLaneAreaOverlays();
+    this.scheduleUmlCanvasRefresh();
     this.scheduleFitViewport();
     this.seedSharedXmlIfNeeded(this.currentImportedXml);
   }
 
   async exportToXml(): Promise<string> {
     if (!this.modeler) {
-      throw new Error('El modelador BPMN no ha sido inicializado.');
+      throw new Error('El modelador del diagrama no ha sido inicializado.');
     }
 
     const result = (await this.modeler.saveXML({ format: true })) as SaveXmlResult;
@@ -314,7 +321,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
       return {
         valid: false,
         missingLaneNames: [],
-        message: 'El modelador BPMN no esta inicializado.',
+        message: 'El modelador del diagrama no esta inicializado.',
       };
     }
 
@@ -335,7 +342,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
 
         return !this.activeAreas.some((area) => area.id === binding.areaId);
       })
-      .map((laneElement) => laneElement?.businessObject?.name?.trim?.() || laneElement?.id || 'Lane sin nombre');
+      .map((laneElement) => laneElement?.businessObject?.name?.trim?.() || laneElement?.id || 'Particion sin nombre');
 
     if (missingLaneNames.length === 0) {
       return {
@@ -348,7 +355,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
     return {
       valid: false,
       missingLaneNames,
-      message: `Debes asignar un area a todas las lanes antes de guardar: ${missingLaneNames.join(', ')}.`,
+      message: `Debes asignar un area a todas las particiones antes de guardar: ${missingLaneNames.join(', ')}.`,
     };
   }
 
@@ -358,14 +365,14 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
     } catch {
       return {
         valid: false,
-        message: 'No se pudo exportar el XML BPMN para validar los exclusive gateways.',
+        message: 'No se pudo exportar el XML interno para validar los nodos de decision.',
         invalidGatewayIds: [],
       };
     }
   }
 
   protected get selectedLaneName(): string {
-    return this.selectedLaneElement?.businessObject?.name || this.selectedLaneElement?.id || 'Ninguna lane seleccionada';
+    return this.selectedLaneElement?.businessObject?.name || this.selectedLaneElement?.id || 'Ninguna particion seleccionada';
   }
 
   protected get selectedLaneAreaLabel(): string {
@@ -377,7 +384,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
   }
 
   protected get selectedUserTaskLabel(): string {
-    return this.selectedUserTask?.businessObject?.name || this.selectedUserTask?.id || 'Ninguna userTask seleccionada';
+    return this.selectedUserTask?.businessObject?.name || this.selectedUserTask?.id || 'Ninguna accion seleccionada';
   }
 
   protected get taskFormContext(): string {
@@ -399,8 +406,8 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
 
     return {
       flowId: businessObject?.id || this.selectedSequenceFlowElement.id || 'sequenceFlow sin id',
-      sourceGatewayId: sourceGateway?.id || 'Gateway sin id',
-      sourceGatewayLabel: sourceGateway?.name || sourceGateway?.id || 'ExclusiveGateway',
+      sourceGatewayId: sourceGateway?.id || 'Nodo de control sin id',
+      sourceGatewayLabel: sourceGateway?.name || sourceGateway?.id || 'Nodo de control',
       targetId: target?.id || 'Nodo destino sin id',
       targetLabel: target?.name || target?.id || 'Nodo destino',
       conditionExpression: this.readSequenceFlowCondition(this.selectedSequenceFlowElement),
@@ -491,8 +498,8 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
     this.updateSequenceFlowDefault(this.selectedSequenceFlowDefaultDraft);
     this.syncSelectedSequenceFlowState();
     this.sequenceFlowFeedbackMessage = this.selectedSequenceFlowDefaultDraft
-      ? 'Default flow actualizado correctamente.'
-      : 'Condicion del sequenceFlow guardada correctamente.';
+      ? 'Transicion por defecto actualizada correctamente.'
+      : 'Guarda de transicion guardada correctamente.';
     this.cdr.markForCheck();
   }
 
@@ -677,7 +684,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
       moddleExtensions: {
         custom: customModdle,
       },
-      additionalModules: [BpmnPropertiesPanelModule, BpmnPropertiesProviderModule],
+      additionalModules: [BpmnPropertiesPanelModule, BpmnPropertiesProviderModule, UmlActivityRendererModule],
     });
   }
 
@@ -698,6 +705,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
     eventBus.on('selection.changed', this.selectionChangedHandler);
     this.commandStackChangedHandler = () => {
       this.scheduleOverlayRefresh();
+      this.scheduleUmlCanvasRefresh();
       this.handleLocalDiagramChange();
     };
     const modelerEvents = this.modeler as unknown as {
@@ -1248,26 +1256,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
     }
     this.laneOverlayIds.clear();
 
-    const laneElements = elementRegistry.filter((element) => element?.businessObject?.$type === 'bpmn:Lane');
-
-    for (const laneElement of laneElements) {
-      const binding = this.resolveLaneAreaBinding(laneElement);
-      const areaName = binding.areaId ? binding.areaName : 'Sin area';
-      const badge = document.createElement('div');
-      badge.className = `lane-area-badge${binding.areaId ? '' : ' lane-area-badge--unassigned'}`;
-      badge.textContent = areaName;
-      badge.title = binding.areaId ? `Area asignada: ${areaName}` : 'Lane sin area asignada';
-
-      const overlayId = overlays.add(laneElement, 'lane-area-badge', {
-        position: {
-          top: 8,
-          right: 8,
-        },
-        html: badge,
-      });
-
-      this.laneOverlayIds.set(laneElement.id, overlayId);
-    }
+    void elementRegistry;
   }
 
   private scheduleOverlayRefresh(): void {
@@ -1303,6 +1292,110 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
 
       this.refreshLaneAreaOverlays();
     });
+  }
+
+  private scheduleUmlCanvasRefresh(): void {
+    if (!this.modeler || this.umlCanvasRefreshFrameId !== null) {
+      return;
+    }
+
+    this.umlCanvasRefreshFrameId = requestAnimationFrame(() => {
+      this.umlCanvasRefreshFrameId = null;
+      this.applyUmlCanvasPresentation();
+    });
+  }
+
+  private applyUmlCanvasPresentation(): void {
+    if (!this.modeler) {
+      return;
+    }
+
+    const canvas = this.modeler.get('canvas') as {
+      addMarker: (id: string, marker: string) => void;
+      removeMarker: (id: string, marker: string) => void;
+    };
+    const elementRegistry = this.modeler.get('elementRegistry') as {
+      filter: (predicate: (element: any) => boolean) => any[];
+    };
+
+    const relevantElements = elementRegistry.filter((element) => !!element?.businessObject?.$type);
+    for (const element of relevantElements) {
+      const elementId = element?.id;
+      if (!elementId) {
+        continue;
+      }
+
+      for (const marker of [
+        'uml-action',
+        'uml-decision',
+        'uml-sync',
+        'uml-initial',
+        'uml-final',
+        'uml-hidden-label',
+        'uml-gateway-label',
+        'uml-flow-label',
+      ]) {
+        canvas.removeMarker(elementId, marker);
+      }
+
+      const elementType = element.businessObject.$type as string;
+      switch (elementType) {
+        case 'bpmn:UserTask': {
+          canvas.addMarker(elementId, 'uml-action');
+          break;
+        }
+        case 'bpmn:ExclusiveGateway':
+          canvas.addMarker(elementId, 'uml-decision');
+          break;
+        case 'bpmn:ParallelGateway':
+          canvas.addMarker(elementId, 'uml-sync');
+          break;
+        case 'bpmn:StartEvent':
+          canvas.addMarker(elementId, 'uml-initial');
+          break;
+        case 'bpmn:EndEvent':
+          canvas.addMarker(elementId, 'uml-final');
+          break;
+        default:
+          break;
+      }
+    }
+
+    const labelElements = elementRegistry.filter((element) => !!element?.labelTarget);
+    for (const labelElement of labelElements) {
+      const elementId = labelElement?.id;
+      if (!elementId) {
+        continue;
+      }
+
+      for (const marker of ['uml-hidden-label', 'uml-gateway-label', 'uml-flow-label']) {
+        canvas.removeMarker(elementId, marker);
+      }
+
+      const labelTargetType = labelElement.labelTarget?.businessObject?.$type as string | undefined;
+      if (!labelTargetType) {
+        continue;
+      }
+
+      if (
+        labelTargetType === 'bpmn:UserTask' ||
+        labelTargetType === 'bpmn:StartEvent' ||
+        labelTargetType === 'bpmn:EndEvent' ||
+        labelTargetType === 'bpmn:ParallelGateway'
+      ) {
+        canvas.addMarker(elementId, 'uml-hidden-label');
+        continue;
+      }
+
+      if (labelTargetType === 'bpmn:ExclusiveGateway') {
+        canvas.addMarker(elementId, 'uml-hidden-label');
+        continue;
+      }
+
+      if (labelTargetType === 'bpmn:SequenceFlow') {
+        canvas.addMarker(elementId, 'uml-flow-label');
+      }
+    }
   }
 
   private updateLaneAreaReference(areaId: string): void {

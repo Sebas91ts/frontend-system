@@ -1,13 +1,13 @@
 <section class="sequence-flow-panel" *ngIf="visible && technicalState">
   <div class="sequence-flow-panel__header">
-    <p class="sequence-flow-panel__eyebrow">Condicion de salida</p>
+    <p class="sequence-flow-panel__eyebrow">Guarda de transicion</p>
     <strong>{{ technicalState.flowId }}</strong>
     <span class="sequence-flow-panel__meta">{{ technicalState.sourceGatewayLabel }} → {{ technicalState.targetLabel }}</span>
   </div>
 
   <div class="sequence-flow-panel__summary">
-    <div><span>Gateway origen</span><strong>{{ technicalState.sourceGatewayId }}</strong></div>
-    <div><span>Target</span><strong>{{ technicalState.targetId }}</strong></div>
+    <div><span>Nodo de control</span><strong>{{ technicalState.sourceGatewayId }}</strong></div>
+    <div><span>Destino</span><strong>{{ technicalState.targetId }}</strong></div>
   </div>
 
   <label class="sequence-flow-panel__checkbox">
@@ -17,11 +17,11 @@
       (ngModelChange)="defaultFlowDraftChange.emit($event)"
       [disabled]="readonlyMode"
     />
-    Usar como flujo por defecto
+    Usar como transicion por defecto
   </label>
 
   <div class="sequence-flow-panel__note" *ngIf="fieldsLoading">
-    Cargando campos de formularios del proceso...
+    Cargando atributos del formulario para construir la guarda...
   </div>
 
   <div class="sequence-flow-panel__note error" *ngIf="fieldsError">
@@ -111,12 +111,12 @@
   </div>
 
   <div class="sequence-flow-panel__note">
-    Estado actual: {{ technicalState.isDefaultFlow ? 'Default flow' : 'Flow condicionado o normal' }}
+    Estado actual: {{ technicalState.isDefaultFlow ? 'Transicion por defecto' : 'Transicion condicionada o normal' }}
   </div>
 
   <details class="sequence-flow-panel__generated">
-    <summary>Expresion BPMN generada</summary>
-    <code>{{ generatedExpression || 'Aun no hay una expresion generada.' }}</code>
+    <summary>Guarda UML generada</summary>
+    <code>{{ generatedExpression || 'Aun no hay una guarda generada.' }}</code>
   </details>
 
   <div class="sequence-flow-panel__note" *ngIf="feedbackMessage">
@@ -129,6 +129,6 @@
     (click)="applyChanges.emit()"
     [disabled]="readonlyMode || fieldsLoading"
   >
-    Guardar condicion
+    Guardar guarda
   </button>
 </section>
