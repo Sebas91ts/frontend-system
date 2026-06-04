@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, Input, OnChanges, OnDestroy, SimpleChanges, ViewChild, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, Input, NgZone, OnChanges, OnDestroy, SimpleChanges, ViewChild, inject } from '@angular/core';
 import { OnlyOfficeEditorConfig } from '../../../core/models/onlyoffice.models';
 import { OnlyOfficeService } from '../../../core/services/onlyoffice.service';
 
@@ -19,6 +19,8 @@ type OnlyOfficeEvent = {
   data?: unknown;
 };
 
+type SaveState = 'idle' | 'saving' | 'saved';
+
 @Component({
   selector: 'app-document-editor-wrapper',
   standalone: true,
@@ -32,10 +34,15 @@ export class DocumentEditorWrapperComponent implements OnChanges, OnDestroy {
   @ViewChild('editorHost', { static: true }) editorHost!: ElementRef<HTMLDivElement>;
 
   protected loading = false;
+  protected editorReady = false;
   protected error: string | null = null;
   protected config: OnlyOfficeEditorConfig | null = null;
+  protected saveState: SaveState = 'idle';
+  protected saveStateMessage = '';
 
   private readonly onlyOfficeService = inject(OnlyOfficeService);
+  private readonly ngZone = inject(NgZone);
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private editorInstance: { destroyEditor?: () => void } | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -53,7 +60,9 @@ export class DocumentEditorWrapperComponent implements OnChanges, OnDestroy {
 
   private loadEditor(): void {
     this.loading = true;
+    this.editorReady = false;
     this.error = null;
+    this.setSaveState('idle');
     this.destroyEditor();
     this.onlyOfficeService.getEditorConfig(this.documentId).subscribe({
       next: (response) => {
@@ -89,13 +98,25 @@ export class DocumentEditorWrapperComponent implements OnChanges, OnDestroy {
     }
     this.editorHost.nativeElement.id = `onlyoffice-editor-${config.documentId}`;
     this.editorInstance = new window.DocsAPI.DocEditor(this.editorHost.nativeElement.id, this.withDiagnostics(config));
-    this.loading = false;
+    this.markEditorReady();
   }
 
   private withDiagnostics(config: OnlyOfficeEditorConfig): Record<string, unknown> {
     return {
       ...config.docsApiConfig,
       events: {
+        onAppReady: () => {
+          console.info('[OnlyOffice] app ready', {
+            documentId: config.documentId,
+            documentKey: config.documentKey,
+            mode: config.mode,
+            editable: config.editable,
+          });
+          this.markEditorReady();
+          if (config.editable) {
+            this.setSaveState('saved');
+          }
+        },
         onDocumentReady: () => {
           console.info('[OnlyOffice] document ready', {
             documentId: config.documentId,
@@ -103,6 +124,14 @@ export class DocumentEditorWrapperComponent implements OnChanges, OnDestroy {
             mode: config.mode,
             editable: config.editable,
           });
+          this.markEditorReady();
+          if (config.editable) {
+            this.setSaveState('saved');
+          }
+        },
+        onDocumentStateChange: (event: OnlyOfficeEvent) => {
+          console.info('[OnlyOffice] document state change', event);
+          this.setSaveState(event.data === true ? 'saving' : 'saved');
         },
         onError: (event: OnlyOfficeEvent) => {
           console.error('[OnlyOffice] editor error', event);
@@ -112,6 +141,25 @@ export class DocumentEditorWrapperComponent implements OnChanges, OnDestroy {
         },
       },
     };
+  }
+
+  private setSaveState(state: SaveState): void {
+    this.ngZone.run(() => {
+      this.saveState = state;
+      this.saveStateMessage = state === 'saving'
+        ? 'Autoguardando...'
+        : state === 'saved'
+          ? '✓ Todos los cambios guardados'
+          : '';
+    });
+  }
+
+  private markEditorReady(): void {
+    this.ngZone.run(() => {
+      this.editorReady = true;
+      this.loading = false;
+      this.changeDetectorRef.detectChanges();
+    });
   }
 
   private ensureScript(documentServerUrl: string): Promise<void> {
