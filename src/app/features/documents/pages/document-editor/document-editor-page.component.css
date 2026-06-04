@@ -1,0 +1,14 @@
+.document-editor-page {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.missing-state {
+  margin: 24px;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  border-radius: 18px;
+  padding: 18px;
+  background: rgba(127, 29, 29, 0.35);
+}

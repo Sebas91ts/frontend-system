@@ -1,0 +1,7 @@
+<main class="document-editor-page">
+  <app-document-editor-wrapper *ngIf="documentId; else missingDocument" [documentId]="documentId" height="100vh" />
+
+  <ng-template #missingDocument>
+    <section class="missing-state">No se recibio documentId en la ruta.</section>
+  </ng-template>
+</main>

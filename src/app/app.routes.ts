@@ -196,6 +196,13 @@ export const routes: Routes = [
     canActivate: [authGuard, roleGuard],
     data: { roles: ['ROLE_USER', 'ROLE_CLIENT', 'ROLE_ADMIN'] }
   },
+  {
+    path: 'documents/:documentId/editor',
+    loadComponent: () => import('./features/documents/pages/document-editor/document-editor-page.component')
+      .then(m => m.DocumentEditorPageComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_USER', 'ROLE_ADMIN', 'ROLE_BPM_MANAGER'] }
+  },
 
   // Ruta comodín - redirigir al dashboard correspondiente
   { path: '**', redirectTo: 'auth/login' }

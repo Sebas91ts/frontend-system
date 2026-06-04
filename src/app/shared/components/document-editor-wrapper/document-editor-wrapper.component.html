@@ -1,0 +1,5 @@
+<section class="document-editor-shell">
+  <div *ngIf="loading" class="editor-state">Cargando editor documental...</div>
+  <div *ngIf="error" class="editor-state editor-error">{{ error }}</div>
+  <div #editorHost class="editor-host" [style.height]="height"></div>
+</section>
