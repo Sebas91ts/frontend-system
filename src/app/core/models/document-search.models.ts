@@ -1,11 +1,13 @@
 import { DocumentLifecycleState, DocumentMetadata } from './document-lifecycle.models';
 
 export type DocumentSearchRequest = {
+  tenantId?: string;
   folderId?: string;
   tagId?: string;
   documentState?: DocumentLifecycleState;
   mimeType?: string;
   uploadedBy?: string;
+  processInstanceId?: string;
   processKey?: string;
   processVersion?: number;
   taskDefinitionKey?: string;

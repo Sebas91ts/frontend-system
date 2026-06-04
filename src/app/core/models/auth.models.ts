@@ -7,6 +7,7 @@
   activo: boolean;
   areaId?: string | null;
   areaNombre?: string | null;
+  tenantId?: string | null;
   fechaCreacion?: string;
   fechaActualizacion?: string;
 }

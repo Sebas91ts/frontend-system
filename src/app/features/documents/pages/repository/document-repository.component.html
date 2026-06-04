@@ -1,0 +1,396 @@
+<main class="repository-page">
+  <section class="repo-topbar">
+    <div class="repo-title">
+      <span class="eyebrow">Repositorio documental</span>
+      <h1>Biblioteca enterprise</h1>
+      <p>{{ roleScopeLabel() }}</p>
+    </div>
+
+    <div class="topbar-actions">
+      <button type="button" class="ghost-button" routerLink="/dashboard">Volver</button>
+      <button type="button" class="primary-button" (click)="loadRepository(true)">Actualizar</button>
+    </div>
+  </section>
+
+  <section class="repo-metrics">
+    <article>
+      <span>Documentos</span>
+      <strong>{{ totalElements }}</strong>
+    </article>
+    <article>
+      <span>Areas visibles</span>
+      <strong>{{ isAdmin() ? areaOptions.length || 'Todas' : 1 }}</strong>
+    </article>
+    <article>
+      <span>Editables</span>
+      <strong>{{ editableCount }}</strong>
+    </article>
+    <article>
+      <span>En revision</span>
+      <strong>{{ inReviewCount }}</strong>
+    </article>
+  </section>
+
+  <section class="repository-shell">
+    <aside class="folder-panel">
+      <header class="panel-heading">
+        <div>
+          <span class="eyebrow">Navegacion</span>
+          <h2>{{ navigationMode === 'processes' ? 'Procesos' : 'Carpetas' }}</h2>
+        </div>
+        <button type="button" class="icon-button" (click)="loadFolders()" title="Actualizar carpetas">Refresh</button>
+      </header>
+
+      <div class="nav-tabs">
+        <button type="button" [class.is-active]="navigationMode === 'folders'" (click)="setNavigationMode('folders')">Carpetas</button>
+        <button type="button" [class.is-active]="navigationMode === 'processes'" (click)="setNavigationMode('processes')">Procesos</button>
+      </div>
+
+      <div class="folder-note">
+        <strong>{{ navigationMode === 'processes' ? 'Agrupacion real por documentos' : 'Biblioteca logica' }}</strong>
+        <p>
+          {{
+            navigationMode === 'processes'
+              ? 'Se construye desde area, processInstanceId y s3Key de DocumentMetadata.'
+              : 'Las carpetas vienen de Mongo. La ruta fisica S3 se muestra en el detalle.'
+          }}
+        </p>
+      </div>
+
+      <ng-container *ngIf="navigationMode === 'processes'; else folderNavigation">
+        <button type="button" class="folder-node folder-node--root" [class.is-active]="!selectedProcessInstanceId" (click)="clearProcess()">
+          <span class="folder-glyph">All</span>
+          <span>Todos los procesos</span>
+        </button>
+
+        <button
+          type="button"
+          class="folder-node process-node"
+          *ngFor="let group of processGroups()"
+          [class.is-active]="selectedProcessInstanceId === group.processInstanceId"
+          (click)="selectProcess(group.processInstanceId)"
+        >
+          <span class="folder-glyph">{{ areaLabel(group.tenantId) }}</span>
+          <span>
+            {{ group.processInstanceId }}
+            <small>{{ group.count }} doc. - {{ formatDate(group.latest) }}</small>
+          </span>
+        </button>
+      </ng-container>
+
+      <ng-template #folderNavigation>
+        <button type="button" class="folder-node folder-node--root" [class.is-active]="!selectedFolderId" (click)="clearFolder()">
+          <span class="folder-glyph">Root</span>
+          <span>Vista de carpetas</span>
+        </button>
+
+        <div class="folder-skeleton" *ngIf="foldersLoading">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+
+        <ng-container *ngIf="!foldersLoading && hasFolders()">
+          <ng-container *ngFor="let group of areaFolderGroups()">
+            <div class="area-group" *ngIf="isAdmin()">
+              <span class="area-group__label">{{ areaLabel(group.tenantId) }}</span>
+            </div>
+            <ng-container *ngFor="let folder of group.folders">
+              <ng-container *ngTemplateOutlet="folderTemplate; context: { $implicit: folder, level: 0 }"></ng-container>
+            </ng-container>
+          </ng-container>
+        </ng-container>
+
+        <div class="virtual-folder-section" *ngIf="!foldersLoading && hasVirtualFolders()">
+          <div class="area-group">
+            <span class="area-group__label">Carpetas por proceso</span>
+          </div>
+          <button
+            type="button"
+            class="folder-node process-node"
+            *ngFor="let group of processGroups()"
+            [class.is-active]="selectedProcessInstanceId === group.processInstanceId"
+            (click)="selectProcessFolder(group.processInstanceId)"
+          >
+            <span class="folder-glyph">{{ areaLabel(group.tenantId) }}</span>
+            <span>
+              {{ group.processInstanceId }}
+              <small>{{ group.count }} archivo(s) - {{ formatDate(group.latest) }}</small>
+            </span>
+          </button>
+        </div>
+
+        <div class="folder-empty" *ngIf="!foldersLoading && !hasFolders() && !hasVirtualFolders()">
+          <strong>No hay carpetas ni documentos</strong>
+          <p>Cuando existan documentos apareceran carpetas por area/proceso automaticamente.</p>
+        </div>
+      </ng-template>
+
+      <ng-template #folderTemplate let-folder let-level="level">
+        <button
+          type="button"
+          class="folder-node"
+          [class.is-active]="selectedFolderId === folder.id"
+          [style.padding-left.px]="14 + level * 16"
+          (click)="selectFolder(folder.id)"
+        >
+          <span class="folder-glyph">Dir</span>
+          <span>
+            {{ folder.name }}
+            <small *ngIf="isAdmin()">{{ areaLabel(folder.tenantId) }}</small>
+          </span>
+        </button>
+        <ng-container *ngFor="let child of folder.children">
+          <ng-container *ngTemplateOutlet="folderTemplate; context: { $implicit: child, level: level + 1 }"></ng-container>
+        </ng-container>
+      </ng-template>
+    </aside>
+
+    <section class="content-panel">
+      <header class="command-bar">
+        <div class="search-box">
+          <span>Buscar</span>
+          <input
+            type="search"
+            placeholder="Nombre, contrato, factura, cliente..."
+            [(ngModel)]="searchTerm"
+            (keyup.enter)="loadRepository(true)"
+          />
+        </div>
+
+        <select *ngIf="isAdmin()" [(ngModel)]="selectedAreaId" (change)="selectArea(selectedAreaId)">
+          <option value="">Todas las areas</option>
+          <option *ngFor="let area of areaOptions" [value]="area">{{ areaLabel(area) }}</option>
+        </select>
+
+        <select [(ngModel)]="selectedTagId" (change)="loadRepository(true)">
+          <option value="">Todas las etiquetas</option>
+          <option *ngFor="let tag of tags" [value]="tag.id">{{ tag.name }}</option>
+        </select>
+
+        <select [(ngModel)]="selectedState" (change)="loadRepository(true)">
+          <option *ngFor="let state of states" [ngValue]="state">{{ state ? stateLabel(state) : 'Todos los estados' }}</option>
+        </select>
+
+        <select [(ngModel)]="selectedMimeType" (change)="loadRepository(true)">
+          <option *ngFor="let type of mimeTypes" [value]="type.value">{{ type.label }}</option>
+        </select>
+
+        <button type="button" class="primary-button compact" (click)="loadRepository(true)">Buscar</button>
+      </header>
+
+      <div class="location-bar">
+        <nav class="breadcrumb">
+          <button type="button" (click)="clearNavigation()">Repositorio</button>
+          <ng-container *ngIf="selectedAreaId">
+            <span>/</span>
+            <button type="button" (click)="selectArea(selectedAreaId)">{{ areaLabel(selectedAreaId) }}</button>
+          </ng-container>
+          <ng-container *ngIf="selectedProcessInstanceId">
+            <span>/</span>
+            <button type="button" (click)="selectProcess(selectedProcessInstanceId)">{{ selectedProcessInstanceId }}</button>
+          </ng-container>
+          <ng-container *ngFor="let folder of selectedFolderPath()">
+            <span>/</span>
+            <button type="button" (click)="selectFolder(folder.id)">{{ folder.name }}</button>
+          </ng-container>
+        </nav>
+        <span>{{ selectedProcessInstanceId ? 'Archivos dentro del proceso' : selectedFolderId ? 'Archivos dentro de carpeta' : 'Selecciona una carpeta para ver archivos' }}</span>
+      </div>
+
+      <div class="feedback" *ngIf="feedbackMessage">{{ feedbackMessage }}</div>
+      <div class="error-state" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+      <section class="folder-first-state" *ngIf="!shouldShowDocuments && !loading; else documentList">
+        <div class="empty-illustration">DIR</div>
+        <h3>{{ navigationMode === 'folders' ? 'Selecciona una carpeta' : 'Selecciona un proceso' }}</h3>
+        <p>
+          {{
+            navigationMode === 'folders'
+              ? 'Primero navega por carpetas logicas o por carpetas generadas desde area/proceso. Al entrar a una carpeta veras sus archivos.'
+              : 'La vista de procesos agrupa documentos reales por area y processInstanceId.'
+          }}
+        </p>
+      </section>
+
+      <ng-template #documentList>
+      <div class="document-table" *ngIf="!loading; else loadingRows">
+        <div class="table-head">
+          <button type="button" (click)="toggleSort('originalName')">Documento</button>
+          <span>Contexto</span>
+          <span>Area</span>
+          <span>Tags</span>
+          <button type="button" (click)="toggleSort('updatedAt')">Actualizacion</button>
+          <span>Estado</span>
+          <span></span>
+        </div>
+
+        <article
+          class="document-row"
+          *ngFor="let document of visibleDocuments"
+          [class.is-selected]="selectedDocument?.id === document.id"
+          (click)="selectDocument(document)"
+        >
+          <div class="document-name">
+            <span class="file-badge">{{ fileIcon(document) }}</span>
+            <span>
+              <strong>{{ document.originalName || document.fileName }}</strong>
+              <small>{{ fileKind(document) }} - {{ formatSize(document.size) }} - v{{ document.version || 1 }}</small>
+            </span>
+          </div>
+
+          <div class="context-cell">
+            <strong>{{ folderName(document.folderId) }}</strong>
+            <small>{{ document.processKey || document.processInstanceId || 'Sin proceso vinculado' }}</small>
+          </div>
+
+          <div class="area-cell">
+            <strong>{{ areaLabel(document.tenantId) }}</strong>
+            <small>{{ storagePath(document) }}</small>
+          </div>
+
+          <div class="tag-list">
+            <em *ngFor="let tag of documentTags(document)" [style.border-color]="tag.color || '#3b82f6'">
+              {{ tag.name }}
+            </em>
+            <small *ngIf="!documentTags(document).length">Sin tags</small>
+          </div>
+
+          <div class="date-cell">
+            <strong>{{ displayUser(document) }}</strong>
+            <small>{{ formatDate(document.updatedAt || document.uploadedAt || document.createdAt) }}</small>
+            <small *ngIf="isRecentlyUpdated(document)" class="recent-dot">Actualizado hoy</small>
+          </div>
+
+          <div class="state-cell">
+            <mark [class]="stateClass(document.documentState)">{{ stateLabel(document.documentState) }}</mark>
+            <small *ngIf="document.locked">Bloqueado</small>
+            <small *ngIf="document.currentEditor">En edicion</small>
+          </div>
+
+          <div class="row-actions" (click)="$event.stopPropagation()">
+            <button type="button" class="action-primary" (click)="openEditor(document)" [disabled]="!isEditable(document)">OnlyOffice</button>
+            <button type="button" (click)="download(document)">Descargar</button>
+          </div>
+        </article>
+
+        <section class="empty-state" *ngIf="!visibleDocuments.length">
+          <div class="empty-illustration">DOC</div>
+          <h3>No hay documentos para esta vista</h3>
+          <p>La carpeta puede estar vacia o los filtros no tienen coincidencias.</p>
+          <button type="button" class="ghost-button" (click)="clearFolder(); selectedTagId=''; selectedState=''; searchTerm=''; loadRepository(true)">
+            Limpiar filtros
+          </button>
+        </section>
+      </div>
+      </ng-template>
+
+      <ng-template #loadingRows>
+        <div class="document-table skeleton-table">
+          <span *ngFor="let item of [1,2,3,4,5,6]"></span>
+        </div>
+      </ng-template>
+
+      <footer class="pager" *ngIf="totalPages > 1">
+        <button type="button" (click)="changePage(-1)" [disabled]="page === 0">Anterior</button>
+        <span>Pagina {{ page + 1 }} de {{ totalPages }}</span>
+        <button type="button" (click)="changePage(1)" [disabled]="page + 1 >= totalPages">Siguiente</button>
+      </footer>
+    </section>
+
+    <aside class="detail-panel" *ngIf="selectedDocument; else detailEmpty">
+      <header class="detail-header">
+        <span class="file-badge large">{{ fileIcon(selectedDocument) }}</span>
+        <div>
+          <span class="eyebrow">Documento seleccionado</span>
+          <h2>{{ selectedDocument.originalName || selectedDocument.fileName }}</h2>
+          <p>{{ folderName(selectedDocument.folderId) }}</p>
+        </div>
+      </header>
+
+      <div class="status-grid">
+        <span [class]="stateClass(selectedDocument.documentState)">{{ stateLabel(selectedDocument.documentState) }}</span>
+        <span class="status-chip" *ngIf="selectedDocument.locked">Bloqueado</span>
+        <span class="status-chip" *ngIf="selectedDocument.currentEditor">Editando: {{ selectedDocument.currentEditor }}</span>
+        <span class="status-chip" *ngIf="isEditable(selectedDocument)">Editable</span>
+        <span class="status-chip muted" *ngIf="!isEditable(selectedDocument)">Solo lectura</span>
+      </div>
+
+      <div class="detail-actions">
+        <button type="button" class="primary-button" (click)="openEditor(selectedDocument)" [disabled]="!isEditable(selectedDocument)">
+          Abrir en OnlyOffice
+        </button>
+        <button type="button" class="ghost-button" (click)="download(selectedDocument)">Descargar</button>
+      </div>
+
+      <section class="detail-section" *ngIf="canManageTags()">
+        <h3>Etiquetas</h3>
+        <div class="tag-list tag-list--detail">
+          <em *ngFor="let tag of documentTags(selectedDocument)" [style.border-color]="tag.color || '#3b82f6'">
+            {{ tag.name }}
+            <button type="button" (click)="removeTagFromSelected(tag.id)">x</button>
+          </em>
+          <small *ngIf="!documentTags(selectedDocument).length">Sin etiquetas asociadas.</small>
+        </div>
+        <select #tagPicker (change)="addTagToSelected(tagPicker.value); tagPicker.value=''">
+          <option value="">Agregar etiqueta...</option>
+          <option *ngFor="let tag of availableTagsForSelected()" [value]="tag.id">{{ tag.name }}</option>
+        </select>
+      </section>
+
+      <section class="detail-section">
+        <h3>Contexto documental</h3>
+        <dl>
+          <dt>Area</dt>
+          <dd>{{ areaLabel(selectedDocument.tenantId) }}</dd>
+          <dt>Carpeta</dt>
+          <dd>{{ folderName(selectedDocument.folderId) }}</dd>
+          <dt>Ruta S3</dt>
+          <dd>{{ storagePath(selectedDocument) }}</dd>
+          <dt>Version</dt>
+          <dd>v{{ selectedDocument.version || 1 }}</dd>
+        </dl>
+      </section>
+
+      <section class="detail-section">
+        <h3>Metadata</h3>
+        <dl>
+          <dt>MIME</dt>
+          <dd>{{ selectedDocument.mimeType }}</dd>
+          <dt>Tamano</dt>
+          <dd>{{ formatSize(selectedDocument.size) }}</dd>
+          <dt>Subido por</dt>
+          <dd>{{ selectedDocument.uploadedBy }}</dd>
+          <dt>Actualizado por</dt>
+          <dd>{{ displayUser(selectedDocument) }}</dd>
+          <dt>Subida</dt>
+          <dd>{{ formatDate(selectedDocument.uploadedAt || selectedDocument.createdAt) }}</dd>
+          <dt>Acceso</dt>
+          <dd>{{ formatDate(selectedDocument.lastAccessedAt) }}</dd>
+        </dl>
+      </section>
+
+      <section class="detail-section">
+        <h3>Workflow BPM</h3>
+        <dl>
+          <dt>Proceso</dt>
+          <dd>{{ selectedDocument.processKey || 'No vinculado' }}</dd>
+          <dt>Version</dt>
+          <dd>{{ selectedDocument.processVersion || 'N/D' }}</dd>
+          <dt>Tarea</dt>
+          <dd>{{ selectedDocument.taskDefinitionKey || 'N/D' }}</dd>
+          <dt>Instancia</dt>
+          <dd>{{ selectedDocument.processInstanceId || 'N/D' }}</dd>
+        </dl>
+      </section>
+    </aside>
+
+    <ng-template #detailEmpty>
+      <aside class="detail-panel detail-panel--empty">
+        <div class="empty-illustration">INFO</div>
+        <h2>Selecciona un documento</h2>
+        <p>Veras metadata, tags, ruta S3, estado documental y acciones principales.</p>
+      </aside>
+    </ng-template>
+  </section>
+</main>

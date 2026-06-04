@@ -197,6 +197,13 @@ export const routes: Routes = [
     data: { roles: ['ROLE_USER', 'ROLE_CLIENT', 'ROLE_ADMIN'] }
   },
   {
+    path: 'documents',
+    loadComponent: () => import('./features/documents/pages/repository/document-repository.component')
+      .then(m => m.DocumentRepositoryComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_USER', 'ROLE_ADMIN', 'ROLE_BPM_MANAGER'] }
+  },
+  {
     path: 'documents/:documentId/editor',
     loadComponent: () => import('./features/documents/pages/document-editor/document-editor-page.component')
       .then(m => m.DocumentEditorPageComponent),

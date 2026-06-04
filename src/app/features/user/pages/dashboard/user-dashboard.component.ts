@@ -240,6 +240,10 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
     void this.router.navigate(['/user/processes']);
   }
 
+  protected goToDocuments(): void {
+    void this.router.navigate(['/documents']);
+  }
+
   protected openTask(task: TareaInstancia): void {
     if (this.isAssignedToMe(task)) {
       void this.router.navigate(['/tasks'], { queryParams: { mode: 'mine' } });

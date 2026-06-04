@@ -338,6 +338,10 @@ export class AdminDashboardComponent implements OnInit {
     void this.router.navigate(['/admin/ai-recommendations']);
   }
 
+  goToDocuments(): void {
+    void this.router.navigate(['/documents']);
+  }
+
   toggleMoreMenu(): void {
     this.isMoreMenuOpen = !this.isMoreMenuOpen;
   }

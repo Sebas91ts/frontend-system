@@ -42,6 +42,12 @@ export type DocumentMetadata = {
   folderId?: string;
   tagIds?: string[];
   tags?: Tag[];
+  editable?: boolean;
+  collaborativeEditing?: boolean;
+  onlyOfficeDocumentKey?: string;
+  templateDocumentId?: string;
+  currentEditor?: string;
+  editingStartedAt?: string;
 };
 
 export type DocumentLifecycleActionRequest = {
