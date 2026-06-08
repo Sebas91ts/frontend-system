@@ -72,8 +72,8 @@
         >
           <span class="folder-glyph">{{ areaLabel(group.tenantId) }}</span>
           <span>
-            {{ group.processInstanceId }}
-            <small>{{ group.count }} doc. - {{ formatDate(group.latest) }}</small>
+            {{ processGroupTitle(group) }}
+            <small>{{ processGroupSubtitle(group) }}</small>
           </span>
         </button>
       </ng-container>
@@ -114,8 +114,8 @@
           >
             <span class="folder-glyph">{{ areaLabel(group.tenantId) }}</span>
             <span>
-              {{ group.processInstanceId }}
-              <small>{{ group.count }} archivo(s) - {{ formatDate(group.latest) }}</small>
+              {{ processGroupTitle(group) }}
+              <small>{{ processGroupSubtitle(group) }}</small>
             </span>
           </button>
         </div>
@@ -136,7 +136,7 @@
         >
           <span class="folder-glyph">Dir</span>
           <span>
-            {{ folder.name }}
+            {{ folderDisplayName(folder) }}
             <small *ngIf="isAdmin()">{{ areaLabel(folder.tenantId) }}</small>
           </span>
         </button>
@@ -188,11 +188,11 @@
           </ng-container>
           <ng-container *ngIf="selectedProcessInstanceId">
             <span>/</span>
-            <button type="button" (click)="selectProcess(selectedProcessInstanceId)">{{ selectedProcessInstanceId }}</button>
+            <button type="button" (click)="selectProcess(selectedProcessInstanceId)">{{ selectedProcessLabel() }}</button>
           </ng-container>
           <ng-container *ngFor="let folder of selectedFolderPath()">
             <span>/</span>
-            <button type="button" (click)="selectFolder(folder.id)">{{ folder.name }}</button>
+            <button type="button" (click)="selectFolder(folder.id)">{{ folderDisplayName(folder) }}</button>
           </ng-container>
         </nav>
         <span>{{ selectedProcessInstanceId ? 'Archivos dentro del proceso' : selectedFolderId ? 'Archivos dentro de carpeta' : 'Selecciona una carpeta para ver archivos' }}</span>
@@ -245,8 +245,8 @@
           </div>
 
           <div class="area-cell">
-            <strong>{{ areaLabel(document.tenantId) }}</strong>
-            <small>{{ storagePath(document) }}</small>
+            <strong>{{ areaLabel(ownerArea(document)) }}</strong>
+            <small>Acceso: {{ accessSummary(document) }}</small>
           </div>
 
           <div class="tag-list">
@@ -270,7 +270,7 @@
 
           <div class="row-actions" (click)="$event.stopPropagation()">
             <button type="button" class="action-primary" (click)="openEditor(document)" [disabled]="!isEditable(document)">OnlyOffice</button>
-            <button type="button" (click)="download(document)">Descargar</button>
+            <button type="button" (click)="download(document)" [disabled]="!canDownload(document)">Descargar</button>
           </div>
         </article>
 
@@ -320,7 +320,7 @@
         <button type="button" class="primary-button" (click)="openEditor(selectedDocument)" [disabled]="!isEditable(selectedDocument)">
           Abrir en OnlyOffice
         </button>
-        <button type="button" class="ghost-button" (click)="download(selectedDocument)">Descargar</button>
+        <button type="button" class="ghost-button" (click)="download(selectedDocument)" [disabled]="!canDownload(selectedDocument)">Descargar</button>
       </div>
 
       <section class="detail-section" *ngIf="canManageTags()">
@@ -341,7 +341,13 @@
       <section class="detail-section">
         <h3>Contexto documental</h3>
         <dl>
-          <dt>Area</dt>
+          <dt>Area propietaria</dt>
+          <dd>{{ areaLabel(ownerArea(selectedDocument)) }}</dd>
+          <dt>Areas con acceso</dt>
+          <dd>{{ accessSummary(selectedDocument) }}</dd>
+          <dt>Tu permiso</dt>
+          <dd>{{ currentUserPermissionLabel(selectedDocument) }}</dd>
+          <dt>Area tecnica S3</dt>
           <dd>{{ areaLabel(selectedDocument.tenantId) }}</dd>
           <dt>Carpeta</dt>
           <dd>{{ folderName(selectedDocument.folderId) }}</dd>

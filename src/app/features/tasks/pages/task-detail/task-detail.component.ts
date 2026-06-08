@@ -11,9 +11,13 @@ import {
   UploadedFileMetadata,
 } from '../../../../core/models/form.models';
 import { HistoryDisplayField, TaskExecutionLog } from '../../../../core/models/task-history.models';
+import { DocumentMetadata } from '../../../../core/models/document-lifecycle.models';
+import { TaskDocumentRuntime, TaskDocumentRuntimeRequirement } from '../../../../core/models/task-document-runtime.models';
 import { TareaInstancia } from '../../../../core/models/task-instance.models';
 import { AiService, FormFillSuggestion } from '../../../../core/services/ai.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { DocumentLifecycleService } from '../../../../core/services/document-lifecycle.service';
+import { DocumentRepositoryService } from '../../../../core/services/document-repository.service';
 import { FileUploadService } from '../../../../core/services/file-upload.service';
 import { FormService } from '../../../../core/services/form.service';
 import { TaskInstanceService } from '../../../../core/services/task-instance.service';
@@ -58,6 +62,8 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
   private readonly taskService = inject(TaskInstanceService);
   private readonly formService = inject(FormService);
   private readonly fileUploadService = inject(FileUploadService);
+  private readonly documentRepositoryService = inject(DocumentRepositoryService);
+  private readonly documentLifecycleService = inject(DocumentLifecycleService);
   private readonly aiService = inject(AiService);
   private readonly authService = inject(AuthService);
   private readonly preferences = inject(UiPreferencesService);
@@ -77,6 +83,10 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
   protected historyEntries: TaskExecutionLog[] = [];
   protected historyLoading = false;
   protected historyMessage = '';
+  protected documentRuntime: TaskDocumentRuntime | null = null;
+  protected documentsLoading = false;
+  protected documentsMessage = '';
+  protected documentUploadState: Record<string, { uploading: boolean; error: string }> = {};
   protected readonly isVoiceInputSupported = this.getSpeechRecognitionConstructor() !== null;
   protected isVoiceRecording = false;
   protected isAiFormFilling = false;
@@ -196,7 +206,15 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
   }
 
   protected get canCompleteTask(): boolean {
-    return this.isTaskTakenByCurrentUser();
+    return this.isTaskTakenByCurrentUser() && !this.hasMissingRequiredDocuments;
+  }
+
+  protected get hasDocumentRequirements(): boolean {
+    return !!this.documentRuntime?.requirements?.length;
+  }
+
+  protected get hasMissingRequiredDocuments(): boolean {
+    return (this.documentRuntime?.summary?.missingRequired ?? 0) > 0;
   }
 
   protected get taskActionHint(): string {
@@ -214,6 +232,10 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
 
     if (this.hasForm && !this.isFormValid) {
       return this.t('taskDetail.completeHint');
+    }
+
+    if (this.hasMissingRequiredDocuments) {
+      return 'Faltan documentos obligatorios antes de completar la tarea.';
     }
 
     return this.t('taskDetail.actionSend');
@@ -517,6 +539,7 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
           this.task = response.data ?? this.task;
           if (this.task) {
             this.loadFormForTask(this.task);
+            this.loadDocumentsForTask(this.task);
             this.loadHistory(this.task.processInstanceId || '');
           }
           this.cdr.detectChanges();
@@ -543,6 +566,18 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
 
     if (this.formDefinition && !this.isFormValid) {
       this.errorMessage = this.t('taskDetail.completeHint');
+      this.cdr.detectChanges();
+      return;
+    }
+
+    if (this.hasMissingRequiredDocuments) {
+      const missing = this.documentRuntime?.requirements
+        ?.filter((requirement) => requirement.required && requirement.status === 'MISSING')
+        .map((requirement) => requirement.name)
+        .join(', ');
+      this.errorMessage = missing
+        ? `No puedes completar la tarea. Falta adjuntar: ${missing}.`
+        : 'No puedes completar la tarea. Faltan documentos obligatorios.';
       this.cdr.detectChanges();
       return;
     }
@@ -609,6 +644,217 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
           this.cdr.detectChanges();
         },
       });
+  }
+
+  private loadDocumentsForTask(task: TareaInstancia): void {
+    if (!task.id) {
+      this.documentRuntime = null;
+      return;
+    }
+
+    this.documentsLoading = true;
+    this.documentsMessage = '';
+    this.cdr.detectChanges();
+
+    this.taskService
+      .obtenerDocumentosRuntime(task.id)
+      .pipe(
+        finalize(() => {
+          this.documentsLoading = false;
+          this.cdr.detectChanges();
+        }),
+      )
+      .subscribe({
+        next: (response) => {
+          this.documentRuntime = response.data ?? null;
+          this.documentsMessage = this.hasDocumentRequirements ? '' : 'Esta tarea no tiene documentos configurados.';
+          this.cdr.detectChanges();
+        },
+        error: (error: any) => {
+          this.documentRuntime = null;
+          this.documentsMessage = error?.error?.message || 'No se pudo cargar la configuracion documental de la tarea.';
+          this.cdr.detectChanges();
+        },
+      });
+  }
+
+  protected onTaskDocumentSelected(requirement: TaskDocumentRuntimeRequirement, event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0] ?? null;
+    if (!file || !this.task || !requirement.id) {
+      return;
+    }
+
+    if (!requirement.canUpload) {
+      this.setDocumentUploadError(requirement.id, 'Tu area no tiene permiso para subir este documento.');
+      if (input) {
+        input.value = '';
+      }
+      return;
+    }
+
+    const currentUser = this.authService.currentUser();
+    const tenantId = currentUser?.areaId || this.task.areaId || currentUser?.tenantId || '';
+    if (!tenantId || !this.task.processInstanceId) {
+      this.setDocumentUploadError(requirement.id, 'No se pudo identificar el contexto BPM para subir el documento.');
+      return;
+    }
+
+    this.documentUploadState[requirement.id] = { uploading: true, error: '' };
+    this.cdr.detectChanges();
+
+    this.documentRepositoryService
+      .uploadTaskDocument(file, {
+        tenantId,
+        processInstanceId: this.task.processInstanceId,
+        processKey: this.extractProcessKey(this.task.processDefinitionId),
+        processVersion: this.processVersion,
+        taskDefinitionKey: this.task.taskDefinitionKey || '',
+        taskInstanceId: this.task.id,
+        documentRequirementId: requirement.id,
+      })
+      .pipe(
+        finalize(() => {
+          this.documentUploadState[requirement.id] = {
+            uploading: false,
+            error: this.documentUploadState[requirement.id]?.error || '',
+          };
+          if (input) {
+            input.value = '';
+          }
+          this.cdr.detectChanges();
+        }),
+      )
+      .subscribe({
+        next: () => {
+          this.successMessage = `${requirement.name || 'Documento'} subido correctamente.`;
+          this.loadDocumentsForTask(this.task!);
+        },
+        error: (error: any) => {
+          this.setDocumentUploadError(requirement.id!, error?.error?.message || 'No se pudo subir el documento.');
+        },
+      });
+  }
+
+  protected openTaskDocumentEditor(document: DocumentMetadata): void {
+    void this.router.navigate(['/documents', document.id, 'editor']);
+  }
+
+  protected downloadTaskDocument(document: DocumentMetadata): void {
+    this.documentRepositoryService.getDownloadUrl(document.id).subscribe({
+      next: (response) => {
+        const url = response.data?.downloadUrl;
+        if (url) {
+          window.open(url, '_blank', 'noopener');
+        }
+      },
+      error: (error: any) => {
+        this.errorMessage = error?.error?.message || 'No se pudo generar la descarga del documento.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  protected approveTaskDocument(document: DocumentMetadata): void {
+    this.documentLifecycleService.approve(document.id).subscribe({
+      next: () => {
+        this.successMessage = 'Documento aprobado.';
+        if (this.task) {
+          this.loadDocumentsForTask(this.task);
+        }
+      },
+      error: (error: any) => {
+        this.errorMessage = error?.error?.message || 'No se pudo aprobar el documento.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  protected rejectTaskDocument(document: DocumentMetadata): void {
+    this.documentLifecycleService.reject(document.id).subscribe({
+      next: () => {
+        this.successMessage = 'Documento rechazado.';
+        if (this.task) {
+          this.loadDocumentsForTask(this.task);
+        }
+      },
+      error: (error: any) => {
+        this.errorMessage = error?.error?.message || 'No se pudo rechazar el documento.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  protected documentUploadError(requirement: TaskDocumentRuntimeRequirement): string {
+    return requirement.id ? this.documentUploadState[requirement.id]?.error || '' : '';
+  }
+
+  protected isDocumentUploading(requirement: TaskDocumentRuntimeRequirement): boolean {
+    return requirement.id ? !!this.documentUploadState[requirement.id]?.uploading : false;
+  }
+
+  protected documentDirectionLabel(requirement: TaskDocumentRuntimeRequirement): string {
+    return requirement.documentDirection === 'OUTPUT'
+      ? 'Documento que genera esta tarea'
+      : 'Documento que recibe esta tarea';
+  }
+
+  protected requirementStatusLabel(status?: string): string {
+    const labels: Record<string, string> = {
+      MISSING: 'Faltante obligatorio',
+      PENDING: 'Pendiente',
+      COMPLETED: 'Subido',
+      IN_REVIEW: 'En revision',
+      APPROVED: 'Aprobado',
+      REJECTED: 'Rechazado',
+    };
+    return labels[status || ''] || 'Pendiente';
+  }
+
+  protected requirementStatusClass(status?: string): string {
+    return (status || 'PENDING').toLowerCase().replace(/_/g, '-');
+  }
+
+  protected allowedTypesLabel(requirement: TaskDocumentRuntimeRequirement): string {
+    const types = requirement.allowedMimeTypes ?? [];
+    if (!types.length) {
+      return 'Tipos permitidos por el sistema';
+    }
+    const labels = new Set<string>();
+    for (const type of types) {
+      if (type.includes('pdf')) labels.add('PDF');
+      else if (type.includes('word')) labels.add('Word');
+      else if (type.includes('excel') || type.includes('spreadsheet')) labels.add('Excel');
+      else if (type.includes('powerpoint') || type.includes('presentation')) labels.add('PowerPoint');
+      else if (type.startsWith('image/')) labels.add('Imagen');
+      else labels.add('Otros');
+    }
+    return Array.from(labels).join(', ');
+  }
+
+  protected formatBytes(value?: number): string {
+    if (!value || value <= 0) {
+      return 'Limite general del sistema';
+    }
+    const mb = value / (1024 * 1024);
+    return `${mb >= 1 ? mb.toFixed(mb % 1 === 0 ? 0 : 1) : '<1'} MB`;
+  }
+
+  protected canOpenOfficeDocument(document: DocumentMetadata, requirement: TaskDocumentRuntimeRequirement): boolean {
+    return !!document.id && !!requirement.canEdit && !!requirement.editable && this.isOfficeDocument(document);
+  }
+
+  protected isOfficeDocument(document: DocumentMetadata): boolean {
+    const mime = (document.mimeType || '').toLowerCase();
+    const name = (document.originalName || document.fileName || '').toLowerCase();
+    return mime.includes('word') || mime.includes('excel') || mime.includes('powerpoint')
+      || name.endsWith('.docx') || name.endsWith('.xlsx') || name.endsWith('.pptx');
+  }
+
+  private setDocumentUploadError(requirementId: string, error: string): void {
+    this.documentUploadState[requirementId] = { uploading: false, error };
+    this.errorMessage = error;
+    this.cdr.detectChanges();
   }
 
   private loadHistory(processInstanceId: string): void {

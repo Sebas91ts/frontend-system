@@ -1,0 +1,20 @@
+<section class="task-document-assignment" *ngIf="visible">
+  <div class="task-document-assignment__header">
+    <p class="task-document-assignment__eyebrow">Documentos de la tarea</p>
+    <strong>{{ selectedUserTaskLabel }}</strong>
+    <span class="task-document-assignment__meta">{{ summary }}</span>
+  </div>
+
+  <div class="task-document-assignment__note">
+    Define los documentos que esta tarea recibe o genera, y que areas pueden verlos, editarlos, descargarlos o aprobarlos.
+  </div>
+
+  <button
+    type="button"
+    class="task-document-assignment__button"
+    (click)="configure.emit()"
+    [disabled]="readonlyMode"
+  >
+    {{ hasDocumentConfig ? 'Editar documentos' : 'Configurar documentos' }}
+  </button>
+</section>

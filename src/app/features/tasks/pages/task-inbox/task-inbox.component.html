@@ -386,6 +386,122 @@
         </div>
       </div>
 
+      <section class="quick-work-documents">
+        <header class="quick-work-documents__header">
+          <div>
+            <p class="task-inbox-eyebrow">Documentos de la tarea</p>
+            <h3>Adjuntos y revisiones BPM</h3>
+            <p>Sube, revisa o edita los documentos requeridos antes de completar.</p>
+          </div>
+          <div class="quick-work-documents__summary" *ngIf="quickWorkDocumentRuntime?.summary as summary">
+            <strong>{{ summary.completed }}/{{ summary.total }}</strong>
+            <span>completados</span>
+          </div>
+        </header>
+
+        <div class="quick-work__empty" *ngIf="quickWorkDocumentsLoading">Cargando documentos de la tarea...</div>
+        <div class="quick-work__empty" *ngIf="quickWorkDocumentsMessage && !quickWorkDocumentsLoading">
+          {{ quickWorkDocumentsMessage }}
+        </div>
+
+        <div class="quick-work-document-grid" *ngIf="quickWorkHasDocumentRequirements && !quickWorkDocumentsLoading">
+          <article
+            class="quick-work-document"
+            *ngFor="let requirement of quickWorkDocumentRuntime?.requirements || []"
+            [class.is-missing]="requirement.status === 'MISSING'"
+          >
+            <header class="quick-work-document__header">
+              <div>
+                <span class="quick-work-document__direction">{{ documentDirectionLabel(requirement) }}</span>
+                <h4>{{ requirement.name }}</h4>
+                <p *ngIf="requirement.description">{{ requirement.description }}</p>
+              </div>
+              <span class="quick-work-document__status" [class]="requirementStatusClass(requirement.status)">
+                {{ requirementStatusLabel(requirement.status) }}
+              </span>
+            </header>
+
+            <div class="quick-work-document__chips">
+              <span *ngIf="requirement.required">Obligatorio</span>
+              <span *ngIf="requirement.editable">OnlyOffice</span>
+              <span *ngIf="requirement.requireApproval">Requiere aprobacion</span>
+              <span>{{ allowedTypesLabel(requirement) }}</span>
+              <span>{{ formatBytes(requirement.maxFileSizeBytes) }}</span>
+            </div>
+
+            <p class="quick-work-document__message" *ngIf="requirement.message">{{ requirement.message }}</p>
+
+            <div class="quick-work-document__upload" *ngIf="requirement.canUpload; else noQuickUploadPermission">
+              <label>
+                <span>{{ isQuickWorkDocumentUploading(requirement) ? 'Subiendo...' : 'Subir documento' }}</span>
+                <input
+                  type="file"
+                  [accept]="(requirement.allowedMimeTypes || []).join(',')"
+                  (change)="onQuickWorkTaskDocumentSelected(requirement, $event)"
+                  [disabled]="isQuickWorkDocumentUploading(requirement) || quickWorkSaving"
+                />
+              </label>
+              <small class="task-detail-form__error" *ngIf="quickWorkDocumentUploadError(requirement)">
+                {{ quickWorkDocumentUploadError(requirement) }}
+              </small>
+            </div>
+
+            <ng-template #noQuickUploadPermission>
+              <div class="quick-work-document__empty">Tu area no tiene permiso para subir este documento.</div>
+            </ng-template>
+
+            <div class="quick-work-document__files" *ngIf="requirement.documents?.length; else noQuickRequirementDocuments">
+              <article class="quick-work-document-file" *ngFor="let document of requirement.documents">
+                <div>
+                  <strong>{{ document.originalName || document.fileName }}</strong>
+                  <span>{{ document.uploadedBy }} · {{ formatDate(document.uploadedAt) }}</span>
+                </div>
+                <div class="quick-work-document-file__actions">
+                  <button
+                    type="button"
+                    class="toolbar-button"
+                    (click)="openQuickWorkDocumentEditor(document)"
+                    [disabled]="!canOpenOfficeDocument(document, requirement)"
+                  >
+                    OnlyOffice
+                  </button>
+                  <button
+                    type="button"
+                    class="toolbar-button"
+                    (click)="downloadQuickWorkDocument(document)"
+                    [disabled]="!requirement.canDownload"
+                  >
+                    Descargar
+                  </button>
+                  <button
+                    type="button"
+                    class="toolbar-button"
+                    (click)="approveQuickWorkDocument(document)"
+                    *ngIf="requirement.canApprove"
+                  >
+                    Aprobar
+                  </button>
+                  <button
+                    type="button"
+                    class="toolbar-button danger"
+                    (click)="rejectQuickWorkDocument(document)"
+                    *ngIf="requirement.canReject"
+                  >
+                    Rechazar
+                  </button>
+                </div>
+              </article>
+            </div>
+
+            <ng-template #noQuickRequirementDocuments>
+              <div class="quick-work-document__empty">
+                {{ requirement.required ? 'Este documento es obligatorio y aun no fue adjuntado.' : 'Aun no hay archivos para este documento.' }}
+              </div>
+            </ng-template>
+          </article>
+        </div>
+      </section>
+
       <ng-template #noFormMessage>
         <div class="quick-work__empty">
           {{ t('tasks.noForm') }}
@@ -394,7 +510,12 @@
     </section>
 
     <footer class="quick-work__footer">
-      <button type="button" class="toolbar-button accent" (click)="completeQuickWork()" [disabled]="quickWorkSaving || quickWorkLoading || (quickWorkHasForm && !quickWorkIsFormValid)">
+      <button
+        type="button"
+        class="toolbar-button accent"
+        (click)="completeQuickWork()"
+        [disabled]="quickWorkSaving || quickWorkLoading || quickWorkDocumentsLoading || (quickWorkHasForm && !quickWorkIsFormValid) || quickWorkHasMissingRequiredDocuments"
+      >
         {{ quickWorkSaving ? t('tasks.saving') : t('tasks.submit') }}
       </button>
     </footer>

@@ -5,6 +5,7 @@ import { API_BASE_URL } from '../config/api.config';
 import { ApiResponse } from '../models/auth.models';
 import { TaskExecutionLog } from '../models/task-history.models';
 import { TareaInstancia } from '../models/task-instance.models';
+import { TaskDocumentRuntime } from '../models/task-document-runtime.models';
 
 @Injectable({
   providedIn: 'root',
@@ -43,6 +44,12 @@ export class TaskInstanceService {
 
   obtenerPorId(id: string): Observable<ApiResponse<TareaInstancia>> {
     return this.http.get<ApiResponse<TareaInstancia>>(`${this.apiUrl}/camunda/tasks/${id}`);
+  }
+
+  obtenerDocumentosRuntime(taskId: string): Observable<ApiResponse<TaskDocumentRuntime>> {
+    return this.http.get<ApiResponse<TaskDocumentRuntime>>(
+      `${this.apiUrl}/camunda/tasks/${encodeURIComponent(taskId)}/documents`,
+    );
   }
 
   obtenerHistorial(processInstanceId: string): Observable<ApiResponse<TaskExecutionLog[]>> {

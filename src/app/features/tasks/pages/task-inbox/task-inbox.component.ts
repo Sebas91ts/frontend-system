@@ -16,7 +16,11 @@ import { AiService, FormFillSuggestion } from '../../../../core/services/ai.serv
 import { FormService } from '../../../../core/services/form.service';
 import { FileUploadService } from '../../../../core/services/file-upload.service';
 import { ApiResponse } from '../../../../core/models/auth.models';
+import { DocumentMetadata } from '../../../../core/models/document-lifecycle.models';
 import { RealtimeService } from '../../../../core/services/realtime.service';
+import { DocumentLifecycleService } from '../../../../core/services/document-lifecycle.service';
+import { DocumentRepositoryService } from '../../../../core/services/document-repository.service';
+import { TaskDocumentRuntime, TaskDocumentRuntimeRequirement } from '../../../../core/models/task-document-runtime.models';
 import { TranslationKey, UiPreferencesService } from '../../../../core/services/ui-preferences.service';
 
 interface BrowserSpeechRecognitionEvent {
@@ -57,6 +61,8 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly formService = inject(FormService);
   private readonly fileUploadService = inject(FileUploadService);
+  private readonly documentRepositoryService = inject(DocumentRepositoryService);
+  private readonly documentLifecycleService = inject(DocumentLifecycleService);
   private readonly aiService = inject(AiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -80,6 +86,10 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
   protected quickWorkForm: FormDefinition | null = null;
   protected quickWorkValues: Record<string, unknown> = {};
   protected quickWorkFileState: Record<string, { uploading: boolean; error: string }> = {};
+  protected quickWorkDocumentRuntime: TaskDocumentRuntime | null = null;
+  protected quickWorkDocumentsLoading = false;
+  protected quickWorkDocumentsMessage = '';
+  protected quickWorkDocumentUploadState: Record<string, { uploading: boolean; error: string }> = {};
   protected readonly isVoiceInputSupported = this.getSpeechRecognitionConstructor() !== null;
   protected isQuickWorkVoiceRecording = false;
   protected isQuickWorkAiFilling = false;
@@ -341,6 +351,9 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
     this.quickWorkForm = null;
     this.quickWorkValues = {};
     this.quickWorkFileState = {};
+    this.quickWorkDocumentRuntime = null;
+    this.quickWorkDocumentsMessage = '';
+    this.quickWorkDocumentUploadState = {};
     this.cdr.detectChanges();
 
     this.taskService.obtenerPorId(task.id).pipe(
@@ -353,6 +366,7 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
         const loadedTask = response.data ?? task;
         this.quickWorkTask = loadedTask;
         this.loadQuickWorkForm(loadedTask);
+        this.loadQuickWorkDocuments(loadedTask);
         this.cdr.detectChanges();
       },
       error: (error: any) => {
@@ -372,6 +386,9 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
     this.quickWorkForm = null;
     this.quickWorkValues = {};
     this.quickWorkFileState = {};
+    this.quickWorkDocumentRuntime = null;
+    this.quickWorkDocumentsMessage = '';
+    this.quickWorkDocumentUploadState = {};
     this.quickWorkError = '';
     this.quickWorkSuccess = '';
     this.quickWorkTranscript = '';
@@ -422,6 +439,23 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
 
       return typeof value === 'string' ? value.trim().length > 0 : true;
     });
+  }
+
+  protected get quickWorkHasDocumentRequirements(): boolean {
+    return !!this.quickWorkDocumentRuntime?.requirements?.length;
+  }
+
+  protected get quickWorkHasMissingRequiredDocuments(): boolean {
+    return (this.quickWorkDocumentRuntime?.summary?.missingRequired ?? 0) > 0;
+  }
+
+  protected get quickWorkMissingRequiredDocumentsLabel(): string {
+    const missing = this.quickWorkDocumentRuntime?.requirements
+      ?.filter((requirement) => requirement.required && requirement.status === 'MISSING')
+      .map((requirement) => requirement.name)
+      .filter(Boolean) ?? [];
+
+    return missing.join(', ');
   }
 
   protected get isAnyFileUploading(): boolean {
@@ -640,14 +674,23 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
 
     if (this.quickWorkForm && !this.quickWorkIsFormValid) {
       this.quickWorkError = 'Completa los campos obligatorios antes de finalizar la tarea.';
-      this.cdr.detectChanges();
+      this.cdr.markForCheck();
+      return;
+    }
+
+    if (this.quickWorkHasMissingRequiredDocuments) {
+      const missing = this.quickWorkMissingRequiredDocumentsLabel;
+      this.quickWorkError = missing
+        ? `No puedes completar la tarea. Falta adjuntar: ${missing}.`
+        : 'No puedes completar la tarea. Faltan documentos obligatorios.';
+      this.cdr.markForCheck();
       return;
     }
 
     this.quickWorkSaving = true;
     this.quickWorkError = '';
     this.quickWorkSuccess = '';
-    this.cdr.detectChanges();
+    this.cdr.markForCheck();
 
     try {
       const variables = this.quickWorkForm ? await this.buildQuickWorkVariablesWithUploads() : {};
@@ -658,15 +701,15 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
 
       await firstValueFrom(this.taskService.completarTareaConVariables(this.quickWorkTask.id, variables));
       this.quickWorkSuccess = 'La tarea se completó correctamente.';
-      this.cdr.detectChanges();
+      this.cdr.markForCheck();
       await this.loadTasks();
       setTimeout(() => this.closeQuickWork(), 900);
     } catch (error: any) {
       this.quickWorkError = error?.error?.message || 'No se pudo completar la tarea.';
-      this.cdr.detectChanges();
+      this.cdr.markForCheck();
     } finally {
       this.quickWorkSaving = false;
-      this.cdr.detectChanges();
+      this.cdr.markForCheck();
     }
   }
 
@@ -885,6 +928,224 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       },
     });
+  }
+
+  private loadQuickWorkDocuments(task: TareaInstancia): void {
+    if (!task.id) {
+      this.quickWorkDocumentRuntime = null;
+      this.quickWorkDocumentsMessage = '';
+      return;
+    }
+
+    this.quickWorkDocumentsLoading = true;
+    this.quickWorkDocumentsMessage = '';
+    this.cdr.detectChanges();
+
+    this.taskService
+      .obtenerDocumentosRuntime(task.id)
+      .pipe(
+        finalize(() => {
+          this.quickWorkDocumentsLoading = false;
+          this.cdr.detectChanges();
+        }),
+      )
+      .subscribe({
+        next: (response) => {
+          this.quickWorkDocumentRuntime = response.data ?? null;
+          this.quickWorkDocumentsMessage = this.quickWorkHasDocumentRequirements
+            ? ''
+            : 'Esta tarea no tiene documentos configurados.';
+          this.cdr.detectChanges();
+        },
+        error: (error: any) => {
+          this.quickWorkDocumentRuntime = null;
+          this.quickWorkDocumentsMessage = error?.error?.message || 'No se pudo cargar la configuracion documental de la tarea.';
+          this.cdr.detectChanges();
+        },
+      });
+  }
+
+  protected onQuickWorkTaskDocumentSelected(requirement: TaskDocumentRuntimeRequirement, event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0] ?? null;
+    if (!file || !this.quickWorkTask || !requirement.id) {
+      return;
+    }
+
+    if (!requirement.canUpload) {
+      this.setQuickWorkDocumentUploadError(requirement.id, 'Tu area no tiene permiso para subir este documento.');
+      if (input) {
+        input.value = '';
+      }
+      return;
+    }
+
+    const currentUser = this.authService.currentUser();
+    const tenantId = currentUser?.areaId || this.quickWorkTask.areaId || currentUser?.tenantId || '';
+    if (!tenantId || !this.quickWorkTask.processInstanceId) {
+      this.setQuickWorkDocumentUploadError(requirement.id, 'No se pudo identificar el contexto BPM para subir el documento.');
+      return;
+    }
+
+    this.quickWorkDocumentUploadState[requirement.id] = { uploading: true, error: '' };
+    this.cdr.detectChanges();
+
+    this.documentRepositoryService
+      .uploadTaskDocument(file, {
+        tenantId,
+        processInstanceId: this.quickWorkTask.processInstanceId,
+        processKey: this.getProcessKey(this.quickWorkTask),
+        processVersion: this.getProcessVersion(this.quickWorkTask),
+        taskDefinitionKey: this.quickWorkTask.taskDefinitionKey || '',
+        taskInstanceId: this.quickWorkTask.id,
+        documentRequirementId: requirement.id,
+      })
+      .pipe(
+        finalize(() => {
+          this.quickWorkDocumentUploadState[requirement.id!] = {
+            uploading: false,
+            error: this.quickWorkDocumentUploadState[requirement.id!]?.error || '',
+          };
+          if (input) {
+            input.value = '';
+          }
+          this.cdr.detectChanges();
+        }),
+      )
+      .subscribe({
+        next: () => {
+          this.quickWorkSuccess = `${requirement.name || 'Documento'} subido correctamente.`;
+          this.loadQuickWorkDocuments(this.quickWorkTask!);
+        },
+        error: (error: any) => {
+          this.setQuickWorkDocumentUploadError(requirement.id!, error?.error?.message || 'No se pudo subir el documento.');
+        },
+      });
+  }
+
+  protected openQuickWorkDocumentEditor(document: DocumentMetadata): void {
+    void this.router.navigate(['/documents', document.id, 'editor']);
+  }
+
+  protected downloadQuickWorkDocument(document: DocumentMetadata): void {
+    this.documentRepositoryService.getDownloadUrl(document.id).subscribe({
+      next: (response) => {
+        const url = response.data?.downloadUrl;
+        if (url) {
+          window.open(url, '_blank', 'noopener');
+        }
+      },
+      error: (error: any) => {
+        this.quickWorkError = error?.error?.message || 'No se pudo generar la descarga del documento.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  protected approveQuickWorkDocument(document: DocumentMetadata): void {
+    this.documentLifecycleService.approve(document.id).subscribe({
+      next: () => {
+        this.quickWorkSuccess = 'Documento aprobado.';
+        if (this.quickWorkTask) {
+          this.loadQuickWorkDocuments(this.quickWorkTask);
+        }
+      },
+      error: (error: any) => {
+        this.quickWorkError = error?.error?.message || 'No se pudo aprobar el documento.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  protected rejectQuickWorkDocument(document: DocumentMetadata): void {
+    this.documentLifecycleService.reject(document.id).subscribe({
+      next: () => {
+        this.quickWorkSuccess = 'Documento rechazado.';
+        if (this.quickWorkTask) {
+          this.loadQuickWorkDocuments(this.quickWorkTask);
+        }
+      },
+      error: (error: any) => {
+        this.quickWorkError = error?.error?.message || 'No se pudo rechazar el documento.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  protected quickWorkDocumentUploadError(requirement: TaskDocumentRuntimeRequirement): string {
+    return requirement.id ? this.quickWorkDocumentUploadState[requirement.id]?.error || '' : '';
+  }
+
+  protected isQuickWorkDocumentUploading(requirement: TaskDocumentRuntimeRequirement): boolean {
+    return requirement.id ? !!this.quickWorkDocumentUploadState[requirement.id]?.uploading : false;
+  }
+
+  protected documentDirectionLabel(requirement: TaskDocumentRuntimeRequirement): string {
+    return requirement.documentDirection === 'OUTPUT'
+      ? 'Documento que genera esta tarea'
+      : 'Documento que recibe esta tarea';
+  }
+
+  protected requirementStatusLabel(status?: string): string {
+    const labels: Record<string, string> = {
+      MISSING: 'Faltante obligatorio',
+      PENDING: 'Pendiente',
+      COMPLETED: 'Subido',
+      IN_REVIEW: 'En revision',
+      APPROVED: 'Aprobado',
+      REJECTED: 'Rechazado',
+    };
+    return labels[status || ''] || 'Pendiente';
+  }
+
+  protected requirementStatusClass(status?: string): string {
+    return (status || 'PENDING').toLowerCase().replace(/_/g, '-');
+  }
+
+  protected allowedTypesLabel(requirement: TaskDocumentRuntimeRequirement): string {
+    const types = requirement.allowedMimeTypes ?? [];
+    if (!types.length) {
+      return 'Tipos permitidos por el sistema';
+    }
+
+    const labels = new Set<string>();
+    for (const type of types) {
+      const normalized = type.toLowerCase();
+      if (normalized.includes('pdf')) labels.add('PDF');
+      else if (normalized.includes('word')) labels.add('Word');
+      else if (normalized.includes('excel') || normalized.includes('spreadsheet')) labels.add('Excel');
+      else if (normalized.includes('powerpoint') || normalized.includes('presentation')) labels.add('PowerPoint');
+      else if (normalized.startsWith('image/')) labels.add('Imagen');
+      else labels.add('Otros');
+    }
+
+    return Array.from(labels).join(', ');
+  }
+
+  protected formatBytes(value?: number): string {
+    if (!value || value <= 0) {
+      return 'Limite general del sistema';
+    }
+
+    const mb = value / (1024 * 1024);
+    return `${mb >= 1 ? mb.toFixed(mb % 1 === 0 ? 0 : 1) : '<1'} MB`;
+  }
+
+  protected canOpenOfficeDocument(document: DocumentMetadata, requirement: TaskDocumentRuntimeRequirement): boolean {
+    return !!document.id && !!requirement.canEdit && !!requirement.editable && this.isOfficeDocument(document);
+  }
+
+  protected isOfficeDocument(document: DocumentMetadata): boolean {
+    const mime = (document.mimeType || '').toLowerCase();
+    const name = (document.originalName || document.fileName || '').toLowerCase();
+    return mime.includes('word') || mime.includes('excel') || mime.includes('powerpoint')
+      || name.endsWith('.docx') || name.endsWith('.xlsx') || name.endsWith('.pptx');
+  }
+
+  private setQuickWorkDocumentUploadError(requirementId: string, error: string): void {
+    this.quickWorkDocumentUploadState[requirementId] = { uploading: false, error };
+    this.quickWorkError = error;
+    this.cdr.detectChanges();
   }
 
   private async buildQuickWorkVariablesWithUploads(): Promise<Record<string, unknown>> {

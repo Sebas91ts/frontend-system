@@ -24,10 +24,12 @@ import {
   FormFieldOptionDefinition,
   FormFieldType,
 } from '../../../../core/models/form.models';
+import { DocumentRequirement, TaskDocumentConfig, TaskDocumentConfigCreateRequest } from '../../../../core/models/document-config.models';
 import { AreaService } from '../../../../core/services/area.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { FormService } from '../../../../core/services/form.service';
 import { ProcessService } from '../../../../core/services/process.service';
+import { TaskDocumentConfigService } from '../../../../core/services/task-document-config.service';
 import { EMPTY_BPMN_XML } from '../../shared/bpmn-templates';
 import { validateExclusiveGatewayXml } from '../../shared/bpmn-gateway-validation';
 import { customModdle } from '../../shared/custom-moddle';
@@ -44,6 +46,8 @@ import { LaneAssignmentPanelComponent } from './lane-assignment-panel.component'
 import { SequenceFlowTechnicalPanelComponent } from './sequence-flow-technical-panel.component';
 import { TaskFormAssignmentCardComponent } from './task-form-assignment-card.component';
 import { TaskFormModalComponent } from './task-form-modal.component';
+import { TaskDocumentAssignmentCardComponent } from './task-document-assignment-card.component';
+import { TaskDocumentModalComponent } from './task-document-modal.component';
 
 type SaveXmlResult = {
   xml?: string;
@@ -68,6 +72,8 @@ type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'readonly' | 'offline' 
     SequenceFlowTechnicalPanelComponent,
     TaskFormAssignmentCardComponent,
     TaskFormModalComponent,
+    TaskDocumentAssignmentCardComponent,
+    TaskDocumentModalComponent,
   ],
   templateUrl: './bpmn-editor.component.html',
   styleUrl: './bpmn-editor.component.css',
@@ -140,6 +146,13 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
   protected formError = '';
   protected formSuccess = '';
   protected taskFormDefinition: FormDefinition | null = null;
+  protected taskDocumentPanelOpen = false;
+  protected documentConfigLoading = false;
+  protected documentConfigSaving = false;
+  protected documentConfigError = '';
+  protected documentConfigSuccess = '';
+  protected taskDocumentConfig: TaskDocumentConfig | null = null;
+  protected documentConfigDraft: TaskDocumentConfigCreateRequest = this.createEmptyDocumentConfigDraft();
   protected formDraft: FormDefinition = {
     id: '',
     processKey: '',
@@ -164,6 +177,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
   constructor(
     private readonly areaService: AreaService,
     private readonly formService: FormService,
+    private readonly taskDocumentConfigService: TaskDocumentConfigService,
     private readonly processService: ProcessService,
     private readonly authService: AuthService,
     private readonly cdr: ChangeDetectorRef,
@@ -391,8 +405,38 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
     return `${this.processKey || 'processKey no disponible'} | v${this.processVersion ?? 1} | ${this.formDraft.taskDefinitionKey || 'taskDefinitionKey no disponible'}`;
   }
 
+  protected get taskDocumentContext(): string {
+    return `${this.processKey || 'processKey no disponible'} | v${this.processVersion ?? 1} | ${this.documentConfigDraft.taskDefinitionKey || 'taskDefinitionKey no disponible'}`;
+  }
+
   protected get hasTaskForm(): boolean {
     return !!this.taskFormDefinition;
+  }
+
+  protected get hasTaskDocumentConfig(): boolean {
+    return !!this.taskDocumentConfig;
+  }
+
+  protected get taskDocumentSummary(): string {
+    const requirements = this.documentConfigDraft.documentRequirements ?? [];
+    if (!this.taskDocumentConfig && !requirements.length) {
+      return 'Sin documentos configurados';
+    }
+    const total = requirements.length;
+    const required = requirements.filter((requirement) => requirement.required).length;
+    const editable = requirements.filter((requirement) => requirement.editable).length;
+    const approval = requirements.filter((requirement) => requirement.requireApproval).length;
+    const parts = [`${total} documento${total === 1 ? '' : 's'} configurado${total === 1 ? '' : 's'}`];
+    if (required) {
+      parts.push(`${required} obligatorio${required === 1 ? '' : 's'}`);
+    }
+    if (editable) {
+      parts.push(`${editable} editable${editable === 1 ? '' : 's'} en OnlyOffice`);
+    }
+    if (approval) {
+      parts.push(`${approval} requiere${approval === 1 ? '' : 'n'} aprobacion`);
+    }
+    return parts.join(' · ');
   }
 
   protected get selectedSequenceFlowTechnicalState(): SequenceFlowTechnicalState | null {
@@ -509,6 +553,12 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
     }
   }
 
+  protected closeTaskDocumentPanel(): void {
+    if (!this.documentConfigSaving) {
+      this.taskDocumentPanelOpen = false;
+    }
+  }
+
   protected openTaskFormPanel(taskElement?: any): void {
     const userTask = taskElement ?? this.selectedUserTask;
     if (!userTask || this.isEffectiveReadonly) {
@@ -567,6 +617,143 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
         this.cdr.markForCheck();
       },
     });
+  }
+
+  protected openTaskDocumentPanel(taskElement?: any): void {
+    const userTask = taskElement ?? this.selectedUserTask;
+    if (!userTask || this.isEffectiveReadonly) {
+      return;
+    }
+
+    this.closeContextPad();
+    this.taskDocumentPanelOpen = true;
+    this.documentConfigError = '';
+    this.documentConfigSuccess = '';
+    this.documentConfigLoading = true;
+
+    const taskDefinitionKey = userTask.businessObject?.id || userTask.id;
+    const payloadProcessKey = this.processKey || this.normalizeProcessKey(this.processName) || 'proceso_sin_key';
+    const payloadVersion = this.processVersion ?? 1;
+
+    this.taskDocumentConfigService.obtenerConfig(payloadProcessKey, payloadVersion, taskDefinitionKey).subscribe({
+      next: (response) => {
+        const config = response.data;
+        this.taskDocumentConfig = config ?? null;
+        this.documentConfigDraft = config
+          ? this.toDocumentConfigDraft(config)
+          : this.createEmptyDocumentConfigDraft(payloadProcessKey, payloadVersion, taskDefinitionKey, userTask.businessObject?.name || userTask.id);
+        this.documentConfigLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: (error) => {
+        if (error?.status === 404) {
+          this.taskDocumentConfig = null;
+          this.documentConfigDraft = this.createEmptyDocumentConfigDraft(payloadProcessKey, payloadVersion, taskDefinitionKey, userTask.businessObject?.name || userTask.id);
+          this.documentConfigLoading = false;
+          this.cdr.markForCheck();
+          return;
+        }
+        console.error('[BpmnEditor] document config load failed', error);
+        this.taskDocumentConfig = null;
+        this.documentConfigDraft = this.createEmptyDocumentConfigDraft(payloadProcessKey, payloadVersion, taskDefinitionKey, userTask.businessObject?.name || userTask.id);
+        this.documentConfigError = error?.error?.message || 'No se pudo cargar la configuracion documental.';
+        this.documentConfigLoading = false;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  protected addDocumentAreaRule(areaId: string): void {
+    const normalizedAreaId = areaId?.trim();
+    if (!normalizedAreaId) {
+      return;
+    }
+    const rules = this.documentConfigDraft.accessRules ?? [];
+    if (rules.some((rule) => rule.areaId === normalizedAreaId)) {
+      return;
+    }
+    this.documentConfigDraft.accessRules = [
+      ...rules,
+      {
+        areaId: normalizedAreaId,
+        canView: true,
+        canDownload: true,
+        canUpload: false,
+        canEdit: false,
+        canApprove: false,
+        canReject: false,
+        canLock: false,
+      },
+    ];
+    this.documentConfigDraft.allowedAreaIds = this.documentConfigDraft.accessRules.map((rule) => rule.areaId);
+  }
+
+  protected removeDocumentAreaRule(index: number): void {
+    this.documentConfigDraft.accessRules = (this.documentConfigDraft.accessRules ?? []).filter((_, currentIndex) => currentIndex !== index);
+    this.documentConfigDraft.allowedAreaIds = this.documentConfigDraft.accessRules.map((rule) => rule.areaId);
+  }
+
+  protected saveTaskDocumentConfig(): void {
+    if (!this.documentConfigDraft.processKey || !this.documentConfigDraft.processVersion || !this.documentConfigDraft.taskDefinitionKey) {
+      this.documentConfigError = 'Falta contexto del proceso o de la tarea.';
+      return;
+    }
+
+    this.documentConfigSaving = true;
+    this.documentConfigError = '';
+    this.documentConfigSuccess = '';
+    const firstRequirement = this.documentConfigDraft.documentRequirements?.[0];
+    const request: TaskDocumentConfigCreateRequest = {
+      ...this.documentConfigDraft,
+      documentName: firstRequirement?.name || this.documentConfigDraft.documentName,
+      description: firstRequirement?.description || this.documentConfigDraft.description,
+      documentDirection: firstRequirement?.documentDirection || this.documentConfigDraft.documentDirection,
+      required: firstRequirement?.required ?? this.documentConfigDraft.required,
+      allowUpload: firstRequirement?.allowUpload ?? this.documentConfigDraft.allowUpload,
+      allowMultipleFiles: firstRequirement?.allowMultipleFiles ?? this.documentConfigDraft.allowMultipleFiles,
+      editable: firstRequirement?.editable ?? this.documentConfigDraft.editable,
+      collaborativeEditing: firstRequirement?.collaborativeEditing ?? this.documentConfigDraft.collaborativeEditing,
+      requireApproval: firstRequirement?.requireApproval ?? this.documentConfigDraft.requireApproval,
+      readOnlyAfterComplete: firstRequirement?.readOnlyAfterComplete ?? this.documentConfigDraft.readOnlyAfterComplete,
+      allowedMimeTypes: firstRequirement?.allowedMimeTypes ?? this.documentConfigDraft.allowedMimeTypes,
+      maxFileSizeBytes: firstRequirement?.maxFileSizeBytes ?? this.documentConfigDraft.maxFileSizeBytes,
+      maxFiles: firstRequirement?.maxFiles ?? this.documentConfigDraft.maxFiles,
+      ownerAreaId: firstRequirement?.ownerAreaId ?? this.documentConfigDraft.ownerAreaId,
+      documentRequirements: (this.documentConfigDraft.documentRequirements ?? []).map((requirement) => ({
+        ...requirement,
+        allowedAreaIds: (requirement.accessRules ?? []).map((rule) => rule.areaId).filter(Boolean),
+      })),
+      allowedAreaIds: (this.documentConfigDraft.documentRequirements?.[0]?.accessRules ?? []).map((rule) => rule.areaId).filter(Boolean),
+      permissions: {
+        canView: true,
+        canUpload: (this.documentConfigDraft.documentRequirements ?? []).some((requirement) => requirement.allowUpload !== false),
+        canEdit: (this.documentConfigDraft.documentRequirements ?? []).some((requirement) => !!requirement.editable),
+        canDelete: false,
+        canApprove: (this.documentConfigDraft.documentRequirements ?? []).some((requirement) => !!requirement.requireApproval),
+        canDownload: true,
+        canReject: (this.documentConfigDraft.documentRequirements ?? []).some((requirement) => !!requirement.requireApproval),
+        canLock: (this.documentConfigDraft.documentRequirements ?? []).some((requirement) => !!requirement.editable),
+      },
+    };
+
+    this.taskDocumentConfigService.guardarConfig(request)
+      .pipe(finalize(() => {
+        this.documentConfigSaving = false;
+        this.cdr.markForCheck();
+      }))
+      .subscribe({
+        next: (response) => {
+          this.taskDocumentConfig = response.data ?? null;
+          if (response.data) {
+            this.documentConfigDraft = this.toDocumentConfigDraft(response.data);
+          }
+          this.documentConfigSuccess = 'Configuracion documental guardada correctamente.';
+        },
+        error: (error) => {
+          console.error('[BpmnEditor] document config save failed', error);
+          this.documentConfigError = error?.error?.message || 'No se pudo guardar la configuracion documental.';
+        },
+      });
   }
 
   protected addFormField(): void {
@@ -1167,6 +1354,7 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
       this.clearUserTaskSelection();
     } else {
       this.selectedUserTask = userTaskElement;
+      this.loadTaskDocumentConfigSummary(userTaskElement);
       this.cdr.markForCheck();
     }
   }
@@ -1180,6 +1368,34 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
 
   private clearUserTaskSelection(): void {
     this.selectedUserTask = null;
+    this.taskDocumentConfig = null;
+    this.documentConfigDraft = this.createEmptyDocumentConfigDraft();
+  }
+
+  private loadTaskDocumentConfigSummary(userTask: any): void {
+    const taskDefinitionKey = userTask?.businessObject?.id || userTask?.id;
+    const payloadProcessKey = this.processKey || this.normalizeProcessKey(this.processName) || 'proceso_sin_key';
+    const payloadVersion = this.processVersion ?? 1;
+    if (!taskDefinitionKey || !payloadProcessKey || !payloadVersion) {
+      this.taskDocumentConfig = null;
+      this.documentConfigDraft = this.createEmptyDocumentConfigDraft(payloadProcessKey, payloadVersion, taskDefinitionKey || '');
+      return;
+    }
+
+    this.taskDocumentConfigService.obtenerConfig(payloadProcessKey, payloadVersion, taskDefinitionKey).subscribe({
+      next: (response) => {
+        this.taskDocumentConfig = response.data ?? null;
+        this.documentConfigDraft = response.data
+          ? this.toDocumentConfigDraft(response.data)
+          : this.createEmptyDocumentConfigDraft(payloadProcessKey, payloadVersion, taskDefinitionKey, userTask.businessObject?.name || userTask.id);
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.taskDocumentConfig = null;
+        this.documentConfigDraft = this.createEmptyDocumentConfigDraft(payloadProcessKey, payloadVersion, taskDefinitionKey, userTask.businessObject?.name || userTask.id);
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   private clearSequenceFlowSelection(): void {
@@ -2216,6 +2432,136 @@ export class BpmnEditorComponent implements AfterViewInit, OnDestroy, OnChanges 
       ...field,
       order: index + 1,
     }));
+  }
+
+  private createEmptyDocumentConfigDraft(
+    processKey = '',
+    processVersion = 0,
+    taskDefinitionKey = '',
+    taskLabel = ''
+  ): TaskDocumentConfigCreateRequest {
+    return {
+      processKey,
+      processVersion,
+      taskDefinitionKey,
+      documentRequirements: [],
+      documentName: taskLabel ? `${taskLabel} documento` : '',
+      description: '',
+      documentDirection: 'INPUT',
+      required: false,
+      allowMultipleFiles: false,
+      allowUpload: true,
+      editable: false,
+      allowEditing: false,
+      collaborativeEditing: false,
+      allowVersioning: true,
+      allowedMimeTypes: [],
+      maxFiles: 1,
+      readOnlyAfterComplete: false,
+      requireApproval: false,
+      permissions: {
+        canView: true,
+        canUpload: true,
+        canEdit: false,
+        canDelete: false,
+        canApprove: false,
+        canDownload: true,
+        canReject: false,
+        canLock: false,
+      },
+      ownerAreaId: '',
+      allowedAreaIds: [],
+      accessRules: [],
+      shareWithNextArea: false,
+      autoGenerateOnTaskStart: false,
+    };
+  }
+
+  private toDocumentConfigDraft(config: TaskDocumentConfig): TaskDocumentConfigCreateRequest {
+    return {
+      processKey: config.processKey,
+      processVersion: config.processVersion,
+      taskDefinitionKey: config.taskDefinitionKey,
+      documentRequirements: this.resolveDocumentRequirements(config),
+      documentName: config.documentName || '',
+      description: config.description || '',
+      documentDirection: config.documentDirection || 'INPUT',
+      required: !!config.required,
+      allowMultipleFiles: !!config.allowMultipleFiles,
+      allowUpload: config.allowUpload !== false,
+      editable: !!config.editable,
+      allowEditing: !!config.allowEditing,
+      collaborativeEditing: !!config.collaborativeEditing,
+      allowVersioning: config.allowVersioning !== false,
+      allowedMimeTypes: config.allowedMimeTypes ?? [],
+      maxFileSizeBytes: config.maxFileSizeBytes,
+      maxFiles: config.maxFiles ?? 1,
+      readOnlyAfterComplete: !!config.readOnlyAfterComplete,
+      requireApproval: !!config.requireApproval,
+      templateDocumentId: config.templateDocumentId,
+      permissions: config.permissions ?? {
+        canView: true,
+        canUpload: true,
+        canDownload: true,
+      },
+      ownerAreaId: config.ownerAreaId || '',
+      allowedAreaIds: config.allowedAreaIds ?? [],
+      accessRules: config.accessRules ?? [],
+      shareWithNextArea: !!config.shareWithNextArea,
+      autoGenerateOnTaskStart: !!config.autoGenerateOnTaskStart,
+    };
+  }
+
+  private resolveDocumentRequirements(config: TaskDocumentConfig): DocumentRequirement[] {
+    if (config.documentRequirements?.length) {
+      return config.documentRequirements.map((requirement) => ({
+        ...requirement,
+        id: requirement.id || this.createDocumentRequirementId(),
+        documentDirection: requirement.documentDirection || 'INPUT',
+        documentLifecyclePolicy: requirement.documentLifecyclePolicy || this.defaultDocumentLifecyclePolicy(requirement.documentDirection),
+        accessRules: requirement.accessRules ?? [],
+        allowedAreaIds: requirement.allowedAreaIds ?? [],
+      }));
+    }
+    if (
+      config.documentName ||
+      config.description ||
+      config.required ||
+      config.editable ||
+      config.requireApproval ||
+      config.allowedMimeTypes?.length ||
+      config.accessRules?.length
+    ) {
+      return [{
+        id: 'legacy-main-document',
+        name: config.documentName || 'Documento principal',
+        description: config.description || '',
+        documentDirection: config.documentDirection || 'INPUT',
+        required: !!config.required,
+        allowUpload: config.allowUpload !== false,
+        allowMultipleFiles: !!config.allowMultipleFiles,
+        editable: !!config.editable,
+        collaborativeEditing: !!config.collaborativeEditing,
+        requireApproval: !!config.requireApproval,
+        readOnlyAfterComplete: !!config.readOnlyAfterComplete,
+        allowedMimeTypes: config.allowedMimeTypes ?? [],
+        maxFileSizeBytes: config.maxFileSizeBytes,
+        maxFiles: config.maxFiles ?? 1,
+        ownerAreaId: config.ownerAreaId || '',
+        allowedAreaIds: config.allowedAreaIds ?? [],
+        accessRules: config.accessRules ?? [],
+        documentLifecyclePolicy: this.defaultDocumentLifecyclePolicy(config.documentDirection),
+      }];
+    }
+    return [];
+  }
+
+  private createDocumentRequirementId(): string {
+    return `doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  private defaultDocumentLifecyclePolicy(direction?: string): string {
+    return direction === 'OUTPUT' ? 'AVAILABLE_FOR_NEXT_TASKS' : 'TASK_ONLY';
   }
 
   private restoreLaneAreaBindings(): void {

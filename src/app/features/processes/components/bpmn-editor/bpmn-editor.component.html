@@ -91,6 +91,15 @@
       (configure)="openTaskFormPanel(selectedUserTask)"
     />
 
+    <app-task-document-assignment-card
+      [visible]="!!selectedUserTask"
+      [selectedUserTaskLabel]="selectedUserTaskLabel"
+      [readonlyMode]="isEffectiveReadonly"
+      [hasDocumentConfig]="hasTaskDocumentConfig"
+      [summary]="taskDocumentSummary"
+      (configure)="openTaskDocumentPanel(selectedUserTask)"
+    />
+
     <div #propertiesHost class="properties-panel-host" aria-label="Panel tecnico interno del diagrama"></div>
   </aside>
 </section>
@@ -108,4 +117,19 @@
   (save)="saveTaskForm()"
   (removeField)="removeFormField($event)"
   (moveField)="onTaskFormFieldMove($event)"
+/>
+
+<app-task-document-modal
+  [open]="taskDocumentPanelOpen"
+  [loading]="documentConfigLoading"
+  [saving]="documentConfigSaving"
+  [error]="documentConfigError"
+  [success]="documentConfigSuccess"
+  [context]="taskDocumentContext"
+  [activeAreas]="activeAreas"
+  [draft]="documentConfigDraft"
+  (close)="closeTaskDocumentPanel()"
+  (save)="saveTaskDocumentConfig()"
+  (addAreaRule)="addDocumentAreaRule($event)"
+  (removeAreaRule)="removeDocumentAreaRule($event)"
 />

@@ -258,6 +258,17 @@ button:disabled {
   font-weight: 850;
 }
 
+.folder-node > span:last-child {
+  min-width: 0;
+}
+
+.folder-node > span:last-child,
+.folder-node > span:last-child strong,
+.folder-node > span:last-child small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .folder-node:hover,
 .folder-node.is-active {
   border-color: rgba(37, 99, 235, 0.25);
@@ -320,6 +331,10 @@ button:disabled {
   min-width: 0;
 }
 
+.process-node {
+  align-items: flex-start;
+}
+
 .process-node small {
   display: block;
   overflow: hidden;
@@ -330,15 +345,24 @@ button:disabled {
 }
 
 .folder-glyph {
-  min-width: 34px;
+  display: inline-flex;
+  flex: 0 0 42px;
+  width: 42px;
+  min-width: 42px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
   padding: 3px 5px;
+  overflow: hidden;
   color: #0f766e;
   border-radius: 9px;
   background: rgba(45, 212, 191, 0.12);
   font-size: 0.64rem;
   font-weight: 950;
   text-align: center;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .folder-skeleton span,

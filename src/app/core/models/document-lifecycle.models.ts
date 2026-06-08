@@ -9,9 +9,23 @@ export type DocumentLifecycleState =
 
 import { Tag } from './tag.models';
 
+export type DocumentAreaAccessRule = {
+  areaId: string;
+  canView?: boolean;
+  canUpload?: boolean;
+  canEdit?: boolean;
+  canDownload?: boolean;
+  canApprove?: boolean;
+  canReject?: boolean;
+  canLock?: boolean;
+};
+
 export type DocumentMetadata = {
   id: string;
   tenantId: string;
+  ownerAreaId?: string;
+  allowedAreaIds?: string[];
+  accessRules?: DocumentAreaAccessRule[];
   processInstanceId: string;
   fileName: string;
   originalName: string;
@@ -30,6 +44,10 @@ export type DocumentMetadata = {
   processVersion?: number;
   taskDefinitionKey?: string;
   taskInstanceId?: string;
+  documentRequirementId?: string;
+  documentRequirementName?: string;
+  documentDirection?: 'INPUT' | 'OUTPUT' | string;
+  documentLifecyclePolicy?: string;
   documentState?: DocumentLifecycleState;
   locked?: boolean;
   lockedBy?: string;

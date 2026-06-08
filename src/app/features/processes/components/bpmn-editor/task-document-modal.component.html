@@ -1,0 +1,296 @@
+<section class="task-document-modal" *ngIf="open">
+  <div class="task-document-modal__backdrop" (click)="close.emit()"></div>
+  <div class="task-document-modal__card">
+    <header class="task-document-modal__header">
+      <div>
+        <p class="task-document-modal__eyebrow">Documentos del proceso</p>
+        <h3>Configurar documentos de esta tarea</h3>
+        <p>{{ context }}</p>
+      </div>
+      <button type="button" class="task-document-modal__close" (click)="close.emit()">Cerrar</button>
+    </header>
+
+    <div class="task-document-modal__status" *ngIf="loading">Cargando configuracion documental...</div>
+    <div class="task-document-modal__status success" *ngIf="success">{{ success }}</div>
+    <div class="task-document-modal__status error" *ngIf="error">{{ error }}</div>
+
+    <div class="task-document-modal__layout">
+      <aside class="document-requirements-list">
+        <div class="document-requirements-list__header">
+          <div>
+            <p class="task-document-modal__eyebrow">Que usa esta tarea</p>
+            <strong>{{ requirements.length }} documento(s)</strong>
+          </div>
+          <button type="button" class="toolbar-button accent" (click)="addRequirement()">Agregar documento</button>
+        </div>
+
+        <button
+          type="button"
+          class="requirement-item"
+          *ngFor="let requirement of requirements; let i = index"
+          [class.is-active]="selectedRequirementIndex === i"
+          (click)="selectRequirement(i)"
+        >
+          <span>{{ directionLabel(requirement) }}</span>
+          <strong>{{ requirement.name || ('Documento ' + (i + 1)) }}</strong>
+          <small>{{ requirementBadges(requirement).slice(1).join(' - ') || 'Sin reglas especiales' }}</small>
+        </button>
+
+        <div class="task-document-modal__empty empty-friendly" *ngIf="!requirements.length">
+          <strong>No hay documentos configurados todavia.</strong>
+          <p>Agrega los documentos que esta tarea debe recibir o generar.</p>
+          <button type="button" class="toolbar-button accent" (click)="addRequirement()">Agregar documento</button>
+        </div>
+      </aside>
+
+      <section class="task-document-modal__editor" *ngIf="selectedRequirement as requirement; else noSelectedRequirement">
+        <article class="document-config-card">
+          <div class="document-config-card__title">
+            <div>
+              <span>Informacion del documento</span>
+              <strong>{{ requirement.name || 'Documento sin nombre' }}</strong>
+            </div>
+            <button type="button" class="toolbar-button danger" (click)="removeRequirement(selectedRequirementIndex)">Eliminar</button>
+          </div>
+
+          <section class="business-section">
+            <div class="business-section__header">
+              <span>A</span>
+              <div>
+                <strong>Informacion del documento</strong>
+                <small>Define que documento participa en esta tarea.</small>
+              </div>
+            </div>
+
+            <div class="document-grid">
+              <label>
+                <span>Nombre</span>
+                <input [(ngModel)]="requirement.name" type="text" placeholder="Ej. CI, Contrato, Poder legal" />
+              </label>
+              <label>
+                <span>Descripcion</span>
+                <input [(ngModel)]="requirement.description" type="text" placeholder="Ej. Documento que entrega el cliente" />
+              </label>
+            </div>
+
+            <div class="choice-cards">
+              <label [class.is-selected]="requirement.documentDirection !== 'OUTPUT'">
+                <input
+                  [ngModel]="requirement.documentDirection || 'INPUT'"
+                  (ngModelChange)="onDirectionChange(requirement, 'INPUT')"
+                  type="radio"
+                  value="INPUT"
+                />
+                <strong>Documento que recibe esta tarea</strong>
+                <small>Este documento fue creado o cargado en una tarea anterior.</small>
+              </label>
+              <label [class.is-selected]="requirement.documentDirection === 'OUTPUT'">
+                <input
+                  [ngModel]="requirement.documentDirection"
+                  (ngModelChange)="onDirectionChange(requirement, 'OUTPUT')"
+                  type="radio"
+                  value="OUTPUT"
+                />
+                <strong>Documento que genera esta tarea</strong>
+                <small>Esta tarea crea o solicita este documento.</small>
+              </label>
+            </div>
+          </section>
+
+          <section class="business-section">
+            <div class="business-section__header">
+              <span>B</span>
+              <div>
+                <strong>Reglas del documento</strong>
+                <small>Indica que debe hacer el usuario con este documento.</small>
+              </div>
+            </div>
+
+            <div class="toggle-grid">
+              <label><input [(ngModel)]="requirement.required" type="checkbox" /> Obligatorio</label>
+              <label><input [(ngModel)]="requirement.allowUpload" type="checkbox" /> Permite subida</label>
+              <label><input [(ngModel)]="requirement.allowMultipleFiles" type="checkbox" /> Permite multiples archivos</label>
+              <label><input [(ngModel)]="requirement.editable" type="checkbox" /> Editable en OnlyOffice</label>
+              <label><input [(ngModel)]="requirement.collaborativeEditing" type="checkbox" /> Edicion colaborativa</label>
+              <label><input [(ngModel)]="requirement.requireApproval" type="checkbox" /> Requiere aprobacion</label>
+              <label><input [(ngModel)]="requirement.readOnlyAfterComplete" type="checkbox" /> Solo lectura al completar tarea</label>
+            </div>
+          </section>
+
+          <section class="business-section">
+            <div class="business-section__header">
+              <span>C</span>
+              <div>
+                <strong>Tipos y limites</strong>
+                <small>Usa opciones simples. El sistema guardara los valores tecnicos internamente.</small>
+              </div>
+            </div>
+
+            <div class="file-type-grid">
+              <label *ngFor="let option of fileTypeOptions">
+                <input
+                  type="checkbox"
+                  [checked]="isFileTypeSelected(requirement, option.mimeTypes)"
+                  (change)="toggleFileType(requirement, option.mimeTypes, $any($event.target).checked)"
+                />
+                {{ option.label }}
+              </label>
+            </div>
+            <small class="context-help">Seleccionado: {{ selectedFileTypeLabels(requirement) }}</small>
+
+            <div class="document-grid compact-grid">
+              <label>
+                <span>Tamano maximo</span>
+                <select [ngModel]="requirement.maxFileSizeBytes || ''" (ngModelChange)="setMaxFileSize(requirement, $event)">
+                  <option value="">Usar limite general del sistema</option>
+                  <option *ngFor="let size of fileSizeOptions" [value]="size.bytes">{{ size.label }}</option>
+                </select>
+              </label>
+              <label>
+                <span>Cantidad maxima de archivos</span>
+                <input [(ngModel)]="requirement.maxFiles" type="number" min="1" />
+              </label>
+            </div>
+
+            <button type="button" class="advanced-toggle" (click)="advancedMimeMode = !advancedMimeMode">
+              {{ advancedMimeMode ? 'Ocultar modo avanzado' : 'Modo avanzado de tipos de archivo' }}
+            </button>
+            <label class="advanced-mime" *ngIf="advancedMimeMode">
+              <span>Tipos tecnicos personalizados</span>
+              <input [ngModel]="mimeTypesText()" (ngModelChange)="setMimeTypes($event)" type="text" placeholder="application/pdf, image/*" />
+              <small>Solo usar si necesitas un tipo que no aparece en la lista.</small>
+            </label>
+          </section>
+
+          <section class="business-section">
+            <div class="business-section__header">
+              <span>D</span>
+              <div>
+                <strong>Areas con acceso</strong>
+                <small>Define el area responsable y que departamentos pueden usar este documento.</small>
+              </div>
+            </div>
+
+            <div class="document-grid compact-grid">
+              <label>
+                <span>Area responsable</span>
+                <select [ngModel]="requirement.ownerAreaId || ''" (ngModelChange)="onOwnerAreaChange($event)">
+                  <option value="">Area de quien sube</option>
+                  <option *ngFor="let area of activeAreas" [value]="area.id">{{ area.nombre }}</option>
+                </select>
+              </label>
+              <label>
+                <span>Agregar area autorizada</span>
+                <select #areaPicker (change)="onAddArea(areaPicker.value); areaPicker.value=''">
+                  <option value="">Selecciona un area...</option>
+                  <option *ngFor="let area of availableAreas()" [value]="area.id">{{ area.nombre }}</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="share-next">
+              <label>
+                <input [checked]="requirement.documentLifecyclePolicy !== 'TASK_ONLY'" type="checkbox" disabled />
+                Compartir con tareas posteriores configuradas
+              </label>
+              <small>Si el documento queda disponible para tareas posteriores, el sistema lo comparte con las areas de las tareas que lo reciben.</small>
+            </div>
+
+            <div class="area-rules" *ngIf="requirement.accessRules?.length; else emptyRules">
+              <article class="area-rule" *ngFor="let rule of requirement.accessRules; let i = index">
+                <div class="area-rule__header">
+                  <strong>{{ areaName(rule.areaId) }}</strong>
+                  <button type="button" class="toolbar-button danger" (click)="removeRule(i)">Quitar</button>
+                </div>
+
+                <div class="permission-grid">
+                  <label><input [(ngModel)]="ensureRuleDefaults(rule).canView" type="checkbox" /> Ver</label>
+                  <label><input [(ngModel)]="ensureRuleDefaults(rule).canUpload" type="checkbox" /> Subir</label>
+                  <label><input [(ngModel)]="ensureRuleDefaults(rule).canEdit" type="checkbox" /> Editar</label>
+                  <label><input [(ngModel)]="ensureRuleDefaults(rule).canDownload" type="checkbox" /> Descargar</label>
+                  <label><input [(ngModel)]="ensureRuleDefaults(rule).canApprove" type="checkbox" /> Aprobar</label>
+                  <label><input [(ngModel)]="ensureRuleDefaults(rule).canReject" type="checkbox" /> Rechazar</label>
+                  <label><input [(ngModel)]="ensureRuleDefaults(rule).canLock" type="checkbox" /> Bloquear</label>
+                </div>
+              </article>
+            </div>
+
+            <ng-template #emptyRules>
+              <div class="task-document-modal__empty">
+                Sin areas autorizadas. Solo el area responsable tendra acceso completo.
+              </div>
+            </ng-template>
+          </section>
+
+          <section class="business-section">
+            <div class="business-section__header">
+              <span>E</span>
+              <div>
+                <strong>Disponibilidad del documento</strong>
+                <small>Define hasta donde acompana este documento al proceso.</small>
+              </div>
+            </div>
+
+            <div class="choice-cards availability-cards">
+              <label [class.is-selected]="requirement.documentLifecyclePolicy === 'TASK_ONLY' || !requirement.documentLifecyclePolicy">
+                <input [(ngModel)]="requirement.documentLifecyclePolicy" type="radio" value="TASK_ONLY" />
+                <strong>Solo para esta tarea</strong>
+                <small>El documento se usa solo en esta tarea.</small>
+              </label>
+              <label [class.is-selected]="requirement.documentLifecyclePolicy === 'AVAILABLE_FOR_NEXT_TASKS'">
+                <input [(ngModel)]="requirement.documentLifecyclePolicy" type="radio" value="AVAILABLE_FOR_NEXT_TASKS" />
+                <strong>Disponible para tareas posteriores</strong>
+                <small>Las siguientes tareas podran utilizar este documento.</small>
+              </label>
+              <label [class.is-selected]="requirement.documentLifecyclePolicy === 'AVAILABLE_FOR_INSTANCE'">
+                <input [(ngModel)]="requirement.documentLifecyclePolicy" type="radio" value="AVAILABLE_FOR_INSTANCE" />
+                <strong>Disponible durante todo el proceso</strong>
+                <small>El documento estara disponible durante toda la instancia BPM.</small>
+              </label>
+              <label [class.is-selected]="requirement.documentLifecyclePolicy === 'PUBLISH_ON_PROCESS_END'">
+                <input [(ngModel)]="requirement.documentLifecyclePolicy" type="radio" value="PUBLISH_ON_PROCESS_END" />
+                <strong>Publicar en repositorio al finalizar el proceso</strong>
+                <small>El documento sera enviado al repositorio documental cuando el proceso termine.</small>
+              </label>
+            </div>
+          </section>
+        </article>
+      </section>
+
+      <ng-template #noSelectedRequirement>
+        <section class="task-document-modal__editor">
+          <div class="task-document-modal__empty empty-friendly">
+            <strong>Selecciona o agrega un documento.</strong>
+            <p>Desde aqui podras indicar si la tarea lo recibe, lo genera, quien accede y si continua en el proceso.</p>
+          </div>
+        </section>
+      </ng-template>
+
+      <aside class="task-document-preview">
+        <p class="task-document-modal__eyebrow">Resumen de tarea</p>
+        <h4>Documentos configurados: {{ requirements.length }}</h4>
+        <ul class="business-summary">
+          <li>{{ countRequired() }} obligatorio(s)</li>
+          <li>{{ countEditable() }} editable(s) en OnlyOffice</li>
+          <li>{{ countApproval() }} requiere(n) aprobacion</li>
+          <li>{{ countShared() }} compartido(s) con otras areas</li>
+        </ul>
+
+        <div class="selected-document-summary" *ngIf="selectedRequirement as selected">
+          <strong>{{ selected.name || 'Documento seleccionado' }}</strong>
+          <span>{{ directionLabel(selected) }}</span>
+          <small>{{ directionHelp(selected) }}</small>
+          <small>{{ lifecycleLabel(selected.documentLifecyclePolicy) }}: {{ lifecycleHelp(selected.documentLifecyclePolicy) }}</small>
+        </div>
+
+        <div class="document-hint">
+          Una persona de negocio deberia poder identificar aqui que documentos usa la tarea, cuales son obligatorios, quien accede y cuales siguen en el proceso.
+        </div>
+
+        <button type="button" class="toolbar-button accent full-width" (click)="save.emit()" [disabled]="saving">
+          {{ saving ? 'Guardando...' : 'Guardar configuracion documental' }}
+        </button>
+      </aside>
+    </div>
+  </div>
+</section>

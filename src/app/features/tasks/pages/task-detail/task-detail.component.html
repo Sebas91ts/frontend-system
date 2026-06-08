@@ -15,7 +15,7 @@
         type="button"
         class="toolbar-button accent"
         (click)="openPlaceholderAction()"
-        [disabled]="!task || isCompleting || !canCompleteTask || (hasForm && !isFormValid)"
+        [disabled]="!task || isCompleting || !canCompleteTask || (hasForm && !isFormValid) || hasMissingRequiredDocuments"
       >
         {{ isCompleting ? t('taskDetail.actionSending') : t('taskDetail.actionSend') }}
       </button>
@@ -245,6 +245,129 @@
         </label>
       </div>
     </form>
+  </section>
+
+  <section class="task-detail-card task-documents-card" *ngIf="task">
+    <div class="task-documents-card__header">
+      <div>
+        <p class="task-detail-eyebrow">Documentos de la tarea</p>
+        <h2>Formulario y documentos en una sola tarea BPM</h2>
+        <p>
+          Adjunta, revisa o edita los documentos requeridos antes de completar la tarea.
+        </p>
+      </div>
+      <div class="task-documents-summary" *ngIf="documentRuntime?.summary as summary">
+        <strong>{{ summary.completed }}/{{ summary.total }}</strong>
+        <span>completados</span>
+      </div>
+    </div>
+
+    <div class="task-detail-form-message" *ngIf="documentsLoading">Cargando documentos de la tarea...</div>
+    <div class="task-detail-form-message" *ngIf="documentsMessage && !documentsLoading">{{ documentsMessage }}</div>
+
+    <div class="task-document-grid" *ngIf="hasDocumentRequirements && !documentsLoading">
+      <article
+        class="task-document-card"
+        *ngFor="let requirement of documentRuntime?.requirements || []"
+        [class.is-missing]="requirement.status === 'MISSING'"
+      >
+        <header class="task-document-card__header">
+          <div>
+            <span class="task-document-direction">{{ documentDirectionLabel(requirement) }}</span>
+            <h3>{{ requirement.name }}</h3>
+            <p *ngIf="requirement.description">{{ requirement.description }}</p>
+          </div>
+          <span class="task-document-status" [class]="requirementStatusClass(requirement.status)">
+            {{ requirementStatusLabel(requirement.status) }}
+          </span>
+        </header>
+
+        <div class="task-document-rules">
+          <span *ngIf="requirement.required">Obligatorio</span>
+          <span *ngIf="requirement.editable">OnlyOffice</span>
+          <span *ngIf="requirement.requireApproval">Requiere aprobacion</span>
+          <span *ngIf="requirement.readOnlyAfterComplete">Solo lectura al avanzar</span>
+        </div>
+
+        <div class="task-document-meta">
+          <span>{{ allowedTypesLabel(requirement) }}</span>
+          <span>{{ formatBytes(requirement.maxFileSizeBytes) }}</span>
+          <span>Max. {{ requirement.maxFiles || 1 }} archivo(s)</span>
+        </div>
+
+        <p class="task-document-card__message">{{ requirement.message }}</p>
+
+        <div class="task-document-upload" *ngIf="requirement.canUpload; else noUploadPermission">
+          <label>
+            <span>{{ isDocumentUploading(requirement) ? 'Subiendo...' : 'Subir documento' }}</span>
+            <input
+              type="file"
+              [accept]="(requirement.allowedMimeTypes || []).join(',')"
+              (change)="onTaskDocumentSelected(requirement, $event)"
+              [disabled]="isDocumentUploading(requirement)"
+            />
+          </label>
+          <small class="task-detail-form__error" *ngIf="documentUploadError(requirement)">
+            {{ documentUploadError(requirement) }}
+          </small>
+        </div>
+
+        <ng-template #noUploadPermission>
+          <div class="task-document-no-permission">
+            Tu area no tiene permiso para subir este documento.
+          </div>
+        </ng-template>
+
+        <div class="task-document-files" *ngIf="requirement.documents?.length; else noRequirementDocuments">
+          <article class="task-document-file" *ngFor="let document of requirement.documents">
+            <div>
+              <strong>{{ document.originalName || document.fileName }}</strong>
+              <span>{{ document.uploadedBy }} · {{ formatDate(document.uploadedAt) }}</span>
+            </div>
+            <div class="task-document-file__actions">
+              <button
+                type="button"
+                class="toolbar-button"
+                (click)="openTaskDocumentEditor(document)"
+                [disabled]="!canOpenOfficeDocument(document, requirement)"
+              >
+                OnlyOffice
+              </button>
+              <button
+                type="button"
+                class="toolbar-button"
+                (click)="downloadTaskDocument(document)"
+                [disabled]="!requirement.canDownload"
+              >
+                Descargar
+              </button>
+              <button
+                type="button"
+                class="toolbar-button"
+                (click)="approveTaskDocument(document)"
+                *ngIf="requirement.canApprove"
+              >
+                Aprobar
+              </button>
+              <button
+                type="button"
+                class="toolbar-button danger"
+                (click)="rejectTaskDocument(document)"
+                *ngIf="requirement.canReject"
+              >
+                Rechazar
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <ng-template #noRequirementDocuments>
+          <div class="task-document-empty">
+            {{ requirement.required ? 'Este documento es obligatorio y aun no fue adjuntado.' : 'Aun no hay archivos para este documento.' }}
+          </div>
+        </ng-template>
+      </article>
+    </div>
   </section>
 
   <section class="task-detail-card" *ngIf="task">
