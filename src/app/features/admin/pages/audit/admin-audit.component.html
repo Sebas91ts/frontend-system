@@ -1,0 +1,167 @@
+<main class="audit-shell">
+  <section class="audit-hero">
+    <div>
+      <p class="eyebrow">Historial y auditoria</p>
+      <h1>Bitacora enterprise</h1>
+      <p>
+        Revisa quien hizo que, cuando ocurrio y que documentos, formularios o tareas fueron afectados.
+        Por defecto ves la actividad de hoy para detectar rapido lo importante.
+      </p>
+    </div>
+
+    <div class="hero-actions">
+      <button type="button" class="ghost-button" (click)="goBack()">Volver</button>
+      <button type="button" class="primary-button" (click)="search()" [disabled]="isLoading">
+        {{ isLoading ? 'Actualizando...' : 'Actualizar' }}
+      </button>
+    </div>
+  </section>
+
+  <section class="metric-grid">
+    <article class="metric-card">
+      <span>Total visible</span>
+      <strong>{{ stats.visible }}</strong>
+      <small>{{ activeRangeLabel }}</small>
+    </article>
+    <article class="metric-card metric-card--cyan">
+      <span>Documentos</span>
+      <strong>{{ stats.documents }}</strong>
+      <small>Subidas, ediciones, descargas y aprobaciones</small>
+    </article>
+    <article class="metric-card metric-card--blue">
+      <span>Tareas</span>
+      <strong>{{ stats.tasks }}</strong>
+      <small>Tomas y completaciones</small>
+    </article>
+    <article class="metric-card metric-card--amber">
+      <span>Alertas</span>
+      <strong>{{ stats.alerts }}</strong>
+      <small>Rechazos o bloqueos</small>
+    </article>
+  </section>
+
+  <section class="audit-layout">
+    <aside class="filter-panel">
+      <div class="panel-title">
+        <p class="eyebrow">Filtros</p>
+        <button type="button" class="text-button" (click)="clearFilters()">Limpiar</button>
+      </div>
+
+      <div class="range-pills">
+        <button type="button" [class.active]="rangePreset === 'today'" (click)="applyRange('today')">Hoy</button>
+        <button type="button" [class.active]="rangePreset === '7d'" (click)="applyRange('7d')">7 dias</button>
+        <button type="button" [class.active]="rangePreset === '30d'" (click)="applyRange('30d')">30 dias</button>
+        <button type="button" [class.active]="rangePreset === 'all'" (click)="applyRange('all')">Todo</button>
+      </div>
+
+      <label>
+        Desde
+        <input type="datetime-local" [(ngModel)]="customFrom" />
+      </label>
+
+      <label>
+        Hasta
+        <input type="datetime-local" [(ngModel)]="customTo" />
+      </label>
+
+      <label>
+        Accion
+        <select [(ngModel)]="selectedAction">
+          <option value="">Todas las acciones</option>
+          <option *ngFor="let option of actionOptions" [value]="option.value">{{ option.label }}</option>
+        </select>
+      </label>
+
+      <label>
+        Tipo
+        <select [(ngModel)]="selectedEntityType">
+          <option value="">Todos los tipos</option>
+          <option *ngFor="let option of entityTypeOptions" [value]="option.value">{{ option.label }}</option>
+        </select>
+      </label>
+
+      <label>
+        Usuario
+        <input type="text" [(ngModel)]="actorEmail" placeholder="correo@empresa.com" />
+      </label>
+
+      <label>
+        Area
+        <input type="text" [(ngModel)]="areaId" placeholder="ID o area" />
+      </label>
+
+      <label>
+        Proceso
+        <input type="text" [(ngModel)]="processKey" placeholder="registro_clientes" />
+      </label>
+
+      <label>
+        Instancia
+        <input type="text" [(ngModel)]="processInstanceId" placeholder="processInstanceId" />
+      </label>
+
+      <label>
+        Documento
+        <input type="text" [(ngModel)]="documentId" placeholder="documentId" />
+      </label>
+
+      <label>
+        Tarea
+        <input type="text" [(ngModel)]="taskInstanceId" placeholder="taskInstanceId" />
+      </label>
+
+      <button type="button" class="primary-button filter-submit" (click)="search()" [disabled]="isLoading">
+        Aplicar filtros
+      </button>
+    </aside>
+
+    <section class="timeline-panel">
+      <div class="timeline-header">
+        <div>
+          <p class="eyebrow">Eventos</p>
+          <h2>{{ activeRangeLabel }}</h2>
+        </div>
+        <span>{{ events.length }} mostrados</span>
+      </div>
+
+      <div class="state-card" *ngIf="isLoading">Cargando auditoria...</div>
+      <div class="state-card state-card--error" *ngIf="errorMessage && !isLoading">{{ errorMessage }}</div>
+
+      <div class="empty-state" *ngIf="!isLoading && !errorMessage && !events.length">
+        <strong>No hay eventos para estos filtros.</strong>
+        <p>Prueba ampliar el rango de fechas o limpiar filtros para ver mas actividad.</p>
+      </div>
+
+      <article class="audit-event" *ngFor="let event of events; trackBy: trackByEvent">
+        <div class="event-marker" [class.event-marker--alert]="event.action === 'DOCUMENT_REJECTED' || event.action === 'DOCUMENT_LOCKED'">
+          {{ entityLabel(event.entityType).slice(0, 1) }}
+        </div>
+
+        <div class="event-body">
+          <header>
+            <div>
+              <span class="event-action">{{ actionLabel(event.action) }}</span>
+              <h3>{{ eventTitle(event) }}</h3>
+            </div>
+            <time>{{ formatDate(event.createdAt) }}</time>
+          </header>
+
+          <p class="event-context">{{ eventContext(event) }}</p>
+
+          <div class="event-meta">
+            <span>Usuario: {{ eventActor(event) }}</span>
+            <span>Tipo: {{ entityLabel(event.entityType) }}</span>
+            <span *ngIf="event.documentState">Estado: {{ event.documentState }}</span>
+            <span *ngIf="event.documentVersion">v{{ event.documentVersion }}</span>
+          </div>
+
+          <footer>
+            <button type="button" class="mini-button" *ngIf="event.documentId" (click)="goToDocument(event)">Abrir repositorio</button>
+            <button type="button" class="mini-button" *ngIf="event.processInstanceId" (click)="goToTracking(event)">Ver tracking</button>
+            <span>ID evento: {{ shortId(event.id) }}</span>
+          </footer>
+        </div>
+      </article>
+    </section>
+  </section>
+</main>
