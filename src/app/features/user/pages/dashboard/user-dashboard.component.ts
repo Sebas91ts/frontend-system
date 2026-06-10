@@ -244,6 +244,10 @@ export class UserDashboardComponent implements OnInit, OnDestroy {
     void this.router.navigate(['/documents']);
   }
 
+  protected goToEnterpriseAi(): void {
+    void this.router.navigate(['/ai']);
+  }
+
   protected openTask(task: TareaInstancia): void {
     if (this.isAssignedToMe(task)) {
       void this.router.navigate(['/tasks'], { queryParams: { mode: 'mine' } });

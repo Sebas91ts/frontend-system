@@ -301,6 +301,28 @@
   color: #ffffff;
 }
 
+.assistant-message__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.7rem;
+  border: 1px solid rgba(45, 212, 191, 0.34);
+  border-radius: 999px;
+  padding: 0.6rem 0.85rem;
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.24), rgba(59, 130, 246, 0.24));
+  color: #ccfbf1;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+  box-shadow: 0 14px 28px rgba(2, 6, 23, 0.22);
+}
+
+.assistant-message__action:hover {
+  border-color: rgba(125, 211, 252, 0.64);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
 .assistant-modal__error {
   margin: 0 1.1rem 0.5rem;
   padding: 0.8rem 0.95rem;
@@ -330,6 +352,64 @@
   outline: none;
   border-color: rgba(96, 165, 250, 0.7);
   box-shadow: 0 0 0 4px rgba(37, 235, 235, 0.16);
+}
+
+.assistant-voice-button {
+  width: 46px;
+  min-width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  border: 1px solid rgba(45, 212, 191, 0.28);
+  background: rgba(15, 23, 42, 0.88);
+  color: #99f6e4;
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.assistant-voice-button svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.assistant-voice-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(125, 211, 252, 0.66);
+  background: rgba(20, 184, 166, 0.14);
+  color: #e0f2fe;
+}
+
+.assistant-voice-button--recording {
+  border-color: rgba(248, 113, 113, 0.58);
+  background: rgba(127, 29, 29, 0.34);
+  color: #fecaca;
+  box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.12);
+}
+
+.assistant-voice-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.assistant-voice-hint,
+.assistant-voice-error {
+  margin: -0.65rem 1.1rem 0.75rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.assistant-voice-hint {
+  color: #99f6e4;
+}
+
+.assistant-voice-error {
+  color: #fecaca;
 }
 
 @media (max-width: 960px) {

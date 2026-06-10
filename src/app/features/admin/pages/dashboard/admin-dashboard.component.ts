@@ -346,6 +346,10 @@ export class AdminDashboardComponent implements OnInit {
     void this.router.navigate(['/admin/audit']);
   }
 
+  goToEnterpriseAi(): void {
+    void this.router.navigate(['/ai']);
+  }
+
   toggleMoreMenu(): void {
     this.isMoreMenuOpen = !this.isMoreMenuOpen;
   }

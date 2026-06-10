@@ -91,6 +91,13 @@ export const routes: Routes = [
     data: { roles: ['ROLE_USER', 'ROLE_CLIENT', 'ROLE_ADMIN'] }
   },
   {
+    path: 'ai',
+    loadComponent: () => import('./features/ai/pages/enterprise-ai/enterprise-ai.component')
+      .then(m => m.EnterpriseAiComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_USER', 'ROLE_ADMIN', 'ROLE_BPM_MANAGER'] }
+  },
+  {
     path: 'user/processes',
     loadComponent: () => import('./features/user/pages/process-startable-list/process-startable-list.component')
       .then(m => m.ProcessStartableListComponent),

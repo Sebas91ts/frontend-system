@@ -1,0 +1,222 @@
+<main class="reports-shell">
+  <section class="reports-hero">
+    <div>
+      <p class="eyebrow">Reportes con IA</p>
+      <h1>Centro de reportes dinámicos</h1>
+      <p>
+        Genera informes desde auditoría, documentos, tareas y formularios. Puedes usar filtros directos sin IA,
+        o pedir un reporte en lenguaje natural cuando necesites algo más flexible.
+      </p>
+    </div>
+    <button type="button" class="ghost-button" (click)="goBack()">Volver</button>
+  </section>
+
+  <section class="quick-grid">
+    <button type="button" *ngFor="let item of quickReports" (click)="useQuickReport(item)">
+      <span>{{ item.label }}</span>
+      <small>{{ item.prompt }}</small>
+    </button>
+  </section>
+
+  <section class="summary-grid">
+    <article>
+      <span>Total</span>
+      <strong>{{ summary.total }}</strong>
+      <small>Registros mostrados</small>
+    </article>
+    <article>
+      <span>Documentos</span>
+      <strong>{{ summary.documents }}</strong>
+      <small>Eventos o metadatos</small>
+    </article>
+    <article>
+      <span>Tareas</span>
+      <strong>{{ summary.tasks }}</strong>
+      <small>Actividad BPM</small>
+    </article>
+    <article>
+      <span>Alertas</span>
+      <strong>{{ summary.alerts }}</strong>
+      <small>Rechazos o bloqueos</small>
+    </article>
+  </section>
+
+  <section class="reports-workbench">
+    <aside class="filters-panel">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Sin IA</p>
+          <h2>Reporte por filtros</h2>
+          <small>Más rápido y estable. No depende de Gemini.</small>
+        </div>
+      </div>
+
+      <label>
+        Tipo de reporte
+        <select [(ngModel)]="reportType">
+          <option value="audit">Actividad general</option>
+          <option value="documents">Documentos</option>
+          <option value="tasks">Tareas</option>
+          <option value="forms">Formularios</option>
+          <option value="processes">Procesos activos</option>
+        </select>
+      </label>
+
+      <div class="preset-row">
+        <button type="button" [class.active]="datePreset === 'today'" (click)="applyPreset('today')">Hoy</button>
+        <button type="button" [class.active]="datePreset === '3d'" (click)="applyPreset('3d')">3 días</button>
+        <button type="button" [class.active]="datePreset === '7d'" (click)="applyPreset('7d')">7 días</button>
+        <button type="button" [class.active]="datePreset === '30d'" (click)="applyPreset('30d')">30 días</button>
+      </div>
+
+      <label>
+        Desde
+        <input type="date" [(ngModel)]="fromDate" (ngModelChange)="datePreset = 'custom'" />
+      </label>
+
+      <label>
+        Hasta
+        <input type="date" [(ngModel)]="toDate" (ngModelChange)="datePreset = 'custom'" />
+      </label>
+
+      <label>
+        Estado documental
+        <select [(ngModel)]="documentState">
+          <option value="">Todos</option>
+          <option value="PENDING">Pendiente</option>
+          <option value="UPLOADED">Subido</option>
+          <option value="IN_REVIEW">En revisión</option>
+          <option value="APPROVED">Aprobado</option>
+          <option value="REJECTED">Rechazado</option>
+          <option value="FINAL">Final</option>
+          <option value="ARCHIVED">Archivado</option>
+        </select>
+      </label>
+
+      <label>
+        Proceso
+        <input type="text" [(ngModel)]="processKey" placeholder="registro_clientes" />
+      </label>
+
+      <label>
+        Área
+        <input type="text" [(ngModel)]="areaId" placeholder="ID o área" />
+      </label>
+
+      <label>
+        Usuario
+        <input type="text" [(ngModel)]="actorEmail" placeholder="correo@empresa.com" />
+      </label>
+
+      <button type="button" class="filter-submit" (click)="generateReportFromFilters()" [disabled]="isLoading">
+        {{ isLoading && generationMode === 'filters' ? 'Generando...' : 'Generar con filtros' }}
+      </button>
+    </aside>
+
+    <section class="report-main">
+      <article class="prompt-card">
+        <div class="prompt-card__heading">
+          <div>
+            <p class="eyebrow">Con IA opcional</p>
+            <h2>Describe el reporte en lenguaje natural</h2>
+            <small>Usa esto para solicitudes más abiertas. Si Gemini falla, los filtros siguen funcionando.</small>
+          </div>
+          <div class="export-actions">
+            <button type="button" (click)="exportReport('PDF')" [disabled]="!rows.length">PDF</button>
+            <button type="button" (click)="exportReport('WORD')" [disabled]="!rows.length">Word</button>
+            <button type="button" (click)="exportReport('EXCEL')" [disabled]="!rows.length">Excel</button>
+          </div>
+        </div>
+
+        <textarea
+          [(ngModel)]="prompt"
+          rows="4"
+          placeholder="Ej. Dame un reporte PDF de documentos rechazados de los ultimos 3 dias por area"></textarea>
+
+        <div class="prompt-actions">
+          <div>
+            <span *ngIf="errorMessage" class="error-message">{{ errorMessage }}</span>
+            <span *ngIf="voiceError" class="voice-error">{{ voiceError }}</span>
+            <span *ngIf="isVoiceRecording" class="voice-hint">Escuchando... al terminar se enviará automáticamente.</span>
+          </div>
+          <div class="prompt-actions__buttons">
+            <button
+              type="button"
+              class="voice-button"
+              [class.voice-button--recording]="isVoiceRecording"
+              (click)="toggleVoiceInput()"
+              [disabled]="isLoading || !isVoiceInputSupported"
+              [title]="isVoiceInputSupported ? 'Dictar reporte por voz' : 'Tu navegador no soporta dictado por voz'">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Z"></path>
+                <path d="M18 11a6 6 0 0 1-12 0"></path>
+                <path d="M12 17v4"></path>
+                <path d="M8 21h8"></path>
+              </svg>
+            </button>
+            <button type="button" class="primary-button" (click)="generateReport()" [disabled]="isLoading">
+              {{ isLoading && generationMode === 'ai' ? 'Interpretando...' : 'Generar con IA' }}
+            </button>
+          </div>
+        </div>
+      </article>
+
+      <article class="result-card">
+        <div class="result-card__header">
+          <div>
+            <p class="eyebrow">Resultado</p>
+            <h2>{{ reportTitle }}</h2>
+            <p>{{ reportReason }}</p>
+          </div>
+          <span>{{ rows.length }} registros</span>
+        </div>
+
+        <div class="plan-box" *ngIf="plan">
+          <strong>Interpretación IA:</strong>
+          <span>{{ plan.reportType }} · {{ plan.format }} · confianza {{ (plan.confidence * 100) | number:'1.0-0' }}%</span>
+        </div>
+
+        <div class="plan-box plan-box--filters" *ngIf="!plan && generationMode === 'filters' && rows.length">
+          <strong>Modo filtros:</strong>
+          <span>Reporte generado sin IA con los filtros seleccionados.</span>
+        </div>
+
+        <div class="empty-state" *ngIf="!isLoading && !rows.length">
+          <strong>Sin reporte generado todavía</strong>
+          <span>Usa un botón rápido, ajusta filtros o dicta un prompt para construir el informe.</span>
+        </div>
+
+        <div class="table-wrap" *ngIf="rows.length">
+          <table>
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Elemento</th>
+                <th>Detalle</th>
+                <th>Usuario</th>
+                <th>Área</th>
+                <th>Proceso</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+                <th *ngFor="let column of dynamicColumns">{{ column }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of rows">
+                <td><span class="type-pill">{{ row.type }}</span></td>
+                <td>{{ row.title }}</td>
+                <td>{{ row.detail }}</td>
+                <td>{{ row.actor }}</td>
+                <td>{{ row.area }}</td>
+                <td>{{ row.process }}</td>
+                <td><span class="status-pill">{{ row.status }}</span></td>
+                <td>{{ formatDate(row.date) }}</td>
+                <td *ngFor="let column of dynamicColumns">{{ row.extra?.[column] || 'N/D' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+  </section>
+</main>
