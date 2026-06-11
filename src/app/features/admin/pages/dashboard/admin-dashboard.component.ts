@@ -350,6 +350,10 @@ export class AdminDashboardComponent implements OnInit {
     void this.router.navigate(['/ai']);
   }
 
+  goToIntelligentRouting(): void {
+    void this.router.navigate(['/admin/intelligent-routing']);
+  }
+
   toggleMoreMenu(): void {
     this.isMoreMenuOpen = !this.isMoreMenuOpen;
   }

@@ -62,3 +62,46 @@ export interface AiVoiceRequest {
   documentId?: string | null;
   formId?: string | null;
 }
+
+export interface AiRiskPredictionResponse {
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | string;
+  riskScore: number;
+  expectedDelayHours: number;
+  priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT' | string;
+  factors: string[];
+  recommendations: string[];
+  modelUsed: string;
+}
+
+export interface AiRoutingRecommendation {
+  targetType: string;
+  targetId?: string | null;
+  targetName?: string | null;
+  score: number;
+  reason: string;
+}
+
+export interface AiAssignmentRecommendationResponse {
+  priority: string;
+  priorityScore: number;
+  bestRoute?: AiRoutingRecommendation | null;
+  alternatives: AiRoutingRecommendation[];
+  factors: string[];
+  modelUsed: string;
+}
+
+export interface AiRoutingAnomaly {
+  type: string;
+  severity: string;
+  score: number;
+  description: string;
+  entityId?: string | null;
+}
+
+export interface AiRoutingDashboardResponse {
+  modelStatus: string;
+  highRiskTasks: Array<Record<string, unknown>>;
+  highRiskInstances: Array<Record<string, unknown>>;
+  anomalies: AiRoutingAnomaly[];
+  recommendations: string[];
+}

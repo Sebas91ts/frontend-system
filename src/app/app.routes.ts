@@ -67,6 +67,13 @@ export const routes: Routes = [
     canActivate: [authGuard, roleGuard],
     data: { roles: ['ROLE_ADMIN'] }
   },
+  {
+    path: 'admin/intelligent-routing',
+    loadComponent: () => import('./features/admin/pages/intelligent-routing/intelligent-routing.component')
+      .then(m => m.IntelligentRoutingComponent),
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_ADMIN'] }
+  },
 
   {
     path: 'dashboard',

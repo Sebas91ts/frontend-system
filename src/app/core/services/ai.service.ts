@@ -5,11 +5,14 @@ import { API_BASE_URL } from '../config/api.config';
 import { ApiResponse } from '../models/auth.models';
 import {
   AiAssistResponse,
+  AiAssignmentRecommendationResponse,
   AiBusinessContextRequest,
   AiDocumentAnalysisRequest,
   AiDocumentAnalysisResponse,
   AiProcessRecommendationResponse,
   AiReportPlanResponse,
+  AiRiskPredictionResponse,
+  AiRoutingDashboardResponse,
   AiVoiceRequest,
 } from '../models/enterprise-ai.models';
 import { FormFieldDefinition } from '../models/form.models';
@@ -78,5 +81,30 @@ export class AiService {
 
   procesarVoz(request: AiVoiceRequest): Observable<ApiResponse<AiAssistResponse>> {
     return this.http.post<ApiResponse<AiAssistResponse>>(`${this.apiUrl}/ai/voice`, request);
+  }
+
+  predecirRiesgoTarea(taskId: string): Observable<ApiResponse<AiRiskPredictionResponse>> {
+    return this.http.post<ApiResponse<AiRiskPredictionResponse>>(
+      `${this.apiUrl}/ai/routing/task-risk/${encodeURIComponent(taskId)}`,
+      {},
+    );
+  }
+
+  predecirRiesgoInstancia(processInstanceId: string): Observable<ApiResponse<AiRiskPredictionResponse>> {
+    return this.http.post<ApiResponse<AiRiskPredictionResponse>>(
+      `${this.apiUrl}/ai/routing/instance-risk/${encodeURIComponent(processInstanceId)}`,
+      {},
+    );
+  }
+
+  recomendarAsignacion(taskId: string): Observable<ApiResponse<AiAssignmentRecommendationResponse>> {
+    return this.http.post<ApiResponse<AiAssignmentRecommendationResponse>>(
+      `${this.apiUrl}/ai/routing/recommend-assignment/${encodeURIComponent(taskId)}`,
+      {},
+    );
+  }
+
+  obtenerDashboardEnrutamiento(): Observable<ApiResponse<AiRoutingDashboardResponse>> {
+    return this.http.get<ApiResponse<AiRoutingDashboardResponse>>(`${this.apiUrl}/ai/routing/dashboard`);
   }
 }

@@ -1,0 +1,172 @@
+<main class="routing-shell">
+  <section class="routing-hero">
+    <div>
+      <p class="eyebrow">Motor inteligente BPM</p>
+      <h1>Enrutamiento, riesgo y anomalías</h1>
+      <p>
+        Predice riesgo de demora, prioriza tareas, detecta comportamiento anómalo y recomienda rutas operativas
+        usando datos reales del flujo de trabajo.
+      </p>
+    </div>
+    <div class="hero-actions">
+      <button type="button" class="ghost-button" (click)="goBack()">Volver</button>
+      <button type="button" class="secondary-button" (click)="loadValidationScenario()" [disabled]="isLoading">
+        Escenario de validación
+      </button>
+      <button type="button" class="primary-button" (click)="refresh()" [disabled]="isLoading">
+        {{ isLoading ? 'Analizando...' : 'Actualizar motor' }}
+      </button>
+    </div>
+  </section>
+
+  <section class="feedback" *ngIf="isLoading">
+    Analizando tareas, instancias, documentos, historial y carga por área...
+  </section>
+
+  <section class="feedback feedback--error" *ngIf="errorMessage && !isLoading">
+    <span>{{ errorMessage }}</span>
+    <button type="button" (click)="refresh()">Reintentar</button>
+  </section>
+
+  <section class="feedback feedback--validation" *ngIf="isValidationScenario && !isLoading">
+    <span>Vista de validación cargada para demostrar predicción, anomalías y recomendación de ruta.</span>
+    <button type="button" (click)="refresh()">Volver a datos reales</button>
+  </section>
+
+  <ng-container *ngIf="dashboard && !isLoading">
+    <section class="model-card">
+      <div>
+        <p class="eyebrow">Estado del modelo</p>
+        <h2>{{ modelLabel }}</h2>
+        <span>{{ modelHint }}</span>
+      </div>
+      <strong>{{ dashboard.modelStatus }}</strong>
+    </section>
+
+    <section class="summary-grid">
+      <article>
+        <span>Tareas en riesgo</span>
+        <strong>{{ highRiskTasks.length }}</strong>
+        <small>Riesgo alto o medio-alto de demora.</small>
+      </article>
+      <article>
+        <span>Instancias críticas</span>
+        <strong>{{ highRiskInstances.length }}</strong>
+        <small>Procesos activos con señales de atraso.</small>
+      </article>
+      <article>
+        <span>Anomalías</span>
+        <strong>{{ anomalies.length }}</strong>
+        <small>Patrones fuera del comportamiento esperado.</small>
+      </article>
+      <article>
+        <span>Recomendaciones</span>
+        <strong>{{ recommendations.length }}</strong>
+        <small>Acciones sugeridas para operación BPM.</small>
+      </article>
+    </section>
+
+    <section class="content-grid">
+      <article class="panel">
+        <header>
+          <p class="eyebrow">Prioridad de asignación</p>
+          <h2>Tareas con riesgo de demora</h2>
+        </header>
+
+        <div class="empty-state" *ngIf="!highRiskTasks.length">
+          No hay tareas con riesgo alto según el motor actual.
+        </div>
+
+        <div class="risk-list" *ngIf="highRiskTasks.length">
+          <article class="risk-item" *ngFor="let item of highRiskTasks">
+            <div class="risk-item__main">
+              <strong>{{ itemText(item, ['name', 'taskName', 'id'], 'Tarea sin nombre') }}</strong>
+              <span>
+                Instancia {{ shortId(item['processInstanceId']) }} ·
+                Área {{ itemText(item, ['areaName', 'areaId'], 'N/D') }}
+              </span>
+            </div>
+            <div class="risk-meter">
+              <span [style.width.%]="riskPercent(item)"></span>
+            </div>
+            <b [attr.data-tone]="riskTone(item)">{{ riskPercent(item) }}%</b>
+          </article>
+        </div>
+      </article>
+
+      <article class="panel">
+        <header>
+          <p class="eyebrow">Predicción de instancias</p>
+          <h2>Procesos activos con riesgo</h2>
+        </header>
+
+        <div class="empty-state" *ngIf="!highRiskInstances.length">
+          No se detectaron instancias activas con riesgo alto.
+        </div>
+
+        <div class="risk-list" *ngIf="highRiskInstances.length">
+          <article class="risk-item" *ngFor="let item of highRiskInstances">
+            <div class="risk-item__main">
+              <strong>{{ itemText(item, ['name', 'processKey', 'id'], 'Instancia BPM') }}</strong>
+              <span>
+                {{ shortId(item['id']) }} · Estado {{ itemText(item, ['status'], 'Activo') }}
+              </span>
+            </div>
+            <div class="risk-meter risk-meter--blue">
+              <span [style.width.%]="riskPercent(item)"></span>
+            </div>
+            <b [attr.data-tone]="riskTone(item)">{{ riskPercent(item) }}%</b>
+          </article>
+        </div>
+      </article>
+    </section>
+
+    <section class="content-grid content-grid--bottom">
+      <article class="panel">
+        <header>
+          <p class="eyebrow">Detección de anomalías</p>
+          <h2>Alertas inteligentes</h2>
+        </header>
+
+        <div class="empty-state" *ngIf="!anomalies.length">
+          No se detectaron anomalías relevantes.
+        </div>
+
+        <div class="anomaly-list" *ngIf="anomalies.length">
+          <article class="anomaly-item" *ngFor="let anomaly of anomalies">
+            <span>{{ anomaly.severity }}</span>
+            <div>
+              <strong>{{ anomaly.type }}</strong>
+              <p>{{ anomaly.description }}</p>
+              <small>Score {{ (anomaly.score * 100) | number:'1.0-0' }}%</small>
+            </div>
+          </article>
+        </div>
+      </article>
+
+      <article class="panel panel--recommendations">
+        <header>
+          <p class="eyebrow">Mejor ruta</p>
+          <h2>Recomendaciones del motor</h2>
+        </header>
+
+        <div class="empty-state" *ngIf="!recommendations.length">
+          El motor no tiene recomendaciones pendientes.
+        </div>
+
+        <ul *ngIf="recommendations.length">
+          <li *ngFor="let recommendation of recommendations">{{ recommendation }}</li>
+        </ul>
+
+        <div class="explain-box">
+          <strong>Cómo se calcula</strong>
+          <p>
+            El motor combina duración histórica, carga por área, documentos pendientes, tareas activas,
+            rechazos y señales de instancia. Si TensorFlow está disponible con un modelo entrenado,
+            se usa automáticamente; si no, se aplican reglas explicables.
+          </p>
+        </div>
+      </article>
+    </section>
+  </ng-container>
+</main>
