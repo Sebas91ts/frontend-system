@@ -4,6 +4,8 @@ export interface TareaInstancia {
   assignee?: string | null;
   created?: string | null;
   processDefinitionId?: string | null;
+  processKey?: string | null;
+  processVersion?: number | string | null;
   processInstanceId?: string | null;
   taskDefinitionKey?: string | null;
   // Compatibilidad con la vista previa anterior

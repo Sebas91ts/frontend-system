@@ -187,6 +187,17 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
   }
 
   protected get processVersion(): number {
+    const explicitVersion = this.task?.processVersion;
+    if (typeof explicitVersion === 'number' && Number.isFinite(explicitVersion)) {
+      return explicitVersion;
+    }
+    if (typeof explicitVersion === 'string' && explicitVersion.trim()) {
+      const parsedVersion = Number(explicitVersion.trim());
+      if (Number.isFinite(parsedVersion)) {
+        return parsedVersion;
+      }
+    }
+
     const processDefinitionId = this.task?.processDefinitionId?.trim();
     if (!processDefinitionId) {
       return 1;
@@ -605,7 +616,7 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
   }
 
   private loadFormForTask(task: TareaInstancia): void {
-    const processKey = this.extractProcessKey(task.processDefinitionId);
+    const processKey = this.resolveProcessKey(task);
     if (!processKey) {
       this.formDefinition = null;
       this.formMessage = this.t('taskDetail.formMissing');
@@ -707,7 +718,7 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
       .uploadTaskDocument(file, {
         tenantId,
         processInstanceId: this.task.processInstanceId,
-        processKey: this.extractProcessKey(this.task.processDefinitionId),
+        processKey: this.resolveProcessKey(this.task),
         processVersion: this.processVersion,
         taskDefinitionKey: this.task.taskDefinitionKey || '',
         taskInstanceId: this.task.id,
@@ -903,6 +914,15 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
     return key?.trim() || '';
   }
 
+  private resolveProcessKey(task?: TareaInstancia | null): string {
+    const explicitKey = task?.processKey?.trim();
+    if (explicitKey) {
+      return explicitKey;
+    }
+
+    return this.extractProcessKey(task?.processDefinitionId);
+  }
+
   private async buildVariablesPayload(): Promise<Record<string, unknown>> {
     const variables: Record<string, unknown> = {};
     if (!this.formDefinition) {
@@ -1079,7 +1099,7 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
         id: `tmp-${now}`,
         processInstanceId: this.task.processInstanceId,
         processDefinitionId: this.task.processDefinitionId || '',
-        processKey: this.extractProcessKey(this.task.processDefinitionId),
+        processKey: this.resolveProcessKey(this.task),
         processVersion: this.processVersion,
         taskDefinitionKey: this.task.taskDefinitionKey,
         taskName: this.task.name || this.task.nombreTarea,

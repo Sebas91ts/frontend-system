@@ -1210,6 +1210,11 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
   }
 
   private getProcessKey(task: TareaInstancia): string {
+    const explicitKey = task.processKey?.trim();
+    if (explicitKey) {
+      return explicitKey;
+    }
+
     const processId = task.processDefinitionId?.trim();
     if (!processId) {
       return '';
@@ -1220,6 +1225,16 @@ export class TaskInboxComponent implements OnInit, OnDestroy {
   }
 
   private getProcessVersion(task: TareaInstancia): number {
+    if (typeof task.processVersion === 'number' && Number.isFinite(task.processVersion)) {
+      return task.processVersion;
+    }
+    if (typeof task.processVersion === 'string' && task.processVersion.trim()) {
+      const explicitVersion = Number(task.processVersion.trim());
+      if (Number.isFinite(explicitVersion)) {
+        return explicitVersion;
+      }
+    }
+
     const processId = task.processDefinitionId?.trim();
     if (!processId) {
       return 1;
