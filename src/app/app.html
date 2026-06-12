@@ -1,2 +1,8 @@
 <app-notification-bell />
+@if (!isOnline()) {
+  <div class="offline-banner" role="status" aria-live="polite">
+    <span class="offline-dot"></span>
+    Sin conexion. Puedes seguir viendo contenido ya cargado; las acciones que requieren servidor se reintentaran al volver internet.
+  </div>
+}
 <router-outlet />

@@ -1,0 +1,21 @@
+{
+  "name": "SystemBPM Enterprise",
+  "short_name": "SystemBPM",
+  "description": "Plataforma BPM empresarial para procesos, tareas, documentos e inteligencia operativa.",
+  "theme_color": "#123847",
+  "background_color": "#07111f",
+  "display": "standalone",
+  "scope": "/",
+  "start_url": "/dashboard",
+  "orientation": "any",
+  "lang": "es",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/systembpm-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

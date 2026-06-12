@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SystemBPM">
+  <defs>
+    <linearGradient id="bg" x1="58" y1="68" x2="456" y2="438" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#18d5c3"/>
+      <stop offset="1" stop-color="#2f6df6"/>
+    </linearGradient>
+    <linearGradient id="card" x1="135" y1="122" x2="382" y2="394" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dff7ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#07111f"/>
+  <rect x="52" y="52" width="408" height="408" rx="94" fill="url(#bg)"/>
+  <path fill="#07111f" fill-opacity=".18" d="M101 378c73-52 119-82 216-69 61 8 94-11 135-50v107c0 48-39 87-87 87H147c-24 0-45-10-61-25 3-19 8-36 15-50Z"/>
+  <rect x="126" y="116" width="260" height="280" rx="36" fill="url(#card)" stroke="#07111f" stroke-width="16"/>
+  <circle cx="188" cy="188" r="22" fill="#07111f"/>
+  <circle cx="188" cy="256" r="22" fill="#07111f"/>
+  <circle cx="188" cy="324" r="22" fill="#07111f"/>
+  <path fill="none" stroke="#07111f" stroke-linecap="round" stroke-linejoin="round" stroke-width="24" d="M234 188h83M234 256h104M234 324h72"/>
+</svg>
